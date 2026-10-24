@@ -14,8 +14,6 @@ using Sentry.Protocol;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using Windows.ApplicationModel;
-using Windows.Storage;
 using Windows.System;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
@@ -26,7 +24,7 @@ namespace Files.App.Helpers
 	/// </summary>
 	public static class AppLifecycleHelper
 	{
-		private readonly static string AppInformationKey = @$"Software\Files Community\{Package.Current.Id.Name}\v1\AppInformation";
+		private readonly static string AppInformationKey = @$"Software\Files Community\{AppRuntime.Current.ProductId}\v1\AppInformation";
 
 		/// <summary>
 		/// Gets the value that indicates whether the app is updated.
@@ -50,6 +48,15 @@ namespace Files.App.Helpers
 
 		static AppLifecycleHelper()
 		{
+			if (AppRuntime.Current.Distribution is DistributionKind.Portable)
+			{
+				var state = AppLaunchTracker.Track(AppRuntime.LocalState, AppVersion);
+				IsAppUpdated = state.IsAppUpdated;
+				IsFirstRun = state.IsFirstRun;
+				TotalLaunchCount = state.TotalLaunchCount;
+				return;
+			}
+
 			using var infoKey = Registry.CurrentUser.CreateSubKey(AppInformationKey);
 			var version = infoKey.GetValue("LastLaunchVersion");
 			var launchCount = infoKey.GetValue("TotalLaunchCount");
@@ -80,8 +87,7 @@ namespace Files.App.Helpers
 		/// <summary>
 		/// Gets application package version.
 		/// </summary>
-		public static Version AppVersion { get; } =
-			new(Package.Current.Id.Version.Major, Package.Current.Id.Version.Minor, Package.Current.Id.Version.Build, Package.Current.Id.Version.Revision);
+		public static Version AppVersion { get; } = AppRuntime.Current.Version;
 
 		/// <summary>
 		/// Gets application icon path.
@@ -89,7 +95,7 @@ namespace Files.App.Helpers
 		public static string AppIconPath => _appIconPath.Value;
 
 		private static readonly Lazy<string> _appIconPath = new(() =>
-			SystemIO.Path.Combine(Package.Current.InstalledPath, AppEnvironment switch
+			SystemIO.Path.Combine(AppRuntime.Current.InstallDirectory, AppEnvironment switch
 			{
 				AppEnvironment.Dev => Constants.AssetPaths.DevLogo,
 				AppEnvironment.SideloadPreview or AppEnvironment.StorePreview => Constants.AssetPaths.PreviewLogo,
@@ -217,8 +223,7 @@ namespace Files.App.Helpers
 			{
 				options.Dsn = Constants.AutomatedWorkflowInjectionKeys.SentrySecret;
 				options.AutoSessionTracking = true;
-				var packageVersion = Package.Current.Id.Version;
-				options.Release = $"{packageVersion.Major}.{packageVersion.Minor}.{packageVersion.Build}";
+				options.Release = $"{AppVersion.Major}.{AppVersion.Minor}.{AppVersion.Build}";
 				options.TracesSampleRate = 0.10;
 				// Active-session reports must not be sampled away or their sums undercount;
 				// returning null falls back to TracesSampleRate for everything else
@@ -226,7 +231,7 @@ namespace Files.App.Helpers
 					context.TransactionContext.Operation == ActiveSessionTracker.TransactionOperation ? 1.0 : null;
 				options.ProfilesSampleRate = 0.05;
 				options.Environment = AppEnvironment == AppEnvironment.StorePreview || AppEnvironment == AppEnvironment.SideloadPreview ? "preview" : "production";
-				options.CacheDirectoryPath = ApplicationData.Current.LocalFolder.Path;
+				options.CacheDirectoryPath = AppRuntime.Current.CacheDirectory;
 
 				options.DisableWinUiUnhandledExceptionIntegration();
 
@@ -305,7 +310,7 @@ namespace Files.App.Helpers
 		public static IServiceProvider ConfigureHost(AppModel appModel)
 		{
 			var services = new ServiceCollection();
-			var fileLoggerProvider = new FileLoggerProvider(Path.Combine(ApplicationData.Current.LocalFolder.Path, $"debug_{(Environment.IsPrivilegedProcess ? "privileged" : "unprivileged")}.log"));
+			var fileLoggerProvider = new FileLoggerProvider(Path.Combine(AppRuntime.Current.LogDirectory, $"debug_{(Environment.IsPrivilegedProcess ? "privileged" : "unprivileged")}.log"));
 
 			services.AddSingleton(fileLoggerProvider);
 

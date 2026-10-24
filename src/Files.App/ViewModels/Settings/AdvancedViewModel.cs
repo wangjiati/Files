@@ -33,8 +33,8 @@ namespace Files.App.ViewModels.Settings
 
 		public AdvancedViewModel()
 		{
-			IsSetAsDefaultFileManager = DetectIsSetAsDefaultFileManager();
-			IsSetAsOpenFileDialog = DetectIsSetAsOpenFileDialog();
+			IsSetAsDefaultFileManager = AppRuntime.Current.SupportsSystemIntegration && DetectIsSetAsDefaultFileManager();
+			IsSetAsOpenFileDialog = AppRuntime.Current.SupportsSystemIntegration && DetectIsSetAsOpenFileDialog();
 
 			SetAsDefaultExplorerCommand = new AsyncRelayCommand(SetAsDefaultExplorerAsync);
 			SetAsOpenFileDialogCommand = new AsyncRelayCommand(SetAsOpenFileDialogAsync);
@@ -49,16 +49,19 @@ namespace Files.App.ViewModels.Settings
 
 		private async Task SetAsDefaultExplorerAsync()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+				return;
+
 			// Make sure IsSetAsDefaultFileManager is updated
 			await Task.Yield();
 
 			if (IsSetAsDefaultFileManager == DetectIsSetAsDefaultFileManager())
 				return;
 
-			var destFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "FilesOpenDialog");
+			var destFolder = Path.Combine(AppRuntime.Current.DataDirectory, "FilesOpenDialog");
 			Directory.CreateDirectory(destFolder);
 
-			foreach (var file in Directory.GetFiles(Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "FilesOpenDialog")))
+			foreach (var file in Directory.GetFiles(Path.Combine(AppRuntime.Current.InstallDirectory, "Assets", "FilesOpenDialog")))
 			{
 				if (!SafetyExtensions.IgnoreExceptions(() => File.Copy(file, Path.Combine(destFolder, Path.GetFileName(file)), true), App.Logger))
 				{
@@ -114,14 +117,17 @@ namespace Files.App.ViewModels.Settings
 
 		private async Task SetAsOpenFileDialogAsync()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+				return;
+
 			// Make sure IsSetAsDefaultFileManager is updated
 			await Task.Yield();
 			if (IsSetAsOpenFileDialog == DetectIsSetAsOpenFileDialog())
 				return;
 
-			var destFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "FilesOpenDialog");
+			var destFolder = Path.Combine(AppRuntime.Current.DataDirectory, "FilesOpenDialog");
 			Directory.CreateDirectory(destFolder);
-			foreach (var file in Directory.GetFiles(Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "FilesOpenDialog")))
+			foreach (var file in Directory.GetFiles(Path.Combine(AppRuntime.Current.InstallDirectory, "Assets", "FilesOpenDialog")))
 			{
 				if (!SafetyExtensions.IgnoreExceptions(() => File.Copy(file, Path.Combine(destFolder, Path.GetFileName(file)), true), App.Logger))
 				{
@@ -169,8 +175,7 @@ namespace Files.App.ViewModels.Settings
 				if (await ZipStorageFolder.FromStorageFileAsync(file) is not ZipStorageFolder zipFolder)
 					return;
 
-				var localFolderPath = ApplicationData.Current.LocalFolder.Path;
-				var settingsFolder = await StorageFolder.GetFolderFromPathAsync(Path.Combine(localFolderPath, Constants.LocalSettings.SettingsFolderName));
+				var settingsFolder = await StorageFolder.GetFolderFromPathAsync(AppRuntime.Current.SettingsDirectory);
 
 				// Import user settings
 				var userSettingsFile = await zipFolder.GetFileAsync(Constants.LocalSettings.UserSettingsFileName);
@@ -231,8 +236,6 @@ namespace Files.App.ViewModels.Settings
 
 				if (await ZipStorageFolder.FromStorageFileAsync(file) is not ZipStorageFolder zipFolder)
 					return;
-
-				var localFolderPath = ApplicationData.Current.LocalFolder.Path;
 
 				// Export user settings
 				var exportSettings = UTF8Encoding.UTF8.GetBytes((string)UserSettingsService.ExportSettings());
@@ -416,6 +419,13 @@ namespace Files.App.ViewModels.Settings
 
 		public async Task OpenFilesOnWindowsStartupAsync()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+			{
+				CanOpenOnWindowsStartup = false;
+				OpenOnWindowsStartup = false;
+				return;
+			}
+
 			var stateMode = await ReadState();
 
 			bool state = stateMode switch
@@ -447,6 +457,13 @@ namespace Files.App.ViewModels.Settings
 
 		public async Task DetectOpenFilesAtStartupAsync()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+			{
+				CanOpenOnWindowsStartup = false;
+				OpenOnWindowsStartup = false;
+				return;
+			}
+
 			var stateMode = await ReadState();
 
 			switch (stateMode)
@@ -476,6 +493,9 @@ namespace Files.App.ViewModels.Settings
 
 		public async Task<StartupTaskState> ReadState()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+				return StartupTaskState.Disabled;
+
 			try
 			{
 				var state = await StartupTask.GetAsync("3AA55462-A5FA-4933-88C4-712D0B6CDEBB");

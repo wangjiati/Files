@@ -5,7 +5,6 @@ using Files.App.Utils.Serialization.Implementation;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.IO;
-using Windows.Storage;
 
 namespace Files.App.Services.Settings
 {
@@ -38,8 +37,7 @@ namespace Files.App.Services.Settings
 			var settingsSerializer = new DefaultSettingsSerializer();
 			SettingsSerializer = settingsSerializer;
 
-			Initialize(Path.Combine(ApplicationData.Current.LocalFolder.Path,
-				Constants.LocalSettings.SettingsFolderName, Constants.LocalSettings.FileTagSettingsFileName));
+			Initialize(Path.Combine(AppRuntime.Current.SettingsDirectory, Constants.LocalSettings.FileTagSettingsFileName));
 
 			var jsonSettingsSerializer = new DefaultJsonSettingsSerializer();
 			JsonSettingsSerializer = jsonSettingsSerializer;

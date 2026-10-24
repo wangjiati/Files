@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using System.Collections.Concurrent;
 using System.IO;
-using Windows.Storage;
 
 namespace Files.App.Services.Settings
 {
@@ -94,7 +93,7 @@ namespace Files.App.Services.Settings
 			var settingsSerializer = new DefaultSettingsSerializer();
 			SettingsSerializer = settingsSerializer;
 
-			Initialize(Path.Combine(ApplicationData.Current.LocalFolder.Path, Constants.LocalSettings.SettingsFolderName, Constants.LocalSettings.UserSettingsFileName));
+			Initialize(Path.Combine(AppRuntime.Current.SettingsDirectory, Constants.LocalSettings.UserSettingsFileName));
 
 			var jsonSettingsSerializer = new DefaultJsonSettingsSerializer();
 			JsonSettingsSerializer = jsonSettingsSerializer;

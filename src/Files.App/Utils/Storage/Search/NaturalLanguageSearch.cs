@@ -66,6 +66,12 @@ namespace Files.App.Utils.Storage
 
 		public static bool IsAvailable()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+			{
+				_availability = Availability.Unavailable;
+				return false;
+			}
+
 			if (_availability is not Availability.Unknown)
 				return _availability is Availability.Available;
 

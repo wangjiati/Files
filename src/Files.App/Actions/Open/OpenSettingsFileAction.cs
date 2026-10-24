@@ -31,7 +31,8 @@ namespace Files.App.Actions
 		{
 			try
 			{
-				var settingsJsonFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri($"ms-appdata:///local/{Constants.LocalSettings.SettingsFolderName}/{Constants.LocalSettings.UserSettingsFileName}"));
+				var settingsPath = System.IO.Path.Combine(AppRuntime.Current.SettingsDirectory, Constants.LocalSettings.UserSettingsFileName);
+				var settingsJsonFile = await StorageFile.GetFileFromPathAsync(settingsPath);
 				if (!await Launcher.LaunchFileAsync(settingsJsonFile))
 					await ContextMenu.InvokeVerb("open", settingsJsonFile.Path);
 			}

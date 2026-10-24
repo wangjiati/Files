@@ -30,9 +30,12 @@ namespace Files.App.Actions
 		{
 			try
 			{
-				var debugFile = await ApplicationData.Current.LocalFolder.TryGetItemAsync($"debug_{(Environment.IsPrivilegedProcess ? "privileged" : "unprivileged")}.log") as StorageFile;
+				var debugPath = System.IO.Path.Combine(AppRuntime.Current.LogDirectory, $"debug_{(Environment.IsPrivilegedProcess ? "privileged" : "unprivileged")}.log");
+				if (!System.IO.File.Exists(debugPath))
+					return;
+				var debugFile = await StorageFile.GetFileFromPathAsync(debugPath);
 
-				if (debugFile != null && !await Launcher.LaunchFileAsync(debugFile))
+				if (!await Launcher.LaunchFileAsync(debugFile))
 				{
 					// Fallback to Process.Start if Launcher fails
 					using var process = Process.Start(new ProcessStartInfo(debugFile.Path)

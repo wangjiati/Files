@@ -307,7 +307,8 @@ namespace Files.App
 				SafetyExtensions.IgnoreExceptions(() =>
 				{
 					var dataPackage = Clipboard.GetContent();
-					if (dataPackage.Properties.PackageFamilyName == Package.Current.Id.FamilyName && dataPackage.Contains(StandardDataFormats.StorageItems))
+					if (AppRuntime.Current.PackageFamilyName is { } packageFamilyName &&
+						dataPackage.Properties.PackageFamilyName == packageFamilyName && dataPackage.Contains(StandardDataFormats.StorageItems))
 						Clipboard.Flush();
 				}, Logger);
 

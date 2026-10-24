@@ -17,14 +17,14 @@ namespace Files.App.Utils.Storage
 		/// <returns></returns>
 		public static async Task<StorageItemThumbnail> GetIconForItemType(uint requestedSize, IconPersistenceOptions persistenceOptions = IconPersistenceOptions.Persist, string? fileExtension = null)
 		{
+			StorageFolder cacheFolder = await StorageFolder.GetFolderFromPathAsync(AppRuntime.Current.CacheDirectory);
 			if (string.IsNullOrEmpty(fileExtension))
 			{
-				StorageFolder localFolder = ApplicationData.Current.RoamingFolder;
-				return await localFolder.GetThumbnailAsync(ThumbnailMode.ListView, requestedSize, ThumbnailOptions.UseCurrentScale);
+				return await cacheFolder.GetThumbnailAsync(ThumbnailMode.ListView, requestedSize, ThumbnailOptions.UseCurrentScale);
 			}
 			else
 			{
-				StorageFile emptyFile = await ApplicationData.Current.LocalCacheFolder.CreateFileAsync(string.Join(Constants.Filesystem.CachedEmptyItemName, fileExtension), CreationCollisionOption.OpenIfExists);
+				StorageFile emptyFile = await cacheFolder.CreateFileAsync(string.Join(Constants.Filesystem.CachedEmptyItemName, fileExtension), CreationCollisionOption.OpenIfExists);
 				var icon = await emptyFile.GetThumbnailAsync(ThumbnailMode.ListView, requestedSize, ThumbnailOptions.UseCurrentScale);
 
 				if (persistenceOptions == IconPersistenceOptions.LoadOnce)

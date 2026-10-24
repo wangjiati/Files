@@ -23,7 +23,8 @@ namespace Files.App.Actions
 
 		public async Task ExecuteAsync(object? parameter = null)
 		{
-			await Launcher.LaunchFolderAsync(ApplicationData.Current.LocalFolder).AsTask();
+			var logFolder = await StorageFolder.GetFolderFromPathAsync(AppRuntime.Current.LogDirectory);
+			await Launcher.LaunchFolderAsync(logFolder).AsTask();
 		}
 	}
 }

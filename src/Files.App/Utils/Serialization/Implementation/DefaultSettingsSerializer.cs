@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.IO;
+using System.Text.Json.Nodes;
 using Windows.Win32;
 using Windows.Win32.Storage.FileSystem;
 using static Files.App.Helpers.Win32Helper;
@@ -38,14 +39,22 @@ namespace Files.App.Utils.Serialization.Implementation
 		{
 			ArgumentNullException.ThrowIfNull(_filePath);
 
-			return ReadStringFromFile(_filePath) ?? string.Empty;
+			return VersionedJsonFile.Read(_filePath, payloadName: null, allowUnversioned: true)?.ToJsonString() ?? string.Empty;
 		}
 
 		public bool WriteToFile(string text)
 		{
 			ArgumentNullException.ThrowIfNull(_filePath);
 
-			return WriteStringToFile(_filePath, text);
+			try
+			{
+				VersionedJsonFile.Write(_filePath, payloadName: null, JsonNode.Parse(text));
+				return true;
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				return false;
+			}
 		}
 	}
 }

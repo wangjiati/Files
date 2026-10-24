@@ -9,7 +9,7 @@ namespace Files.App.Helpers
 	public class LayoutPreferencesDatabaseManager
 	{
 		// Fields
-		private static readonly Lazy<LayoutPreferencesDatabase> dbInstance = new(() => new());
+		private static readonly Lazy<ILayoutPreferencesDatabase> dbInstance = new(() => new LayoutPreferencesDatabase());
 
 		// Methods
 		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn = null)
