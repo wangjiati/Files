@@ -131,7 +131,7 @@
 			<!--  Replace File Explorer  -->
 			<wctcontrols:SettingsCard
 				x:Name="SetAsDefaultSettingsBlockControl"
-				x:Load="{x:Bind ViewModel.SupportsSystemIntegration, Mode=OneWay}"
+				x:Load="{x:Bind ViewModel.SupportsDefaultFileManagerIntegration, Mode=OneWay}"
 				Header="{helpers:ResourceString Name=SettingsSetAsDefaultFileManager}">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xEC50;" />
@@ -164,6 +164,16 @@
 					IsOn="{x:Bind ViewModel.IsSetAsOpenFileDialog, Mode=TwoWay}"
 					Toggled="SetAsOpenFileDialog_Toggled" />
 			</wctcontrols:SettingsCard>
+
+			<!--  Shell integration error  -->
+			<InfoBar
+				x:Name="ShellIntegrationErrorInfoBar"
+				x:Load="{x:Bind ViewModel.SupportsSystemIntegration, Mode=OneWay}"
+				IsClosable="True"
+				IsIconVisible="True"
+				IsOpen="{x:Bind ViewModel.HasShellIntegrationError, Mode=OneWay}"
+				Message="{x:Bind ViewModel.ShellIntegrationErrorMessage, Mode=OneWay}"
+				Severity="Error" />
 
 			<!--  Shell integration cleanup note  -->
 			<InfoBar

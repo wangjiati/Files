@@ -140,6 +140,99 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void DisableDefaultFileManager_CorruptState_ArchivesAndDeletesOnlyProductValues()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			takeover.SetDefaultFileManager(true);
+
+			directory.Store.SetString(ShellIntegrationTakeover.StateKey, "{not-json");
+			const string externalCommand = "\"C:\\Other\\Manager.exe\" \"%1\"";
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, null, new(externalCommand, RegistryValueKind.String));
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute", new("{external}", RegistryValueKind.String));
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			Assert.AreEqual("{not-json", directory.Store.GetString(ShellIntegrationTakeover.ArchivedStateKey));
+			Assert.AreEqual(externalCommand, registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, null)?.Data);
+			Assert.AreEqual("{external}", registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute")?.Data);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderExploreCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+		}
+
+		[TestMethod]
+		public void DisableDefaultFileManager_FutureSchema_ArchivesAndDeletesOnlyProductValues()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			takeover.SetDefaultFileManager(true);
+			const string futureState = "{\"SchemaVersion\":999,\"DefaultFileManager\":{\"Values\":[]}}";
+			directory.Store.SetString(ShellIntegrationTakeover.StateKey, futureState);
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			Assert.AreEqual(futureState, directory.Store.GetString(ShellIntegrationTakeover.ArchivedStateKey));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderExploreCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+		}
+
+		[TestMethod]
+		public void DisableOpenDialog_CorruptState_RemovesOnlyOwnedRegistration()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			var registration = new FakeOpenDialogRegistration(registry);
+			var takeover = CreateTakeover(directory, registry, registration);
+			takeover.SetOpenFileDialog(true);
+			directory.Store.SetString(ShellIntegrationTakeover.StateKey, "{not-json");
+
+			Assert.IsTrue(takeover.SetOpenFileDialog(false));
+
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			Assert.AreEqual("{not-json", directory.Store.GetString(ShellIntegrationTakeover.ArchivedStateKey));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.OpenDialogClsidKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.SaveDialogClsidKey, null));
+			Assert.AreEqual(1, registration.UnregisterOpenDialogCalls);
+			Assert.AreEqual(1, registration.UnregisterSaveDialogCalls);
+		}
+
+		[TestMethod]
+		public void ReenablingWithoutState_DoesNotTreatInternalCommandsAsOriginals()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			takeover.SetDefaultFileManager(true);
+			directory.Store.Remove(ShellIntegrationTakeover.StateKey);
+
+			const string externalCommand = "\"C:\\Other\\Manager.exe\" \"%1\"";
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, null, new(externalCommand, RegistryValueKind.String));
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute", new("{external}", RegistryValueKind.String));
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(true));
+
+			var state = ReadState(directory);
+			Assert.IsTrue(state.DefaultFileManager!.UnknownOriginalKeyPaths.Contains(ShellIntegrationTakeover.FolderExploreCommandKey));
+			Assert.IsTrue(state.DefaultFileManager.UnknownOriginalKeyPaths.Contains(ShellIntegrationTakeover.NewWindowCommandKey));
+			Assert.IsFalse(state.DefaultFileManager.UnknownOriginalKeyPaths.Contains(ShellIntegrationTakeover.FolderOpenCommandKey));
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.AreEqual(externalCommand, registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, null)?.Data);
+			Assert.AreEqual("{external}", registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute")?.Data);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderExploreCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+		}
+
+		[TestMethod]
 		public void OpenDialogEnableAndDisable_RestoresCapturedRegistryKeys()
 		{
 			using var directory = new TemporaryDirectory();

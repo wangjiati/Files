@@ -49,6 +49,7 @@ namespace Files.App.Services
 	internal sealed class DefaultFileManagerTakeoverState
 	{
 		public List<ShellRegistryValueState> Values { get; set; } = [];
+		public List<string> UnknownOriginalKeyPaths { get; set; } = [];
 	}
 
 	internal sealed class OpenFileDialogTakeoverState
@@ -86,6 +87,7 @@ namespace Files.App.Services
 	internal sealed class ShellIntegrationTakeover
 	{
 		internal const string StateKey = "shell-integration-takeover.v1";
+		internal const string ArchivedStateKey = "shell-integration-takeover.v1.archived";
 		internal const int CurrentSchemaVersion = 1;
 
 		internal const string FolderOpenCommandKey = @"Software\Classes\Folder\shell\open\command";
@@ -161,8 +163,12 @@ namespace Files.App.Services
 				return false;
 
 			var existingValues = state.DefaultFileManager?.Values;
-			var values = SnapshotDefaultFileManagerValues(existingValues);
-			state.DefaultFileManager = new DefaultFileManagerTakeoverState { Values = values };
+			var (values, unknownOriginalKeyPaths) = SnapshotDefaultFileManagerValues(existingValues);
+			state.DefaultFileManager = new DefaultFileManagerTakeoverState
+			{
+				Values = values,
+				UnknownOriginalKeyPaths = unknownOriginalKeyPaths,
+			};
 			SaveState(state);
 
 			try
@@ -201,18 +207,18 @@ namespace Files.App.Services
 				if (!IsLauncherCommandGroupOwned(keyPath))
 					continue;
 
-				_registry.DeleteValue(keyPath, null);
-				_registry.DeleteValue(keyPath, DelegateExecuteValueName);
-				_registry.DeleteKeyIfEmpty(keyPath, stopAtKeyPath);
+				DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
 				removedOwnedValues = true;
 			}
 
 			return removedOwnedValues;
 		}
 
-		private List<ShellRegistryValueState> SnapshotDefaultFileManagerValues(List<ShellRegistryValueState>? existingValues)
+		private (List<ShellRegistryValueState> Values, List<string> UnknownOriginalKeyPaths) SnapshotDefaultFileManagerValues(
+			List<ShellRegistryValueState>? existingValues)
 		{
 			var values = new List<ShellRegistryValueState>();
+			var unknownOriginalKeyPaths = new List<string>();
 			foreach (var (keyPath, _, _) in LauncherCommandKeys)
 			{
 				var isOwned = IsLauncherCommandGroupOwned(keyPath);
@@ -223,6 +229,12 @@ namespace Files.App.Services
 				if (existingGroup is { Count: > 0 })
 				{
 					values.AddRange(existingGroup);
+					continue;
+				}
+
+				if (isOwned)
+				{
+					unknownOriginalKeyPaths.Add(keyPath);
 					continue;
 				}
 
@@ -239,7 +251,7 @@ namespace Files.App.Services
 				}
 			}
 
-			return values;
+			return (values, unknownOriginalKeyPaths);
 		}
 
 		private void RestoreDefaultFileManagerValues(DefaultFileManagerTakeoverState savedState, bool requireOwnership)
@@ -265,6 +277,24 @@ namespace Files.App.Services
 					_registry.DeleteKeyIfEmpty(group.Key, stopAtKeyPath);
 				}
 			}
+
+			foreach (var keyPath in savedState.UnknownOriginalKeyPaths)
+			{
+				if (!IsLauncherCommandGroupOwned(keyPath))
+					continue;
+
+				var stopAtKeyPath = LauncherCommandKeys
+					.First(command => command.KeyPath == keyPath)
+					.StopAtKeyPath;
+				DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
+			}
+		}
+
+		private void DeleteOwnedLauncherCommandValues(string keyPath, string stopAtKeyPath)
+		{
+			_registry.DeleteValue(keyPath, null);
+			_registry.DeleteValue(keyPath, DelegateExecuteValueName);
+			_registry.DeleteKeyIfEmpty(keyPath, stopAtKeyPath);
 		}
 
 		private bool EnableOpenFileDialog()
@@ -294,7 +324,24 @@ namespace Files.App.Services
 		{
 			var state = LoadState();
 			if (state.OpenFileDialog is not { } savedState)
-				return false;
+			{
+				var removedOwnedRegistration = false;
+				if (IsClsidOwned(OpenDialogClsidKey, OpenDialogClass))
+				{
+					_openDialogRegistration.UnregisterOpenDialog(_paths.IntegrationDirectory);
+					_registry.DeleteKey(OpenDialogClsidKey);
+					removedOwnedRegistration = true;
+				}
+
+				if (IsClsidOwned(SaveDialogClsidKey, SaveDialogClass))
+				{
+					_openDialogRegistration.UnregisterSaveDialog(_paths.IntegrationDirectory);
+					_registry.DeleteKey(SaveDialogClsidKey);
+					removedOwnedRegistration = true;
+				}
+
+				return removedOwnedRegistration;
+			}
 
 			if (IsClsidOwned(OpenDialogClsidKey, OpenDialogClass))
 			{
@@ -362,20 +409,87 @@ namespace Files.App.Services
 			if (string.IsNullOrWhiteSpace(json))
 				return new();
 
-			ShellIntegrationTakeoverState? state;
 			try
 			{
-				state = JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.ShellIntegrationTakeoverState);
+				var state = JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.ShellIntegrationTakeoverState);
+				if (state is null || state.SchemaVersion != CurrentSchemaVersion || !IsStateUsable(state))
+					throw new InvalidDataException("The shell integration takeover state schema is not supported.");
+
+				return state;
 			}
-			catch (JsonException ex)
+			catch (Exception ex) when (ex is JsonException or InvalidDataException or NotSupportedException)
 			{
-				throw new InvalidDataException("The shell integration takeover state is malformed.", ex);
+				ArchiveState(json);
+				return new();
+			}
+		}
+
+		private static bool IsStateUsable(ShellIntegrationTakeoverState state)
+		{
+			if (state.DefaultFileManager is { } defaultFileManager)
+			{
+				if (defaultFileManager.Values is null || defaultFileManager.UnknownOriginalKeyPaths is null)
+					return false;
+
+				if (defaultFileManager.Values.Any(value =>
+					!LauncherCommandKeys.Any(command => command.KeyPath == value.KeyPath) ||
+					(value.ValueName is not null && value.ValueName != DelegateExecuteValueName) ||
+					(value.Value is not null && !IsSupportedValueKind(value.Value.Kind))))
+					return false;
+
+				if (defaultFileManager.UnknownOriginalKeyPaths.Any(keyPath =>
+					!LauncherCommandKeys.Any(command => command.KeyPath == keyPath)))
+					return false;
 			}
 
-			if (state is null || state.SchemaVersion != CurrentSchemaVersion)
-				throw new InvalidDataException("The shell integration takeover state schema is not supported.");
+			return IsSnapshotUsable(state.OpenFileDialog?.OpenDialog) &&
+				IsSnapshotUsable(state.OpenFileDialog?.SaveDialog);
+		}
 
-			return state;
+		private static bool IsSnapshotUsable(ShellRegistryKeySnapshot? snapshot)
+		{
+			if (snapshot is null)
+				return true;
+
+			if (snapshot.Values is null || snapshot.SubKeys is null)
+				return false;
+
+			if (snapshot.Values.Any(value => value is null || value.Value is null || !IsSupportedValueKind(value.Value.Kind)))
+				return false;
+
+			foreach (var (name, subKey) in snapshot.SubKeys)
+			{
+				if (string.IsNullOrEmpty(name) || name.Contains('\\') || name is "." or "..")
+					return false;
+				if (subKey is null || !IsSnapshotUsable(subKey))
+					return false;
+			}
+
+			return true;
+		}
+
+		private static bool IsSupportedValueKind(RegistryValueKind kind)
+			=> kind is RegistryValueKind.String or RegistryValueKind.ExpandString or
+				RegistryValueKind.Binary or RegistryValueKind.DWord or RegistryValueKind.QWord;
+
+		private void ArchiveState(string json)
+		{
+			// Archiving is best effort; a broken state store must not prevent releasing an owned takeover.
+			try
+			{
+				_stateStore.SetString(ArchivedStateKey, json);
+			}
+			catch (Exception)
+			{
+			}
+
+			try
+			{
+				_stateStore.Remove(StateKey);
+			}
+			catch (Exception)
+			{
+			}
 		}
 
 		private void SaveState(ShellIntegrationTakeoverState state)

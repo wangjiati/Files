@@ -32,9 +32,7 @@ namespace Files.App.ViewModels.Settings
 
 		public AdvancedViewModel()
 		{
-			IsSetAsDefaultFileManager = SystemIntegrationService.IsDefaultFileManager();
-			IsSetAsOpenFileDialog = SystemIntegrationService.IsOpenFileDialog();
-			UpdateIntegrationStatus();
+			RefreshIntegrationState();
 
 			SetAsDefaultExplorerCommand = new AsyncRelayCommand(SetAsDefaultExplorerAsync);
 			SetAsOpenFileDialogCommand = new AsyncRelayCommand(SetAsOpenFileDialogAsync);
@@ -49,12 +47,20 @@ namespace Files.App.ViewModels.Settings
 
 		private async Task SetAsDefaultExplorerAsync()
 		{
-			await Task.Yield();
-			if (IsSetAsDefaultFileManager == SystemIntegrationService.IsDefaultFileManager())
-				return;
+			try
+			{
+				await Task.Yield();
+				if (IsSetAsDefaultFileManager == SystemIntegrationService.IsDefaultFileManager())
+					return;
 
-			await SystemIntegrationService.SetDefaultFileManagerAsync(IsSetAsDefaultFileManager);
-			await DetectResult();
+				await SystemIntegrationService.SetDefaultFileManagerAsync(IsSetAsDefaultFileManager);
+				await DetectResult();
+				ClearShellIntegrationError();
+			}
+			catch (Exception ex)
+			{
+				SetShellIntegrationError(ex);
+			}
 		}
 
 		private Task DetectResult()
@@ -72,13 +78,21 @@ namespace Files.App.ViewModels.Settings
 
 		private async Task SetAsOpenFileDialogAsync()
 		{
-			await Task.Yield();
-			if (IsSetAsOpenFileDialog == SystemIntegrationService.IsOpenFileDialog())
-				return;
+			try
+			{
+				await Task.Yield();
+				if (IsSetAsOpenFileDialog == SystemIntegrationService.IsOpenFileDialog())
+					return;
 
-			await SystemIntegrationService.SetOpenFileDialogAsync(IsSetAsOpenFileDialog);
-			IsSetAsOpenFileDialog = SystemIntegrationService.IsOpenFileDialog();
-			UpdateIntegrationStatus();
+				await SystemIntegrationService.SetOpenFileDialogAsync(IsSetAsOpenFileDialog);
+				IsSetAsOpenFileDialog = SystemIntegrationService.IsOpenFileDialog();
+				UpdateIntegrationStatus();
+				ClearShellIntegrationError();
+			}
+			catch (Exception ex)
+			{
+				SetShellIntegrationError(ex);
+			}
 		}
 
 		private async Task ImportSettingsAsync()
@@ -209,27 +223,72 @@ namespace Files.App.ViewModels.Settings
 			private set => SetProperty(ref openFileDialogStatus, value);
 		}
 
+		private string shellIntegrationErrorMessage = string.Empty;
+		public string ShellIntegrationErrorMessage
+			=> shellIntegrationErrorMessage;
+
+		public bool HasShellIntegrationError
+			=> !string.IsNullOrEmpty(shellIntegrationErrorMessage);
+
+		private void RefreshIntegrationState()
+		{
+			try
+			{
+				IsSetAsDefaultFileManager = SystemIntegrationService.IsDefaultFileManager();
+				IsSetAsOpenFileDialog = SystemIntegrationService.IsOpenFileDialog();
+				UpdateIntegrationStatus();
+				ClearShellIntegrationError();
+			}
+			catch (Exception ex)
+			{
+				SetShellIntegrationError(ex);
+			}
+		}
+
+		private void SetShellIntegrationError(Exception ex)
+		{
+			App.Logger?.LogWarning(ex, "Unable to update shell integration state.");
+			shellIntegrationErrorMessage = Strings.ShellIntegrationUnavailable.GetLocalizedResource();
+			OnPropertyChanged(nameof(ShellIntegrationErrorMessage));
+			OnPropertyChanged(nameof(HasShellIntegrationError));
+		}
+
+		private void ClearShellIntegrationError()
+		{
+			if (string.IsNullOrEmpty(shellIntegrationErrorMessage))
+				return;
+
+			shellIntegrationErrorMessage = string.Empty;
+			OnPropertyChanged(nameof(ShellIntegrationErrorMessage));
+			OnPropertyChanged(nameof(HasShellIntegrationError));
+		}
+
 		private void UpdateIntegrationStatus()
 		{
-			DefaultFileManagerStatus = SystemIntegrationService.GetDefaultFileManagerOwner() switch
-			{
-				ShellIntegrationOwner.Internal => Strings.DefaultFileManagerStatusInternal.GetLocalizedResource(),
-				ShellIntegrationOwner.Windows => Strings.DefaultFileManagerStatusWindows.GetLocalizedResource(),
-				ShellIntegrationOwner.Other => Strings.DefaultFileManagerStatusOther.GetLocalizedResource(),
-				_ => Strings.DefaultFileManagerStatusNone.GetLocalizedResource(),
-			};
-
-			var openFileDialogOwner = SystemIntegrationService.GetOpenFileDialogOwner();
-			OpenFileDialogStatus = openFileDialogOwner switch
-			{
-				ShellIntegrationOwner.Internal => Strings.OpenFileDialogStatusInternal.GetLocalizedResource(),
-				ShellIntegrationOwner.Other => Strings.OpenFileDialogStatusOther.GetLocalizedResource(),
-				_ => Strings.OpenFileDialogStatusNone.GetLocalizedResource(),
-			};
+			DefaultFileManagerStatus = Localize(ShellIntegrationSettingsPresentation.GetDefaultFileManagerStatus(
+				SystemIntegrationService.GetDefaultFileManagerOwner()));
+			OpenFileDialogStatus = Localize(ShellIntegrationSettingsPresentation.GetOpenFileDialogStatus(
+				SystemIntegrationService.GetOpenFileDialogOwner()));
 		}
+
+		private static string Localize(ShellIntegrationStatusResource resource)
+			=> resource switch
+			{
+				ShellIntegrationStatusResource.DefaultFileManagerInternal => Strings.DefaultFileManagerStatusInternal.GetLocalizedResource(),
+				ShellIntegrationStatusResource.DefaultFileManagerWindows => Strings.DefaultFileManagerStatusWindows.GetLocalizedResource(),
+				ShellIntegrationStatusResource.DefaultFileManagerOther => Strings.DefaultFileManagerStatusOther.GetLocalizedResource(),
+				ShellIntegrationStatusResource.DefaultFileManagerNone => Strings.DefaultFileManagerStatusNone.GetLocalizedResource(),
+				ShellIntegrationStatusResource.OpenFileDialogInternal => Strings.OpenFileDialogStatusInternal.GetLocalizedResource(),
+				ShellIntegrationStatusResource.OpenFileDialogOther => Strings.OpenFileDialogStatusOther.GetLocalizedResource(),
+				ShellIntegrationStatusResource.OpenFileDialogNone => Strings.OpenFileDialogStatusNone.GetLocalizedResource(),
+				_ => string.Empty,
+			};
 
 		public bool SupportsSystemIntegration
 			=> AppRuntime.Current.SupportsSystemIntegration;
+
+		public bool SupportsDefaultFileManagerIntegration
+			=> ShellIntegrationSettingsPresentation.ShowDefaultFileManagerSettings(SupportsSystemIntegration);
 
 		public bool IsAppEnvironmentDev
 		{
@@ -237,7 +296,7 @@ namespace Files.App.ViewModels.Settings
 		}
 
 		public bool SupportsOpenDialogIntegration
-			=> IsAppEnvironmentDev && SupportsSystemIntegration;
+			=> ShellIntegrationSettingsPresentation.ShowOpenFileDialogSettings(SupportsSystemIntegration);
 
 		private FileSavePicker InitializeWithWindow(FileSavePicker obj)
 		{
