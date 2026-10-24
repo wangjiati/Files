@@ -10,8 +10,10 @@ namespace Files.App.Services
 		public Task<StartupTaskState> GetStartupTaskStateAsync() => Task.FromResult(StartupTaskState.Disabled);
 		public Task SetStartupTaskEnabledAsync(bool enabled) => Task.CompletedTask;
 		public bool IsDefaultFileManager() => false;
+		public ShellIntegrationOwner GetDefaultFileManagerOwner() => ShellIntegrationOwner.None;
 		public Task SetDefaultFileManagerAsync(bool enabled) => Task.CompletedTask;
 		public bool IsOpenFileDialog() => false;
+		public ShellIntegrationOwner GetOpenFileDialogOwner() => ShellIntegrationOwner.None;
 		public Task SetOpenFileDialogAsync(bool enabled) => Task.CompletedTask;
 	}
 }

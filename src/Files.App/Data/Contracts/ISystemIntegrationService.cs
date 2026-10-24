@@ -10,8 +10,10 @@ namespace Files.App.Data.Contracts
 		Task<StartupTaskState> GetStartupTaskStateAsync();
 		Task SetStartupTaskEnabledAsync(bool enabled);
 		bool IsDefaultFileManager();
+		ShellIntegrationOwner GetDefaultFileManagerOwner();
 		Task SetDefaultFileManagerAsync(bool enabled);
 		bool IsOpenFileDialog();
+		ShellIntegrationOwner GetOpenFileDialogOwner();
 		Task SetOpenFileDialogAsync(bool enabled);
 	}
 }

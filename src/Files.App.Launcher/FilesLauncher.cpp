@@ -70,7 +70,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	LocalFree(szArglist);
 
 	WCHAR szBuf[MAX_PATH];
-	ExpandEnvironmentStringsW(L"%LOCALAPPDATA%\\Microsoft\\WindowsApps\\files-dev.exe", szBuf, MAX_PATH - 1);
+	ExpandEnvironmentStringsW(L"%LOCALAPPDATA%\\Microsoft\\WindowsApps\\files-internal.exe", szBuf, MAX_PATH - 1);
 	std::wcout << szBuf << std::endl;
 	if (_waccess(szBuf, 0) == -1)
 	{
@@ -78,23 +78,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		MessageBox(
 			NULL,
-			(LPCWSTR)L"Files has been uninstalled. Restoring File Explorer.",
-			(LPCWSTR)L"Files",
+			(LPCWSTR)L"Files - Internal has been uninstalled. Opening File Explorer. Existing registry values are left unchanged.",
+			(LPCWSTR)L"Files - Internal",
 			(UINT)(MB_OK)
 		);
-
-		// Uninstall launcher
-		TCHAR szCmd[MAX_PATH];
-		swprintf(szCmd, _countof(szCmd) - 1, L"/c reg.exe import \"%s\"", L"%LocalAppData%\\Files\\UnsetFilesAsDefault.reg");
-		if (((int)ShellExecute(0, L"runas", L"cmd.exe", szCmd, 0, SW_HIDE) > 32))
-		{
-			std::cout << "Launcher unset as default" << std::endl;
-			swprintf(szCmd, _countof(szCmd) - 1, L"-command \"Start-Sleep -Seconds 5; $lfp = [System.Environment]::ExpandEnvironmentVariables('%%LocalAppData%%\\Files'); Remove-Item -Path $lfp -Recurse -Force\"");
-			if ((int)ShellExecute(0, 0, L"powershell.exe", szCmd, 0, SW_HIDE) > 32)
-			{
-				std::cout << "Launcher uninstalled" << std::endl;
-			}
-		}
 
 		// Run explorer
 		RunFileExplorer(withArgs ? openDirectory : NULL);
@@ -168,7 +155,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			TCHAR args[1024];
 			swprintf(args, _countof(args) - 1, L"\"%s\" %s \"%s\"", szBuf, verb, target.c_str());
 
-			std::wstring uriWithArgs = L"files-dev:?cmd=" + str2wstr(wstring_to_utf8_hex(args));
+			std::wstring uriWithArgs = L"files-internal:?cmd=" + str2wstr(wstring_to_utf8_hex(args));
 
 			std::wcout << L"Invoking: " << args << L" = " << uriWithArgs << std::endl;
 
@@ -255,13 +242,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		SHELLEXECUTEINFO ShExecInfo = { 0 };
 		ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
 		ShExecInfo.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS;
-		ShExecInfo.lpFile = L"files-dev:";
+		ShExecInfo.lpFile = L"files-internal:";
 		ShExecInfo.nShow = SW_SHOW;
 
 		if (!ShellExecuteEx(&ShExecInfo))
 		{
 			std::wcout << L"Protocol error: " << GetLastError() << std::endl;
-			//ShExecInfo.lpFile = L"files-dev.exe";
+			//ShExecInfo.lpFile = L"files-internal.exe";
 			//if (!ShellExecuteEx(&ShExecInfo))
 			//{
 				//std::wcout << L"Command line error: " << GetLastError() << std::endl;

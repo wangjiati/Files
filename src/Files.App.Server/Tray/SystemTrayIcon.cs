@@ -274,7 +274,7 @@ namespace Files.App.Server
 
 			_lastLaunchDate = DateTime.Now;
 			if (!ServerHost.ActivateWindow())
-				_ = SafetyExtensions.IgnoreExceptions(() => Launcher.LaunchUriAsync(new Uri("files-dev:")).AsTask(), Program.Logger);
+				_ = SafetyExtensions.IgnoreExceptions(() => Launcher.LaunchUriAsync(new Uri("files-internal:")).AsTask(), Program.Logger);
 		}
 
 		private void OnDocumentationClicked()

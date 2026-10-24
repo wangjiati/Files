@@ -1850,6 +1850,27 @@
   <data name="SettingsSetAsOpenDialog" xml:space="preserve">
     <value>Use Files as Open File Dialog</value>
   </data>
+  <data name="DefaultFileManagerStatusInternal" xml:space="preserve">
+    <value>Currently managed by Files - Internal</value>
+  </data>
+  <data name="DefaultFileManagerStatusWindows" xml:space="preserve">
+    <value>Currently managed by Windows Explorer</value>
+  </data>
+  <data name="DefaultFileManagerStatusOther" xml:space="preserve">
+    <value>Currently managed by another application</value>
+  </data>
+  <data name="DefaultFileManagerStatusNone" xml:space="preserve">
+    <value>Not currently replaced</value>
+  </data>
+  <data name="OpenFileDialogStatusInternal" xml:space="preserve">
+    <value>Currently managed by Files - Internal</value>
+  </data>
+  <data name="OpenFileDialogStatusOther" xml:space="preserve">
+    <value>Currently managed by another application</value>
+  </data>
+  <data name="OpenFileDialogStatusNone" xml:space="preserve">
+    <value>Not currently replaced</value>
+  </data>
   <data name="Tag" xml:space="preserve">
     <value>Tag</value>
   </data>
@@ -3985,6 +4006,9 @@
   </data>
   <data name="OpenOnStartupDisabled" xml:space="preserve">
     <value>The option to open Files on Windows Startup is not available due to your system settings or group policy. To re-enable, open the startup page in Task Manager.</value>
+  </data>
+  <data name="ShellIntegrationCleanupNote" xml:space="preserve">
+    <value>Turn off shell integrations here before uninstalling Files - Internal. Uninstalling does not automatically restore registry values or remove %LocalAppData%\Files.Internal, and values changed by other apps are never overwritten.</value>
   </data>
   <data name="PortableDataStartupFailed" xml:space="preserve">
     <value>Files cannot use the portable data directory '{0}'. Close any other Files instance using this directory, or choose a writable location. {1}</value>

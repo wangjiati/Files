@@ -132,11 +132,16 @@
 			<wctcontrols:SettingsCard
 				x:Name="SetAsDefaultSettingsBlockControl"
 				x:Load="{x:Bind ViewModel.SupportsSystemIntegration, Mode=OneWay}"
-				Description="{helpers:ResourceString Name=SettingsSetAsDefaultFileManagerDescription}"
 				Header="{helpers:ResourceString Name=SettingsSetAsDefaultFileManager}">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xEC50;" />
 				</wctcontrols:SettingsCard.HeaderIcon>
+				<wctcontrols:SettingsCard.Description>
+					<StackPanel Spacing="4">
+						<TextBlock Text="{helpers:ResourceString Name=SettingsSetAsDefaultFileManagerDescription}" TextWrapping="WrapWholeWords" />
+						<TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.DefaultFileManagerStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />
+					</StackPanel>
+				</wctcontrols:SettingsCard.Description>
 				<ToggleSwitch
 					AutomationProperties.Name="{helpers:ResourceString Name=SettingsSetAsDefaultFileManager}"
 					IsOn="{x:Bind ViewModel.IsSetAsDefaultFileManager, Mode=TwoWay}"
@@ -151,11 +156,24 @@
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xE8E5;" />
 				</wctcontrols:SettingsCard.HeaderIcon>
+				<wctcontrols:SettingsCard.Description>
+					<TextBlock FontWeight="SemiBold" Text="{x:Bind ViewModel.OpenFileDialogStatus, Mode=OneWay}" TextWrapping="WrapWholeWords" />
+				</wctcontrols:SettingsCard.Description>
 				<ToggleSwitch
 					IsEnabled="{x:Bind ViewModel.IsSetAsDefaultFileManager, Mode=OneWay}"
 					IsOn="{x:Bind ViewModel.IsSetAsOpenFileDialog, Mode=TwoWay}"
 					Toggled="SetAsOpenFileDialog_Toggled" />
 			</wctcontrols:SettingsCard>
+
+			<!--  Shell integration cleanup note  -->
+			<InfoBar
+				x:Name="ShellIntegrationCleanupInfoBar"
+				x:Load="{x:Bind ViewModel.SupportsSystemIntegration, Mode=OneWay}"
+				IsClosable="False"
+				IsIconVisible="True"
+				IsOpen="True"
+				Message="{helpers:ResourceString Name=ShellIntegrationCleanupNote}"
+				Severity="Informational" />
 
 			<!--  Thumbnail Caching  -->
 			<wctcontrols:SettingsExpander
