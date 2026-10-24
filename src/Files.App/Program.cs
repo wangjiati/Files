@@ -25,6 +25,9 @@ namespace Files.App
 	{
 		private const string LaunchCwdKey = "LastLaunchCwd";
 
+		private static string InstanceKeyPrefix =>
+			$"{AppRuntime.Current.ProductId}.{AppRuntime.Current.InstanceScope}.Window.";
+
 		/// <summary>
 		/// Reads and clears the working directory captured by the source process
 		/// in <see cref="Main"/>, falling back to the current process's working
@@ -48,6 +51,11 @@ namespace Files.App
 		[STAThread]
 		private static void Main()
 		{
+#if DISTRIBUTION_PORTABLE
+			AppRuntime.Initialize(DistributionKind.Portable);
+#else
+			AppRuntime.Initialize(DistributionKind.Msix);
+#endif
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 			WinRT.ComWrappersSupport.InitializeComWrappers();
 
@@ -161,7 +169,7 @@ namespace Files.App
 
 		internal static void RegisterCurrentInstance()
 		{
-			var instance = AppInstance.FindOrRegisterForKey($"Files.Window.{Environment.ProcessId}");
+			var instance = AppInstance.FindOrRegisterForKey($"{InstanceKeyPrefix}{Environment.ProcessId}");
 			if (instance.IsCurrent)
 				instance.Activated += OnActivated;
 		}
@@ -204,7 +212,7 @@ namespace Files.App
 			try
 			{
 				var instance = AppInstance.GetInstances().FirstOrDefault(instance =>
-					!instance.IsCurrent && instance.Key.StartsWith("Files.Window.", StringComparison.Ordinal));
+					!instance.IsCurrent && instance.Key.StartsWith(InstanceKeyPrefix, StringComparison.Ordinal));
 				if (instance is null)
 					return false;
 
