@@ -21,7 +21,7 @@ namespace Files.App.Helpers
 				: JsonSerializer.Deserialize(items.ToJsonString(), AppJsonSerializerContext.Default.ListLayoutPreferencesDatabaseItem) ?? [];
 		}
 
-		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn = null)
+		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn)
 		{
 			lock (_syncRoot)
 			{

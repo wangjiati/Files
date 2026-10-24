@@ -3,6 +3,7 @@
 
 namespace Files.App.Utils.Serialization
 {
+	[JsonSourceGenerationOptions(Converters = [typeof(GridLengthJsonConverter)])]
 	[JsonSerializable(typeof(PaneNavigationArguments))]
 	[JsonSerializable(typeof(TaggedFile[]))]
 	[JsonSerializable(typeof(List<TaggedFile>))]

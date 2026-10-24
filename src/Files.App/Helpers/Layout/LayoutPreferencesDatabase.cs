@@ -16,7 +16,7 @@ namespace Files.App.Helpers
 				: new RegistryLayoutPreferencesDatabase();
 		}
 
-		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn = null) => _database.GetPreferences(filePath, frn);
+		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn) => _database.GetPreferences(filePath, frn);
 
 		public void SetPreferences(string filePath, ulong? frn, LayoutPreferencesItem? preferencesItem) => _database.SetPreferences(filePath, frn, preferencesItem);
 

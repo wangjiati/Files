@@ -2,9 +2,14 @@
 // Licensed under the MIT License.
 
 using Files.App;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using Files.App.Data.Contracts;
+using Files.App.Data.Enums;
 using Files.App.Helpers;
+using Files.App.Services.Settings;
 using Files.App.Utils.FileTags;
 using Files.App.Utils.Serialization.Implementation;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
@@ -35,6 +40,13 @@ namespace Files.App.UnitTests
 			var movedSerializer = new DefaultSettingsSerializer();
 			Assert.IsTrue(movedSerializer.CreateFile(movedPath));
 			Assert.IsTrue(JsonNode.DeepEquals(JsonNode.Parse("{\"ShowFileTagsSection\":true}"), JsonNode.Parse(movedSerializer.ReadFromFile())));
+
+			Assert.IsTrue(movedSerializer.WriteToFile("{\"ShowFileTagsSection\":false,\"AfterMove\":\"persisted\"}"));
+			var reloadedSerializer = new DefaultSettingsSerializer();
+			Assert.IsTrue(reloadedSerializer.CreateFile(movedPath));
+			Assert.IsTrue(JsonNode.DeepEquals(
+				JsonNode.Parse("{\"ShowFileTagsSection\":false,\"AfterMove\":\"persisted\"}"),
+				JsonNode.Parse(reloadedSerializer.ReadFromFile())));
 		}
 
 		[TestMethod]
@@ -111,6 +123,11 @@ namespace Files.App.UnitTests
 			Assert.AreEqual(@"D:\Documents\report.pdf", exported[0]!["FilePath"]!.GetValue<string>());
 			Assert.AreEqual((ulong)42, exported[0]!["Frn"]!.GetValue<ulong>());
 			Assert.IsNull(exported[0]!["schemaVersion"]);
+
+			movedDatabase.SetTags(@"D:\Documents\report.pdf", 42, ["after-move"]);
+			var reloadedDatabase = new PortableFileTagsDatabase(movedPath);
+			CollectionAssert.AreEqual(new[] { "after-move" }, reloadedDatabase.GetTags(@"D:\Documents\report.pdf", null));
+			CollectionAssert.AreEqual(new[] { "after-move" }, reloadedDatabase.GetTags(null, 42));
 		}
 
 		[TestMethod]
@@ -181,6 +198,50 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void PortableLayout_NonEmptyImportExportReloadAndLookupRoundTrips()
+		{
+			using var directory = new TemporaryDirectory();
+			AppRuntime.Initialize(DistributionKind.Portable, directory.Path);
+			Directory.CreateDirectory(AppRuntime.Current.SettingsDirectory);
+			var userSettings = new UserSettingsService();
+			Ioc.Default.ConfigureServices(new ServiceCollection()
+				.AddSingleton<IUserSettingsService>(userSettings)
+				.AddSingleton<ILayoutSettingsService>(new LayoutSettingsService(userSettings.GetSharingContext()))
+				.BuildServiceProvider());
+			var path = Path.Combine(directory.Path, "user_settings.db");
+			const string originalFilePath = @"D:\Documents";
+			const string movedFilePath = @"E:\Recovered";
+			const ulong frn = 1234;
+			var database = new PortableLayoutPreferencesDatabase(path);
+			database.SetPreferences(originalFilePath, frn, CreateLayoutPreferences());
+
+			var exported = database.Export();
+			var exportedItems = JsonNode.Parse(exported)!.AsArray();
+			Assert.AreEqual(1, exportedItems.Count);
+			var exportedItem = exportedItems[0]!;
+			Assert.AreEqual(originalFilePath, exportedItem["FilePath"]!.GetValue<string>());
+			Assert.AreEqual(frn, exportedItem["Frn"]!.GetValue<ulong>());
+			var manager = exportedItem["LayoutPreferencesManager"]!;
+			Assert.IsTrue(manager["SortFilesFirst"]!.GetValue<bool>());
+			Assert.AreEqual((int)FolderLayoutModes.DetailsView, manager["LayoutMode"]!.GetValue<int>());
+			var nameColumn = manager["ColumnsViewModel"]!["NameColumn"]!;
+			Assert.IsTrue(nameColumn["UserCollapsed"]!.GetValue<bool>());
+			Assert.AreEqual(321.5d, nameColumn["UserLengthPixels"]!.GetValue<double>());
+			Assert.AreEqual(321.5d, nameColumn["UserLength"]!["Value"]!.GetValue<double>());
+
+			database.Import(exported);
+			var reexported = database.Export();
+			Assert.IsTrue(JsonNode.DeepEquals(JsonNode.Parse(exported), JsonNode.Parse(reexported)));
+
+			var reloaded = new PortableLayoutPreferencesDatabase(path);
+			AssertLayoutPreferences(reloaded.GetPreferences(originalFilePath, null));
+			AssertLayoutPreferences(reloaded.GetPreferences(movedFilePath, frn));
+
+			var reloadedAfterFrnLookup = new PortableLayoutPreferencesDatabase(path);
+			AssertLayoutPreferences(reloadedAfterFrnLookup.GetPreferences(movedFilePath, null));
+		}
+
+		[TestMethod]
 		public void PortableLayout_RejectsFutureSchema()
 		{
 			using var directory = new TemporaryDirectory();
@@ -188,6 +249,41 @@ namespace Files.App.UnitTests
 			File.WriteAllText(path, "{\"schemaVersion\":2,\"items\":[]}");
 
 			Assert.ThrowsExactly<NotSupportedException>(() => new PortableLayoutPreferencesDatabase(path));
+		}
+
+		private static LayoutPreferencesItem CreateLayoutPreferences()
+		{
+			var preferences = new LayoutPreferencesItem();
+			preferences.SortDirectoriesAlongsideFiles = true;
+			preferences.SortFilesFirst = true;
+			preferences.IsAdaptiveLayoutOverridden = true;
+			preferences.LayoutMode = FolderLayoutModes.DetailsView;
+			preferences.DirectorySortOption = SortOption.Size;
+			preferences.DirectorySortDirection = SortDirection.Descending;
+			preferences.DirectoryGroupDirection = SortDirection.Ascending;
+			preferences.DirectoryGroupOption = GroupOption.DateModified;
+			preferences.DirectoryGroupByDateUnit = GroupByDateUnit.Month;
+			preferences.ColumnsViewModel.NameColumn.UserCollapsed = true;
+			preferences.ColumnsViewModel.NameColumn.UserLengthPixels = 321.5d;
+			preferences.ColumnsViewModel.DateModifiedColumn.UserLengthPixels = 234.5d;
+			return preferences;
+		}
+
+		private static void AssertLayoutPreferences(LayoutPreferencesItem? preferences)
+		{
+			Assert.IsNotNull(preferences);
+			Assert.IsTrue(preferences.SortDirectoriesAlongsideFiles);
+			Assert.IsTrue(preferences.SortFilesFirst);
+			Assert.IsTrue(preferences.IsAdaptiveLayoutOverridden);
+			Assert.AreEqual(FolderLayoutModes.DetailsView, preferences.LayoutMode);
+			Assert.AreEqual(SortOption.Size, preferences.DirectorySortOption);
+			Assert.AreEqual(SortDirection.Descending, preferences.DirectorySortDirection);
+			Assert.AreEqual(SortDirection.Ascending, preferences.DirectoryGroupDirection);
+			Assert.AreEqual(GroupOption.DateModified, preferences.DirectoryGroupOption);
+			Assert.AreEqual(GroupByDateUnit.Month, preferences.DirectoryGroupByDateUnit);
+			Assert.IsTrue(preferences.ColumnsViewModel.NameColumn.UserCollapsed);
+			Assert.AreEqual(321.5d, preferences.ColumnsViewModel.NameColumn.UserLengthPixels);
+			Assert.AreEqual(234.5d, preferences.ColumnsViewModel.DateModifiedColumn.UserLengthPixels);
 		}
 
 		private sealed partial class TemporaryDirectory : IDisposable
