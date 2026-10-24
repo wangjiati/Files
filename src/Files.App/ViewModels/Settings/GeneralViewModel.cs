@@ -121,11 +121,25 @@ namespace Files.App.ViewModels.Settings
 			AppLifecycleHelper.SaveSessionTabs();
 
 			// Launches a new instance of Files
-			await AppProcessLauncher.RelaunchAsync();
-
-			// Closes the current instance
-			Environment.Exit(0);
+			var relaunched = await AppProcessLauncher.RelaunchAsync();
+			await CompleteRestartAsync(relaunched, Environment.Exit, ReportRestartFailureAsync);
 		}
+
+		internal static async Task CompleteRestartAsync(bool relaunched, Action<int> exit, Func<Task> reportFailure)
+		{
+			if (relaunched)
+			{
+				exit(0);
+				return;
+			}
+
+			await reportFailure();
+		}
+
+		private static Task ReportRestartFailureAsync()
+			=> DialogDisplayHelper.ShowDialogAsync(
+				Strings.RestartFailedTitle.GetLocalizedResource(),
+				Strings.RestartFailedDescription.GetLocalizedResource());
 
 		private void DoCancelRestart()
 		{

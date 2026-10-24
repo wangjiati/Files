@@ -235,6 +235,13 @@ namespace Files.App
 #endif
 		}
 
+		internal static void RestorePortableDataLease()
+		{
+#if DISTRIBUTION_PORTABLE
+			_portableDataLease ??= PreparePortableData();
+#endif
+		}
+
 		internal static void RegisterCurrentInstance()
 		{
 			var instance = AppInstance.FindOrRegisterForKey($"{InstanceKeyPrefix}{Environment.ProcessId}");

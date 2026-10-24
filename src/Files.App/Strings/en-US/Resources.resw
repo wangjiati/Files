@@ -668,6 +668,12 @@
   <data name="ShowMoreOptions" xml:space="preserve">
     <value>Show more options</value>
   </data>
+  <data name="RestartFailedDescription" xml:space="preserve">
+    <value>Files couldn't start a new process. The current window will remain open. Check the installation and try again.</value>
+  </data>
+  <data name="RestartFailedTitle" xml:space="preserve">
+    <value>Restart failed</value>
+  </data>
   <data name="RestartNotificationText.Text" xml:space="preserve">
     <value>The application needs to be restarted in order to apply these settings, would you like to restart the app?</value>
   </data>

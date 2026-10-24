@@ -26,8 +26,21 @@ namespace Files.App.Helpers
 			if (Environment.ProcessPath is not { } processPath)
 				return Task.FromResult(false);
 
-			Program.ReleasePortableDataLease();
-			return Task.FromResult(Start(processPath, string.Empty));
+			return RelaunchAsync(processPath, Start, Program.ReleasePortableDataLease, Program.RestorePortableDataLease);
+		}
+
+		internal static Task<bool> RelaunchAsync(
+			string processPath,
+			Func<string, string, bool> start,
+			Action releasePortableDataLease,
+			Action restorePortableDataLease)
+		{
+			releasePortableDataLease();
+			if (start(processPath, string.Empty))
+				return Task.FromResult(true);
+
+			restorePortableDataLease();
+			return Task.FromResult(false);
 		}
 
 		internal static ProcessStartInfo CreateStartInfo(string processPath, string arguments) => new(processPath, arguments)
