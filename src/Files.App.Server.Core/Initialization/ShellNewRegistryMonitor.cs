@@ -8,7 +8,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.System.Registry;
 using FILETIME = System.Runtime.InteropServices.ComTypes.FILETIME;
 
-namespace Files.App.Server;
+namespace Files.App.Server.Core;
 
 internal sealed class ShellNewRegistryMonitor
 {

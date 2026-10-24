@@ -2,15 +2,16 @@
 // Licensed under the MIT License.
 
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using Windows.Storage;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	/// <summary>
 	/// Provides an utility for Synology Drive Cloud detection.
 	/// </summary>
-	internal sealed class SynologyDriveCloudDetector : AbstractCloudDetector
+	internal sealed class SynologyDriveCloudDetector(ILogger logger) : AbstractCloudDetector(logger)
 	{
 		protected override async IAsyncEnumerable<ICloudProvider> GetProviders()
 		{

@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Files.App\Files.App.csproj" AdditionalProperties="WindowsAppSdkDeploymentManagerInitialize=false" />
+        <ProjectReference Include="..\..\src\Files.App.Server.Core\Files.App.Server.Core.csproj" />
         <PackageReference Include="MSTest.TestAdapter" />
         <PackageReference Include="MSTest.TestFramework" />
     </ItemGroup>

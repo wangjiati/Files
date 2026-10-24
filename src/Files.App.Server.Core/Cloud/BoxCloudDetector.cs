@@ -1,15 +1,16 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Microsoft.Extensions.Logging;
 using System.IO;
 using Windows.Storage;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	/// <summary>
 	/// Provides an utility for Box Cloud detection.
 	/// </summary>
-	internal sealed class BoxCloudDetector : AbstractCloudDetector
+	internal sealed class BoxCloudDetector(ILogger logger) : AbstractCloudDetector(logger)
 	{
 		protected override async IAsyncEnumerable<ICloudProvider> GetProviders()
 		{

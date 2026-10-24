@@ -1,29 +1,30 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System.IO;
 using System.Runtime.Versioning;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	[SupportedOSPlatform("Windows10.0.10240")]
 	internal sealed class CloudDrivesDetector
 	{
 		private readonly static string? programFilesFolder = Environment.GetEnvironmentVariable("ProgramFiles");
 
-		public static async Task<IEnumerable<ICloudProvider>> DetectCloudDrives()
+		public static async Task<IEnumerable<ICloudProvider>> DetectCloudDrives(ILogger logger)
 		{
 			var tasks = new Task<IEnumerable<ICloudProvider>?>[]
 			{
-				SafetyExtensions.IgnoreExceptions(DetectOneDrive, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectSharepoint, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectGenericCloudDrive, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectYandexDisk, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectpCloudDrive, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectNutstoreDrive, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectSeadriveDrive, Program.Logger),
-				SafetyExtensions.IgnoreExceptions(DetectAutodeskDrive, Program.Logger),
+				SafetyExtensions.IgnoreExceptions(DetectOneDrive, logger),
+				SafetyExtensions.IgnoreExceptions(DetectSharepoint, logger),
+				SafetyExtensions.IgnoreExceptions(() => DetectGenericCloudDrive(logger), logger),
+				SafetyExtensions.IgnoreExceptions(DetectYandexDisk, logger),
+				SafetyExtensions.IgnoreExceptions(DetectpCloudDrive, logger),
+				SafetyExtensions.IgnoreExceptions(DetectNutstoreDrive, logger),
+				SafetyExtensions.IgnoreExceptions(DetectSeadriveDrive, logger),
+				SafetyExtensions.IgnoreExceptions(DetectAutodeskDrive, logger),
 			};
 
 			var results = await Task.WhenAll(tasks);
@@ -54,7 +55,7 @@ namespace Files.App.Server.Cloud
 			return Task.FromResult<IEnumerable<ICloudProvider>>(results);
 		}
 
-		private static Task<IEnumerable<ICloudProvider>> DetectGenericCloudDrive()
+		private static Task<IEnumerable<ICloudProvider>> DetectGenericCloudDrive(ILogger logger)
 		{
 			var results = new List<ICloudProvider>();
 			using var clsidKey = Registry.ClassesRoot.OpenSubKey(@"CLSID");
@@ -63,7 +64,7 @@ namespace Files.App.Server.Cloud
 
 			foreach (var subKeyName in namespaceKey?.GetSubKeyNames() ?? [])
 			{
-				using var clsidSubKey = SafetyExtensions.IgnoreExceptions(() => clsidKey?.OpenSubKey(subKeyName), Program.Logger);
+				using var clsidSubKey = SafetyExtensions.IgnoreExceptions(() => clsidKey?.OpenSubKey(subKeyName), logger);
 				if (clsidSubKey is not null && (int?)clsidSubKey.GetValue("System.IsPinnedToNameSpaceTree") is 1)
 				{
 					using var namespaceSubKey = namespaceKey?.OpenSubKey(subKeyName);

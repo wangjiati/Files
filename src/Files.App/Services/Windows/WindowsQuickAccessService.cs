@@ -7,7 +7,7 @@ namespace Files.App.Services
 	{
 		public async Task<IEnumerable<ShellFileItem>> GetPinnedFoldersAsync()
 		{
-			var folders = await Server.AppService.GetPinnedFoldersAsync();
+			var folders = await Ioc.Default.GetRequiredService<IAppServerService>().GetPinnedFoldersAsync();
 			return folders.Select(folder => new ShellFileItem
 			{
 				IsFolder = true,
@@ -32,7 +32,7 @@ namespace Files.App.Services
 					await ContextMenu.InvokeVerb("pintohome", folderPath);
 			}
 
-			Server.AppService.InvalidatePinnedFolders();
+			Ioc.Default.GetRequiredService<IAppServerService>().InvalidatePinnedFolders();
 			await App.QuickAccessManager.Model.LoadAsync();
 			if (doUpdateQuickAccessWidget)
 				App.QuickAccessManager.UpdateQuickAccessWidget?.Invoke(this, new ModifyQuickAccessEventArgs(folderPaths, true));
@@ -82,13 +82,13 @@ namespace Files.App.Services
 
 				if (result.Failed)
 				{
-					Server.AppService.InvalidatePinnedFolders();
+					Ioc.Default.GetRequiredService<IAppServerService>().InvalidatePinnedFolders();
 					await App.QuickAccessManager.Model.LoadAsync();
 					return false;
 				}
 			}
 
-			Server.AppService.InvalidatePinnedFolders();
+			Ioc.Default.GetRequiredService<IAppServerService>().InvalidatePinnedFolders();
 			await App.QuickAccessManager.Model.LoadAsync();
 			if (doUpdateQuickAccessWidget)
 				App.QuickAccessManager.UpdateQuickAccessWidget?.Invoke(this, new ModifyQuickAccessEventArgs(folderPaths, false));

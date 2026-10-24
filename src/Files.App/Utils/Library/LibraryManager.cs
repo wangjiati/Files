@@ -70,17 +70,8 @@ namespace Files.App.Utils.Library
 		{
 			try
 			{
-				var libraries = await Server.AppService.GetLibrariesAsync();
-				return libraries.Select(library => new LibraryLocationItem(new ShellLibraryItem
-				{
-					FullPath = library.FullPath,
-					AbsolutePath = library.AbsolutePath,
-					RelativePath = library.RelativePath,
-					DisplayName = library.DisplayName,
-					IsPinned = library.IsPinned,
-					DefaultSaveFolder = library.DefaultSaveFolder,
-					Folders = library.Folders,
-				})).ToList();
+				var libraries = await Ioc.Default.GetRequiredService<IAppServerService>().GetLibrariesAsync();
+				return libraries.Select(library => new LibraryLocationItem(library)).ToList();
 			}
 			catch (Exception ex)
 			{

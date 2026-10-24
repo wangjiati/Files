@@ -320,6 +320,13 @@ namespace Files.App.Helpers
 					.AddProvider(new SentryLoggerProvider())
 					.SetMinimumLevel(LogLevel.Information));
 
+#if DISTRIBUTION_MSIX
+			services.AddSingleton<IAppServerService, PackagedAppServerService>();
+#else
+			services.AddSingleton<IAppServerService, InProcessAppServerService>(sp =>
+				new InProcessAppServerService(AppRuntime.Current.CacheDirectory, sp.GetRequiredService<ILogger<InProcessAppServerService>>()));
+#endif
+
 			services
 					// Settings services
 					.AddSingleton<IUserSettingsService, UserSettingsService>()

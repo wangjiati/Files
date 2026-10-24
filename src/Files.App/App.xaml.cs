@@ -28,7 +28,6 @@ namespace Files.App
 		private static FlyoutBase? _LastOpenedFlyout;
 		private static bool _isWindowTeardownCompleted;
 		private static bool _isWindowClosing;
-		private static readonly Task<Server.AppService> serverSession = Task.Run(() => new Server.AppService(Environment.ProcessId));
 		public static FlyoutBase? LastOpenedFlyout
 		{
 			set
@@ -154,15 +153,12 @@ namespace Files.App
 				}
 
 				var userSettingsService = Ioc.Default.GetRequiredService<IUserSettingsService>();
-				var serverInitialization = SafetyExtensions.IgnoreExceptions(async () =>
-				{
-					await serverSession;
-					await Server.AppService.InitializeAsync();
-				}, Logger);
+				var appServer = serviceProvider.GetRequiredService<IAppServerService>();
+				var serverInitialization = SafetyExtensions.IgnoreExceptions(appServer.InitializeAsync, Logger);
 				if (isStartupTask && userSettingsService.GeneralSettingsService.CloseToBackground)
 				{
 					await serverInitialization;
-					await SafetyExtensions.IgnoreExceptions(async () => (await serverSession).Dispose(), Logger);
+					await SafetyExtensions.IgnoreExceptions(async () => await appServer.DisposeAsync(), Logger);
 					Exit();
 					return;
 				}
@@ -205,7 +201,7 @@ namespace Files.App
 					SplashScreenLoadingTCS = null;
 				}
 
-				_ = SafetyExtensions.IgnoreExceptions(async () => (await serverSession).SetWindowHandle(MainWindow.Instance.WindowHandle), Logger);
+				_ = SafetyExtensions.IgnoreExceptions(() => appServer.SetWindowHandleAsync(MainWindow.Instance.WindowHandle), Logger);
 				_ = MainWindow.Instance.InitializeApplicationAsync(appActivationArguments.Data);
 
 				await AppLifecycleHelper.InitializeAppComponentsAsync();
@@ -263,8 +259,7 @@ namespace Files.App
 
 			_isWindowClosing = true;
 			AppModel.IsMainWindowClosed = true;
-			if (serverSession.IsCompletedSuccessfully)
-				SafetyExtensions.IgnoreExceptions(() => serverSession.Result.SetWindowHandle(0), Logger);
+			_ = SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().SetWindowHandleAsync(0), Logger);
 			Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().UnregisterKey();
 			ActiveSessionTracker.OnActivationChanged(false);
 
@@ -320,7 +315,7 @@ namespace Files.App
 			}
 			finally
 			{
-				await SafetyExtensions.IgnoreExceptions(async () => (await serverSession).Dispose(), Logger);
+				await SafetyExtensions.IgnoreExceptions(async () => await Ioc.Default.GetRequiredService<IAppServerService>().DisposeAsync(), Logger);
 				_isWindowTeardownCompleted = true;
 				MainWindow.Instance.Close();
 			}

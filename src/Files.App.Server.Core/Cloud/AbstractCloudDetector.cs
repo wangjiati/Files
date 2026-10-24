@@ -4,11 +4,13 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
-	internal abstract class AbstractCloudDetector
+	internal abstract class AbstractCloudDetector(ILogger logger)
 	{
 		static AbstractCloudDetector() => SQLitePCL.Batteries_V2.Init();
+
+		protected ILogger Logger { get; } = logger;
 
 		protected static SqliteConnection CreateReadOnlyConnection(string path)
 			=> new(new SqliteConnectionStringBuilder
@@ -29,7 +31,7 @@ namespace Files.App.Server.Cloud
 			}
 			catch (Exception ex)
 			{
-				Program.Logger.LogWarning(ex, "Cloud discovery was incomplete for {Detector}.", GetType().Name);
+				Logger.LogWarning(ex, "Cloud discovery was incomplete for {Detector}.", GetType().Name);
 			}
 
 			return providers;

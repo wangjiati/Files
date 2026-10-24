@@ -5,12 +5,12 @@ using Microsoft.Extensions.Logging;
 using System.IO;
 using Windows.Storage;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	/// <summary>
 	/// Provides an utility for Drop Box Cloud detection.
 	/// </summary>
-	internal sealed class DropBoxCloudDetector : AbstractCloudDetector
+	internal sealed class DropBoxCloudDetector(ILogger logger) : AbstractCloudDetector(logger)
 	{
 		protected override async IAsyncEnumerable<ICloudProvider> GetProviders()
 		{
@@ -21,7 +21,7 @@ namespace Files.App.Server.Cloud
 			if (File.Exists(websiteJsonPath))
 			{
 				infoJsonPath = websiteJsonPath;
-				Program.Logger.LogInformation("Dropbox: Found website version at {Path}", LogPathHelper.RedactUserName(websiteJsonPath));
+				Logger.LogInformation("Dropbox: Found website version at {Path}", LogPathHelper.RedactUserName(websiteJsonPath));
 			}
 			else
 			{
@@ -51,7 +51,7 @@ namespace Files.App.Server.Cloud
 					if (newestInfoJsonPath is not null)
 					{
 						infoJsonPath = newestInfoJsonPath;
-						Program.Logger.LogInformation("Dropbox: Found Store version at {Path} (last modified: {Timestamp})", LogPathHelper.RedactUserName(newestInfoJsonPath), newestTimestamp);
+						Logger.LogInformation("Dropbox: Found Store version at {Path} (last modified: {Timestamp})", LogPathHelper.RedactUserName(newestInfoJsonPath), newestTimestamp);
 					}
 				}
 			}

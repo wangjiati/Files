@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using Windows.Win32;
 
-namespace Files.App.Server.Cloud;
+namespace Files.App.Server.Core.Cloud;
 
 internal sealed record IconFileInfo(byte[] IconData, int Index);
 

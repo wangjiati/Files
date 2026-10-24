@@ -7,14 +7,14 @@ using System.Security;
 using System.Text;
 using Windows.Storage;
 
-namespace Files.App.Server
+namespace Files.App.Server.Core
 {
 	/// <summary>
 	/// Provides static helper to get extension-specific shell context menu from Windows Registry.
 	/// </summary>
 	internal static class ShellNewMenuHelper
 	{
-		public static async Task<List<ShellNewEntry>> GetNewContextMenuEntries()
+		public static async Task<List<ShellNewEntry>> GetNewContextMenuEntries(string cacheDirectory)
 		{
 			var newMenuItems = new List<ShellNewEntry>();
 
@@ -26,29 +26,29 @@ namespace Files.App.Server
 
 				if (key is not null)
 				{
-					var ret = await GetShellNewRegistryEntries(key, key);
+					var ret = await GetShellNewRegistryEntries(key, key, cacheDirectory);
 					if (ret is not null)
 						newMenuItems.Add(ret);
 				}
 			}
 
 			if (!newMenuItems.Any(x => ".txt".Equals(x.Extension, StringComparison.OrdinalIgnoreCase)))
-				newMenuItems.Add(await CreateShellNewEntry(".txt", null, null, null));
+				newMenuItems.Add(await CreateShellNewEntry(".txt", null, null, null, cacheDirectory));
 
 			return [.. newMenuItems.OrderBy(item => item.Name)];
 		}
 
-		public static async Task<ShellNewEntry?> GetNewContextMenuEntryForType(string extension)
+		public static async Task<ShellNewEntry?> GetNewContextMenuEntryForType(string extension, string cacheDirectory)
 		{
 			if (string.IsNullOrEmpty(extension))
 				return null;
 
 			using var key = Registry.ClassesRoot.OpenSubKeySafe(extension);
 
-			return key is not null ? await GetShellNewRegistryEntries(key, key) : null;
+			return key is not null ? await GetShellNewRegistryEntries(key, key, cacheDirectory) : null;
 		}
 
-		private static async Task<ShellNewEntry?> GetShellNewRegistryEntries(RegistryKey current, RegistryKey root)
+		private static async Task<ShellNewEntry?> GetShellNewRegistryEntries(RegistryKey current, RegistryKey root, string cacheDirectory)
 		{
 			try
 			{
@@ -60,10 +60,10 @@ namespace Files.App.Server
 						continue;
 
 					if (keyName == "ShellNew")
-						return await ParseShellNewRegistryEntry(key, root);
+						return await ParseShellNewRegistryEntry(key, root, cacheDirectory);
 					else
 					{
-						var ret = await GetShellNewRegistryEntries(key, root);
+						var ret = await GetShellNewRegistryEntries(key, root, cacheDirectory);
 						if (ret is not null)
 							return ret;
 					}
@@ -77,7 +77,7 @@ namespace Files.App.Server
 			return null;
 		}
 
-		private static async Task<ShellNewEntry?> ParseShellNewRegistryEntry(RegistryKey key, RegistryKey root)
+		private static async Task<ShellNewEntry?> ParseShellNewRegistryEntry(RegistryKey key, RegistryKey root, string cacheDirectory)
 		{
 			var valueNames = key.GetValueNames();
 
@@ -108,12 +108,14 @@ namespace Files.App.Server
 				};
 			}
 
-			return await CreateShellNewEntry(extension, fileName, command, data);
+			return await CreateShellNewEntry(extension, fileName, command, data, cacheDirectory);
 		}
 
-		private static async Task<ShellNewEntry> CreateShellNewEntry(string extension, string? fileName, string? command, byte[]? data)
+		private static async Task<ShellNewEntry> CreateShellNewEntry(string extension, string? fileName, string? command, byte[]? data, string cacheDirectory)
 		{
-			var folder = await SafetyExtensions.IgnoreExceptions(() => ApplicationData.Current.LocalFolder.CreateFolderAsync("extensions", CreationCollisionOption.OpenIfExists).AsTask());
+			Directory.CreateDirectory(cacheDirectory);
+			var cache = await SafetyExtensions.IgnoreExceptions(() => StorageFolder.GetFolderFromPathAsync(cacheDirectory).AsTask());
+			var folder = cache is not null ? await SafetyExtensions.IgnoreExceptions(() => cache.CreateFolderAsync("extensions", CreationCollisionOption.OpenIfExists).AsTask()) : null;
 			var sampleFile = folder is not null ? await SafetyExtensions.IgnoreExceptions(() => folder.CreateFileAsync("file" + extension, CreationCollisionOption.OpenIfExists).AsTask()) : null;
 
 			var displayType = sampleFile is not null ? sampleFile.DisplayType : $"file {extension}";

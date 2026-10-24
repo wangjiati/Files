@@ -1,7 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
-namespace Files.App.Server;
+namespace Files.App.Server.Core;
 
 internal sealed class CachedTask<T>(Func<Task<T>> load, TimeSpan lifetime, Func<bool>? hasChanged = null)
 {

@@ -207,7 +207,7 @@ namespace Files.App.Services
 				PackageManager packageManager = new PackageManager();
 
 				var restartStatus = PInvoke.RegisterApplicationRestart(null, (REGISTER_APPLICATION_RESTART_FLAGS)0);
-				serverUpdateStarted = SafetyExtensions.IgnoreExceptions(Server.AppService.BeginUpdate, Logger);
+				serverUpdateStarted = SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().BeginUpdate(), Logger);
 
 				Logger?.LogInformation($"Register for restart: {restartStatus}");
 
@@ -241,7 +241,7 @@ namespace Files.App.Services
 			finally
 			{
 				if (serverUpdateStarted)
-					SafetyExtensions.IgnoreExceptions(Server.AppService.EndUpdate, Logger);
+					SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().EndUpdate(), Logger);
 
 				// Reset fields
 				IsUpdating = false;

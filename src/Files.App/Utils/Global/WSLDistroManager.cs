@@ -27,7 +27,7 @@ namespace Files.App.Utils
 		{
 			try
 			{
-				var names = await Server.AppService.GetWslDistributionsAsync();
+				var names = await Ioc.Default.GetRequiredService<IAppServerService>().GetWslDistributionsAsync();
 				lock (distros)
 				{
 					distros.Clear();

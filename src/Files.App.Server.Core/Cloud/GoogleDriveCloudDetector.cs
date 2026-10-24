@@ -7,14 +7,16 @@ using Microsoft.Win32;
 using System.IO;
 using Windows.Storage;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	/// <summary>
 	/// Provides a utility for Google Drive Cloud detection.
 	/// </summary>
 	internal sealed class GoogleDriveCloudDetector : AbstractCloudDetector
 	{
-		private static readonly ILogger _logger = Program.Logger;
+		internal GoogleDriveCloudDetector(ILogger logger) : base(logger)
+		{
+		}
 
 		private const string _googleDriveRegKeyName = @"Software\Google\DriveFS";
 		private const string _googleDriveRegValName = "PerAccountPreferences";
@@ -94,7 +96,7 @@ namespace Files.App.Server.Cloud
 			}
 		}
 
-		private static JsonDocument? GetGoogleDriveRegValJson()
+		private JsonDocument? GetGoogleDriveRegValJson()
 		{
 			// This will be null if the key name is not found.
 			using var googleDriveRegKey = Registry.CurrentUser.OpenSubKey(_googleDriveRegKeyName);
@@ -114,7 +116,7 @@ namespace Files.App.Server.Cloud
 			}
 			catch (JsonException je)
 			{
-				_logger.LogWarning(je, $"Google Drive registry value for value name '{_googleDriveRegValName}' could not be parsed as a JsonDocument.");
+				Logger.LogWarning(je, $"Google Drive registry value for value name '{_googleDriveRegValName}' could not be parsed as a JsonDocument.");
 			}
 
 			return googleDriveRegValueJson;
@@ -127,7 +129,7 @@ namespace Files.App.Server.Cloud
 		/// For advanced "Google Drive for desktop" settings reference, see:
 		/// https://support.google.com/a/answer/7644837
 		/// </remarks>
-		public static string? GetRegistryBasePath()
+		private string? GetRegistryBasePath()
 		{
 			using var googleDriveRegValJson = GetGoogleDriveRegValJson();
 
@@ -142,26 +144,26 @@ namespace Files.App.Server.Cloud
 			// error if you try to call "EnumerateArray" on its value.
 			if (googleDriveRegValJsonProperty.Value.ValueKind == JsonValueKind.Undefined)
 			{
-				_logger.LogWarning($"Root element of Google Drive registry value for value name '{_googleDriveRegValName}' was empty.");
+				Logger.LogWarning($"Root element of Google Drive registry value for value name '{_googleDriveRegValName}' was empty.");
 				return null;
 			}
 
 			var item = googleDriveRegValJsonProperty.Value.EnumerateArray().FirstOrDefault();
 			if (item.ValueKind == JsonValueKind.Undefined)
 			{
-				_logger.LogWarning($"Array in the root element of Google Drive registry value for value name '{_googleDriveRegValName}' was empty.");
+				Logger.LogWarning($"Array in the root element of Google Drive registry value for value name '{_googleDriveRegValName}' was empty.");
 				return null;
 			}
 
 			if (!item.TryGetProperty(_googleDriveRegValPropName, out var googleDriveRegValProp))
 			{
-				_logger.LogWarning($"First element in the Google Drive Registry Root Array did not have property named {_googleDriveRegValPropName}");
+				Logger.LogWarning($"First element in the Google Drive Registry Root Array did not have property named {_googleDriveRegValPropName}");
 				return null;
 			}
 
 			if (!googleDriveRegValProp.TryGetProperty(_googleDriveRegValPropPropName, out var googleDriveRegValPropProp))
 			{
-				_logger.LogWarning($"Value from {_googleDriveRegValPropName} did not have property named {_googleDriveRegValPropPropName}");
+				Logger.LogWarning($"Value from {_googleDriveRegValPropName} did not have property named {_googleDriveRegValPropPropName}");
 				return null;
 			}
 
@@ -169,7 +171,7 @@ namespace Files.App.Server.Cloud
 			if (path is not null)
 				return ConvertDriveLetterToPath(path);
 
-			_logger.LogWarning($"Could not get string from value from {_googleDriveRegValPropPropName}");
+			Logger.LogWarning($"Could not get string from value from {_googleDriveRegValPropPropName}");
 			return null;
 		}
 

@@ -7,7 +7,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Registry;
 
-namespace Files.App.Server;
+namespace Files.App.Server.Core;
 
 internal sealed partial class RegistryChangeMonitor(RegistryKey root, string path) : IDisposable
 {

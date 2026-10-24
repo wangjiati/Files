@@ -1,16 +1,17 @@
 // Copyright (c) Files Community
 // SPDX-License-Identifier: MPL-2.0
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System.IO;
 using Windows.Storage;
 
-namespace Files.App.Server.Cloud
+namespace Files.App.Server.Core.Cloud
 {
 	/// <summary>
 	/// Provides an utility for OX Drive Cloud detection.
 	/// </summary>
-	internal sealed class OXDriveCloudDetector : AbstractCloudDetector
+	internal sealed class OXDriveCloudDetector(ILogger logger) : AbstractCloudDetector(logger)
 	{
 		protected override async IAsyncEnumerable<ICloudProvider> GetProviders()
 		{

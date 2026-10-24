@@ -149,7 +149,7 @@ namespace Files.App.Services
 			// Save the updated tab list before installing the update
 			AppLifecycleHelper.SaveSessionTabs();
 
-			var serverUpdateStarted = SafetyExtensions.IgnoreExceptions(Server.AppService.BeginUpdate, App.Logger);
+			var serverUpdateStarted = SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().BeginUpdate(), App.Logger);
 
 			try
 			{
@@ -175,7 +175,7 @@ namespace Files.App.Services
 			finally
 			{
 				if (serverUpdateStarted)
-					SafetyExtensions.IgnoreExceptions(Server.AppService.EndUpdate, App.Logger);
+					SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().EndUpdate(), App.Logger);
 			}
 		}
 
