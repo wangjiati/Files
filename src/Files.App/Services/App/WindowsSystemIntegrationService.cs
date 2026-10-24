@@ -65,7 +65,11 @@ namespace Files.App.Services
 			if (enabled && !TryCopyIntegrationAssets())
 				return;
 
-			await Task.Run(() => _takeover.SetDefaultFileManager(enabled));
+			await Task.Run(() =>
+			{
+				_takeover.SetDefaultFileManager(enabled);
+				ThrowIfIntegrationFailures();
+			});
 		}
 
 		public bool IsOpenFileDialog()
@@ -79,7 +83,19 @@ namespace Files.App.Services
 			if (enabled && !TryCopyIntegrationAssets())
 				return;
 
-			await Task.Run(() => _takeover.SetOpenFileDialog(enabled));
+			await Task.Run(() =>
+			{
+				_takeover.SetOpenFileDialog(enabled);
+				ThrowIfIntegrationFailures();
+			});
+		}
+
+		private void ThrowIfIntegrationFailures()
+		{
+			if (_takeover.LastFailures.Count == 0)
+				return;
+
+			throw new ShellIntegrationOperationException(_takeover.LastFailures.ToArray());
 		}
 
 		private bool TryCopyIntegrationAssets()

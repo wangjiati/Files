@@ -184,6 +184,111 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void DisableDefaultFileManager_NullStateElements_ArchivesAndReleasesOwnedValues()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			takeover.SetDefaultFileManager(true);
+			const string nullElementState = "{\"SchemaVersion\":1,\"DefaultFileManager\":{\"Values\":[null],\"UnknownOriginalKeyPaths\":[null]}}";
+			directory.Store.SetString(ShellIntegrationTakeover.StateKey, nullElementState);
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.IsTrue(takeover.LastFailures.Count > 0);
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			Assert.AreEqual(nullElementState, directory.Store.GetString(ShellIntegrationTakeover.ArchivedStateKey));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderExploreCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+		}
+
+		[TestMethod]
+		public void DisableDefaultFileManager_WhenStateStoreReadFails_DegradesAndReleasesOwnedValues()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			var paths = CreatePaths(directory);
+			const string externalCommand = "\"C:\\Other\\Manager.exe\" \"%1\"";
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, null, new(externalCommand, RegistryValueKind.String));
+			registry.SetValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute", new("{external}", RegistryValueKind.String));
+			SetInternalLauncher(registry, paths, ShellIntegrationTakeover.FolderExploreCommandKey, withTargetArgument: true);
+			SetInternalLauncher(registry, paths, ShellIntegrationTakeover.NewWindowCommandKey, withTargetArgument: false);
+			var takeover = new ShellIntegrationTakeover(
+				registry,
+				new ThrowingReadStateStore(),
+				paths,
+				new FakeOpenDialogRegistration(registry));
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.IsTrue(takeover.LastFailures.Count > 0);
+			Assert.AreEqual(externalCommand, registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, null)?.Data);
+			Assert.AreEqual("{external}", registry.ReadValue(ShellIntegrationTakeover.FolderOpenCommandKey, "DelegateExecute")?.Data);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.FolderExploreCommandKey, null));
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+		}
+
+		[TestMethod]
+		public void DisableDefaultFileManager_WhenRegistryReadFails_ContinuesReleasingOtherGroups()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			takeover.SetDefaultFileManager(true);
+			registry.ThrowOnRead = (keyPath, _) =>
+				keyPath.Equals(ShellIntegrationTakeover.FolderOpenCommandKey, StringComparison.OrdinalIgnoreCase);
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.IsTrue(takeover.LastFailures.Count > 0);
+			Assert.IsNotNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			registry.ThrowOnRead = null;
+			AssertInternalLauncher(registry, ShellIntegrationTakeover.FolderOpenCommandKey, withTargetArgument: true);
+			AssertExplorerValues(registry, ShellIntegrationTakeover.FolderExploreCommandKey);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.NewWindowCommandKey, null));
+
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			Assert.AreEqual(0, takeover.LastFailures.Count);
+			AssertExplorerValues(registry);
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+		}
+
+		[TestMethod]
+		public void DisableOpenDialog_WhenRegistryReadFails_ContinuesReleasingOtherRegistration()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			var registration = new FakeOpenDialogRegistration(registry);
+			var takeover = CreateTakeover(directory, registry, registration);
+			takeover.SetOpenFileDialog(true);
+			registry.ThrowOnRead = (keyPath, valueName) =>
+				valueName is null &&
+				keyPath.Equals(ShellIntegrationTakeover.OpenDialogClsidKey, StringComparison.OrdinalIgnoreCase);
+
+			Assert.IsTrue(takeover.SetOpenFileDialog(false));
+
+			Assert.IsTrue(takeover.LastFailures.Count > 0);
+			Assert.IsNotNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+			registry.ThrowOnRead = null;
+			Assert.AreEqual(
+				ShellIntegrationTakeover.OpenDialogClass,
+				registry.ReadValue(ShellIntegrationTakeover.OpenDialogClsidKey, null)?.Data);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.SaveDialogClsidKey, null));
+			Assert.AreEqual(0, registration.UnregisterOpenDialogCalls);
+			Assert.AreEqual(1, registration.UnregisterSaveDialogCalls);
+
+			Assert.IsTrue(takeover.SetOpenFileDialog(false));
+
+			Assert.AreEqual(0, takeover.LastFailures.Count);
+			Assert.IsNull(registry.ReadValue(ShellIntegrationTakeover.OpenDialogClsidKey, null));
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+		}
+
+		[TestMethod]
 		public void DisableOpenDialog_CorruptState_RemovesOnlyOwnedRegistration()
 		{
 			using var directory = new TemporaryDirectory();
@@ -327,6 +432,15 @@ namespace Files.App.UnitTests
 			}
 		}
 
+		private static void SetInternalLauncher(FakeRegistry registry, ShellIntegrationPaths paths, string keyPath, bool withTargetArgument)
+		{
+			var command = withTargetArgument
+				? $"\"{paths.LauncherPath}\" \"%1\""
+				: $"\"{paths.LauncherPath}\"";
+			registry.SetValue(keyPath, null, new(command, RegistryValueKind.String));
+			registry.SetValue(keyPath, "DelegateExecute", new(string.Empty, RegistryValueKind.String));
+		}
+
 		private static void AssertInternalLauncher(FakeRegistry registry, string keyPath, bool withTargetArgument)
 		{
 			var command = registry.ReadValue(keyPath, null)?.Data;
@@ -354,8 +468,13 @@ namespace Files.App.UnitTests
 			private readonly HashSet<string> _keys = new(StringComparer.OrdinalIgnoreCase);
 			private readonly Dictionary<string, Dictionary<string, ShellRegistryValue>> _values = new(StringComparer.OrdinalIgnoreCase);
 
+			public Func<string, string?, bool>? ThrowOnRead { get; set; }
+
 			public ShellRegistryValue? ReadValue(string keyPath, string? valueName)
 			{
+				if (ThrowOnRead?.Invoke(keyPath, valueName) == true)
+					throw new UnauthorizedAccessException($"Simulated registry read failure for '{keyPath}'.");
+
 				if (!_keys.Contains(keyPath) || !_values.TryGetValue(keyPath, out var values))
 					return null;
 
@@ -500,6 +619,20 @@ namespace Files.App.UnitTests
 				_registry.SetValue(keyPath + "\\InprocServer32", null, new(Path.Combine(integrationDirectory, dllName), RegistryValueKind.String));
 				_registry.SetValue(keyPath + "\\InprocServer32", "ThreadingModel", new("Apartment", RegistryValueKind.String));
 			}
+		}
+
+		private sealed class ThrowingReadStateStore : ILocalStateStore
+		{
+			public bool GetBoolean(string key, bool defaultValue = false) => defaultValue;
+			public void SetBoolean(string key, bool value) { }
+			public int GetInt32(string key, int defaultValue = 0) => defaultValue;
+			public void SetInt32(string key, int value) { }
+			public double GetDouble(string key, double defaultValue = 0d) => defaultValue;
+			public void SetDouble(string key, double value) { }
+			public string? GetString(string key, string? defaultValue = null)
+				=> throw new InvalidOperationException("The stored state has an unexpected type.");
+			public void SetString(string key, string value) { }
+			public void Remove(string key) { }
 		}
 
 		private sealed class RejectingStateStore : ILocalStateStore

@@ -247,8 +247,18 @@ namespace Files.App.ViewModels.Settings
 
 		private void SetShellIntegrationError(Exception ex)
 		{
-			App.Logger?.LogWarning(ex, "Unable to update shell integration state.");
-			shellIntegrationErrorMessage = Strings.ShellIntegrationUnavailable.GetLocalizedResource();
+			if (ex is ShellIntegrationOperationException operationException)
+			{
+				foreach (var failure in operationException.Failures)
+					App.Logger?.LogWarning(failure, "A shell integration could not be updated or restored.");
+				shellIntegrationErrorMessage = Strings.ShellIntegrationPartialFailure.GetLocalizedResource();
+			}
+			else
+			{
+				App.Logger?.LogWarning(ex, "Unable to update shell integration state.");
+				shellIntegrationErrorMessage = Strings.ShellIntegrationUnavailable.GetLocalizedResource();
+			}
+
 			OnPropertyChanged(nameof(ShellIntegrationErrorMessage));
 			OnPropertyChanged(nameof(HasShellIntegrationError));
 		}

@@ -84,6 +84,17 @@ namespace Files.App.Services
 		void UnregisterSaveDialog(string integrationDirectory);
 	}
 
+	internal sealed class ShellIntegrationOperationException : Exception
+	{
+		public ShellIntegrationOperationException(IReadOnlyList<Exception> failures)
+			: base("Some shell integrations could not be updated or restored.", failures.FirstOrDefault())
+		{
+			Failures = failures;
+		}
+
+		public IReadOnlyList<Exception> Failures { get; }
+	}
+
 	internal sealed class ShellIntegrationTakeover
 	{
 		internal const string StateKey = "shell-integration-takeover.v1";
@@ -112,6 +123,7 @@ namespace Files.App.Services
 		private readonly ILocalStateStore _stateStore;
 		private readonly ShellIntegrationPaths _paths;
 		private readonly IOpenDialogRegistration _openDialogRegistration;
+		private readonly List<Exception> _failures = [];
 
 		public ShellIntegrationTakeover(
 			IShellIntegrationRegistry registry,
@@ -150,11 +162,19 @@ namespace Files.App.Services
 			return anyRegistrationPresent ? ShellIntegrationOwner.Other : ShellIntegrationOwner.None;
 		}
 
+		public IReadOnlyList<Exception> LastFailures => _failures;
+
 		public bool SetDefaultFileManager(bool enabled)
-			=> enabled ? EnableDefaultFileManager() : DisableDefaultFileManager();
+		{
+			_failures.Clear();
+			return enabled ? EnableDefaultFileManager() : DisableDefaultFileManager();
+		}
 
 		public bool SetOpenFileDialog(bool enabled)
-			=> enabled ? EnableOpenFileDialog() : DisableOpenFileDialog();
+		{
+			_failures.Clear();
+			return enabled ? EnableOpenFileDialog() : DisableOpenFileDialog();
+		}
 
 		private bool EnableDefaultFileManager()
 		{
@@ -195,20 +215,30 @@ namespace Files.App.Services
 			var state = LoadState();
 			if (state.DefaultFileManager is { } savedState)
 			{
+				var failuresBefore = _failures.Count;
 				RestoreDefaultFileManagerValues(savedState, requireOwnership: true);
-				state.DefaultFileManager = null;
-				SaveState(state);
+				if (_failures.Count == failuresBefore)
+					state.DefaultFileManager = null;
+
+				TrySaveState(state);
 				return true;
 			}
 
 			var removedOwnedValues = false;
 			foreach (var (keyPath, _, stopAtKeyPath) in LauncherCommandKeys)
 			{
-				if (!IsLauncherCommandGroupOwned(keyPath))
-					continue;
+				try
+				{
+					if (!IsLauncherCommandGroupOwned(keyPath))
+						continue;
 
-				DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
-				removedOwnedValues = true;
+					DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
+					removedOwnedValues = true;
+				}
+				catch (Exception ex) when (ex is not OutOfMemoryException)
+				{
+					_failures.Add(ex);
+				}
 			}
 
 			return removedOwnedValues;
@@ -258,35 +288,49 @@ namespace Files.App.Services
 		{
 			foreach (var group in savedState.Values.GroupBy(value => value.KeyPath))
 			{
-				if (requireOwnership && !IsLauncherCommandGroupOwned(group.Key))
-					continue;
-
-				foreach (var value in group)
+				try
 				{
-					if (value.Existed && value.Value is not null)
-						_registry.SetValue(value.KeyPath, value.ValueName, value.Value);
-					else
-						_registry.DeleteValue(value.KeyPath, value.ValueName);
+					if (requireOwnership && !IsLauncherCommandGroupOwned(group.Key))
+						continue;
+
+					foreach (var value in group)
+					{
+						if (value.Existed && value.Value is not null)
+							_registry.SetValue(value.KeyPath, value.ValueName, value.Value);
+						else
+							_registry.DeleteValue(value.KeyPath, value.ValueName);
+					}
+
+					if (group.Any(value => !value.Existed))
+					{
+						var stopAtKeyPath = LauncherCommandKeys
+							.First(command => command.KeyPath == group.Key)
+							.StopAtKeyPath;
+						_registry.DeleteKeyIfEmpty(group.Key, stopAtKeyPath);
+					}
 				}
-
-				if (group.Any(value => !value.Existed))
+				catch (Exception ex) when (ex is not OutOfMemoryException)
 				{
-					var stopAtKeyPath = LauncherCommandKeys
-						.First(command => command.KeyPath == group.Key)
-						.StopAtKeyPath;
-					_registry.DeleteKeyIfEmpty(group.Key, stopAtKeyPath);
+					_failures.Add(ex);
 				}
 			}
 
 			foreach (var keyPath in savedState.UnknownOriginalKeyPaths)
 			{
-				if (!IsLauncherCommandGroupOwned(keyPath))
-					continue;
+				try
+				{
+					if (!IsLauncherCommandGroupOwned(keyPath))
+						continue;
 
-				var stopAtKeyPath = LauncherCommandKeys
-					.First(command => command.KeyPath == keyPath)
-					.StopAtKeyPath;
-				DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
+					var stopAtKeyPath = LauncherCommandKeys
+						.First(command => command.KeyPath == keyPath)
+						.StopAtKeyPath;
+					DeleteOwnedLauncherCommandValues(keyPath, stopAtKeyPath);
+				}
+				catch (Exception ex) when (ex is not OutOfMemoryException)
+				{
+					_failures.Add(ex);
+				}
 			}
 		}
 
@@ -325,45 +369,52 @@ namespace Files.App.Services
 			var state = LoadState();
 			if (state.OpenFileDialog is not { } savedState)
 			{
-				var removedOwnedRegistration = false;
-				if (IsClsidOwned(OpenDialogClsidKey, OpenDialogClass))
-				{
-					_openDialogRegistration.UnregisterOpenDialog(_paths.IntegrationDirectory);
-					_registry.DeleteKey(OpenDialogClsidKey);
-					removedOwnedRegistration = true;
-				}
-
-				if (IsClsidOwned(SaveDialogClsidKey, SaveDialogClass))
-				{
-					_openDialogRegistration.UnregisterSaveDialog(_paths.IntegrationDirectory);
-					_registry.DeleteKey(SaveDialogClsidKey);
-					removedOwnedRegistration = true;
-				}
-
+				var removedOwnedRegistration =
+					TryDisableOpenDialogClsid(OpenDialogClsidKey, OpenDialogClass, snapshot: null, isOpenDialog: true) |
+					TryDisableOpenDialogClsid(SaveDialogClsidKey, SaveDialogClass, snapshot: null, isOpenDialog: false);
 				return removedOwnedRegistration;
 			}
 
-			if (IsClsidOwned(OpenDialogClsidKey, OpenDialogClass))
-			{
-				_openDialogRegistration.UnregisterOpenDialog(_paths.IntegrationDirectory);
-				if (savedState.OpenDialog is { } openDialogSnapshot)
-					_registry.RestoreKey(OpenDialogClsidKey, openDialogSnapshot);
-				else
-					_registry.DeleteKey(OpenDialogClsidKey);
-			}
+			var failuresBefore = _failures.Count;
+			var removedRegistration =
+				TryDisableOpenDialogClsid(OpenDialogClsidKey, OpenDialogClass, savedState.OpenDialog, isOpenDialog: true) |
+				TryDisableOpenDialogClsid(SaveDialogClsidKey, SaveDialogClass, savedState.SaveDialog, isOpenDialog: false);
 
-			if (IsClsidOwned(SaveDialogClsidKey, SaveDialogClass))
-			{
-				_openDialogRegistration.UnregisterSaveDialog(_paths.IntegrationDirectory);
-				if (savedState.SaveDialog is { } saveDialogSnapshot)
-					_registry.RestoreKey(SaveDialogClsidKey, saveDialogSnapshot);
-				else
-					_registry.DeleteKey(SaveDialogClsidKey);
-			}
+			if (_failures.Count == failuresBefore)
+				state.OpenFileDialog = null;
 
-			state.OpenFileDialog = null;
-			SaveState(state);
-			return true;
+			TrySaveState(state);
+			return removedRegistration;
+		}
+
+		private bool TryDisableOpenDialogClsid(
+			string keyPath,
+			string className,
+			ShellRegistryKeySnapshot? snapshot,
+			bool isOpenDialog)
+		{
+			try
+			{
+				if (!IsClsidOwned(keyPath, className))
+					return false;
+
+				if (isOpenDialog)
+					_openDialogRegistration.UnregisterOpenDialog(_paths.IntegrationDirectory);
+				else
+					_openDialogRegistration.UnregisterSaveDialog(_paths.IntegrationDirectory);
+
+				if (snapshot is not null)
+					_registry.RestoreKey(keyPath, snapshot);
+				else
+					_registry.DeleteKey(keyPath);
+
+				return true;
+			}
+			catch (Exception ex) when (ex is not OutOfMemoryException)
+			{
+				_failures.Add(ex);
+				return false;
+			}
 		}
 
 		private bool IsLauncherCommandGroupOwned(string keyPath)
@@ -405,7 +456,18 @@ namespace Files.App.Services
 
 		private ShellIntegrationTakeoverState LoadState()
 		{
-			var json = _stateStore.GetString(StateKey);
+			string? json;
+			try
+			{
+				json = _stateStore.GetString(StateKey);
+			}
+			catch (Exception ex) when (ex is not OutOfMemoryException)
+			{
+				_failures.Add(ex);
+				TryRemoveState();
+				return new();
+			}
+
 			if (string.IsNullOrWhiteSpace(json))
 				return new();
 
@@ -417,8 +479,9 @@ namespace Files.App.Services
 
 				return state;
 			}
-			catch (Exception ex) when (ex is JsonException or InvalidDataException or NotSupportedException)
+			catch (Exception ex) when (ex is not OutOfMemoryException)
 			{
+				_failures.Add(ex);
 				ArchiveState(json);
 				return new();
 			}
@@ -431,10 +494,19 @@ namespace Files.App.Services
 				if (defaultFileManager.Values is null || defaultFileManager.UnknownOriginalKeyPaths is null)
 					return false;
 
+				if (defaultFileManager.Values.Any(value => value is null))
+					return false;
+
+				if (defaultFileManager.UnknownOriginalKeyPaths.Any(keyPath => string.IsNullOrWhiteSpace(keyPath)))
+					return false;
+
 				if (defaultFileManager.Values.Any(value =>
+					string.IsNullOrWhiteSpace(value.KeyPath) ||
 					!LauncherCommandKeys.Any(command => command.KeyPath == value.KeyPath) ||
 					(value.ValueName is not null && value.ValueName != DelegateExecuteValueName) ||
-					(value.Value is not null && !IsSupportedValueKind(value.Value.Kind))))
+					value.Existed != (value.Value is not null) ||
+					(value.Value is not null &&
+						(value.Value.Data is null || !IsSupportedValueKind(value.Value.Kind)))))
 					return false;
 
 				if (defaultFileManager.UnknownOriginalKeyPaths.Any(keyPath =>
@@ -479,16 +551,35 @@ namespace Files.App.Services
 			{
 				_stateStore.SetString(ArchivedStateKey, json);
 			}
-			catch (Exception)
+			catch (Exception ex) when (ex is not OutOfMemoryException)
 			{
+				_failures.Add(ex);
 			}
 
+			TryRemoveState();
+		}
+
+		private void TryRemoveState()
+		{
 			try
 			{
 				_stateStore.Remove(StateKey);
 			}
-			catch (Exception)
+			catch (Exception ex) when (ex is not OutOfMemoryException)
 			{
+				_failures.Add(ex);
+			}
+		}
+
+		private void TrySaveState(ShellIntegrationTakeoverState state)
+		{
+			try
+			{
+				SaveState(state);
+			}
+			catch (Exception ex) when (ex is not OutOfMemoryException)
+			{
+				_failures.Add(ex);
 			}
 		}
 

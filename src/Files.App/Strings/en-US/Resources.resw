@@ -4013,6 +4013,9 @@
   <data name="ShellIntegrationUnavailable" xml:space="preserve">
     <value>Unable to read or update shell integrations. Try again, or close and reopen Settings.</value>
   </data>
+  <data name="ShellIntegrationPartialFailure" xml:space="preserve">
+    <value>Some shell integrations could not be updated or restored. The remaining integrations may still be active; review the current status and try again.</value>
+  </data>
   <data name="PortableDataStartupFailed" xml:space="preserve">
     <value>Files cannot use the portable data directory '{0}'. Close any other Files instance using this directory, or choose a writable location. {1}</value>
   </data>
