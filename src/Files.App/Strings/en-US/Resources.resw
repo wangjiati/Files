@@ -3980,6 +3980,9 @@
   <data name="OpenOnStartupDisabled" xml:space="preserve">
     <value>The option to open Files on Windows Startup is not available due to your system settings or group policy. To re-enable, open the startup page in Task Manager.</value>
   </data>
+  <data name="PortableDataStartupFailed" xml:space="preserve">
+    <value>Files cannot use the portable data directory '{0}'. Close any other Files instance using this directory, or choose a writable location. {1}</value>
+  </data>
   <data name="FailedToRestore" xml:space="preserve">
     <value>Failed to restore items from Recycle Bin</value>
   </data>

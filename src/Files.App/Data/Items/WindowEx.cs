@@ -5,7 +5,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Storage;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -32,8 +31,6 @@ namespace Files.App.Data.Items
 		private bool _hasOverlappedPlacement;
 		private readonly nint _oldWndProc;
 		private readonly WNDPROC _newWndProc;
-
-		private readonly ApplicationDataContainer _applicationDataContainer = ApplicationData.Current.LocalSettings;
 
 		/// <summary>
 		/// Gets hWnd of this <see cref="Window"/>.
@@ -161,10 +158,11 @@ namespace Files.App.Data.Items
 
 			var values = GetDataStore(out _, true);
 
-			if (_applicationDataContainer.Containers.ContainsKey("WinUIEx"))
-				_applicationDataContainer.DeleteContainer("WinUIEx");
+			if (AppRuntime.Current.Distribution is DistributionKind.Msix &&
+				ApplicationData.Current.LocalSettings.Containers.ContainsKey("WinUIEx"))
+				ApplicationData.Current.LocalSettings.DeleteContainer("WinUIEx");
 
-			values["MainWindowPlacementData"] = Convert.ToBase64String(data.ToArray());
+			values.SetString("MainWindowPlacementData", Convert.ToBase64String(data.ToArray()));
 		}
 
 		private void RestoreWindowPlacementData()
@@ -175,11 +173,9 @@ namespace Files.App.Data.Items
 			var values = GetDataStore(out var oldDataExists, false);
 
 			byte[]? data = null;
-			if (values.TryGetValue(oldDataExists ? "WindowPersistance_FilesMainWindow" : "MainWindowPlacementData", out object? value))
-			{
-				if (value is string base64)
-					data = Convert.FromBase64String(base64);
-			}
+			var base64 = values.GetString(oldDataExists ? "WindowPersistance_FilesMainWindow" : "MainWindowPlacementData");
+			if (base64 is not null)
+				data = Convert.FromBase64String(base64);
 
 			if (data is null)
 				return;
@@ -230,28 +226,22 @@ namespace Files.App.Data.Items
 			}
 		}
 
-		private IPropertySet GetDataStore(out bool oldDataExists, bool useNewStore = true)
+		private ILocalStateStore GetDataStore(out bool oldDataExists, bool useNewStore = true)
 		{
-			IPropertySet values;
 			oldDataExists = false;
+			if (AppRuntime.Current.Distribution is DistributionKind.Portable)
+				return AppRuntime.LocalState;
 
-			if (_applicationDataContainer.Containers.TryGetValue("Files", out var dataContainer))
+			var localSettings = ApplicationData.Current.LocalSettings;
+			if (localSettings.Containers.ContainsKey("Files"))
+				return new ApplicationDataLocalStateStore("Files");
+			if (!useNewStore && localSettings.Containers.ContainsKey("WinUIEx"))
 			{
-				values = dataContainer.Values;
-			}
-			else if (!useNewStore && _applicationDataContainer.Containers.TryGetValue("WinUIEx", out var oldDataContainer))
-			{
-				values = oldDataContainer.Values;
 				oldDataExists = true;
-			}
-			else
-			{
-				values = _applicationDataContainer.CreateContainer(
-					"Files",
-					ApplicationDataCreateDisposition.Always).Values;
+				return new ApplicationDataLocalStateStore("WinUIEx");
 			}
 
-			return values;
+			return new ApplicationDataLocalStateStore("Files");
 		}
 
 		private unsafe List<Tuple<string, Rect>> GetAllMonitorInfo()

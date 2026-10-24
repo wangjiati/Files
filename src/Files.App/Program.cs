@@ -11,7 +11,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.ApplicationModel.Activation;
-using Windows.Storage;
 
 namespace Files.App
 {
@@ -25,6 +24,10 @@ namespace Files.App
 	{
 		private const string LaunchCwdKey = "LastLaunchCwd";
 
+#if DISTRIBUTION_PORTABLE
+		private static PortableDataLease? _portableDataLease;
+#endif
+
 		private static string InstanceKeyPrefix =>
 			$"{AppRuntime.Current.ProductId}.{AppRuntime.Current.InstanceScope}.Window.";
 
@@ -35,10 +38,9 @@ namespace Files.App
 		/// </summary>
 		public static string ConsumeLaunchCwd()
 		{
-			var values = ApplicationData.Current.LocalSettings.Values;
-			var cwd = values.TryGetValue(LaunchCwdKey, out var raw) ? raw as string : null;
+			var cwd = AppRuntime.LocalState.GetString(LaunchCwdKey);
 			if (cwd is not null)
-				values.Remove(LaunchCwdKey);
+				AppRuntime.LocalState.Remove(LaunchCwdKey);
 			return string.IsNullOrEmpty(cwd) ? Environment.CurrentDirectory : cwd;
 		}
 
@@ -59,9 +61,20 @@ namespace Files.App
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 			WinRT.ComWrappersSupport.InitializeComWrappers();
 
-			ApplicationData.Current.LocalSettings.Values[LaunchCwdKey] = Environment.CurrentDirectory;
+#if DISTRIBUTION_PORTABLE
+			try
+			{
+				_portableDataLease = PreparePortableData();
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			{
+				ShowPortableDataError(ex);
+				return;
+			}
+#endif
+			AppRuntime.LocalState.SetString(LaunchCwdKey, Environment.CurrentDirectory);
 
-			var OpenTabInExistingInstance = ApplicationData.Current.LocalSettings.Values.Get("OpenTabInExistingInstance", true);
+			var OpenTabInExistingInstance = AppRuntime.LocalState.GetBoolean("OpenTabInExistingInstance", true);
 
 			AppActivationArguments activatedArgs;
 			try
@@ -165,6 +178,50 @@ namespace Files.App
 
 				_ = new App();
 			});
+		}
+
+		private static PortableDataLease PreparePortableData()
+		{
+			var environment = AppRuntime.Current;
+			Directory.CreateDirectory(environment.DataDirectory);
+			Directory.CreateDirectory(environment.SettingsDirectory);
+			Directory.CreateDirectory(environment.LogDirectory);
+			Directory.CreateDirectory(environment.CacheDirectory);
+
+			var lease = PortableDataLease.Acquire(environment.DataDirectory);
+			var probePath = Path.Combine(environment.DataDirectory, $".{Guid.NewGuid():N}.write-probe");
+			try
+			{
+				using (var probe = new FileStream(probePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+				{
+					probe.WriteByte(0);
+					probe.Flush(true);
+				}
+				File.Delete(probePath);
+				return lease;
+			}
+			catch
+			{
+				lease.Dispose();
+				throw;
+			}
+		}
+
+		private static void ShowPortableDataError(Exception exception)
+		{
+			var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
+			var message = resourceManager.MainResourceMap.TryGetSubtree("Resources")?.TryGetValue(
+				"PortableDataStartupFailed",
+				resourceManager.CreateResourceContext())?.ValueAsString;
+			message = string.IsNullOrEmpty(message)
+				? exception.Message
+				: string.Format(message, AppRuntime.Current.DataDirectory, exception.Message);
+
+			Windows.Win32.PInvoke.MessageBox(
+				default,
+				message,
+				Constants.Startup.MissingRuntimeTitle,
+				MESSAGEBOX_STYLE.MB_ICONERROR);
 		}
 
 		internal static void RegisterCurrentInstance()

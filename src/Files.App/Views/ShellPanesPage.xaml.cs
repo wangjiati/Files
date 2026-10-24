@@ -16,7 +16,6 @@ using Microsoft.UI.Xaml.Navigation;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage;
 using Windows.UI.ViewManagement;
 using WinRT;
 using GridSplitter = Files.App.Controls.GridSplitter;
@@ -927,7 +926,7 @@ namespace Files.App.Views
 
 			// Self-drop: leave the close-on-drop flag unset so the source tab survives the split.
 			if (!ReferenceEquals(_draggedTabItem?.TabItemContent, this))
-				ApplicationData.Current.LocalSettings.Values[BaseTabBar.TabDropHandledIdentifier] = true;
+				AppRuntime.LocalState.SetBoolean(BaseTabBar.TabDropHandledIdentifier, true);
 		}
 
 		private void MainWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using Sentry;
-using Windows.Storage;
 
 namespace Files.App.Helpers
 {
@@ -41,11 +40,10 @@ namespace Files.App.Helpers
 			var elapsed = _stretchStopwatch.Elapsed;
 			_stretchStopwatch.Reset();
 
-			var values = ApplicationData.Current.LocalSettings.Values;
-			values.TryGetValue(ActiveTimeKey, out var totalTime);
-			values.TryGetValue(StretchCountKey, out var totalStretches);
-			values[ActiveTimeKey] = (totalTime as double? ?? 0d) + elapsed.TotalSeconds;
-			values[StretchCountKey] = (totalStretches as int? ?? 0) + 1;
+			var totalTime = AppRuntime.LocalState.GetDouble(ActiveTimeKey);
+			var totalStretches = AppRuntime.LocalState.GetInt32(StretchCountKey);
+			AppRuntime.LocalState.SetDouble(ActiveTimeKey, totalTime + elapsed.TotalSeconds);
+			AppRuntime.LocalState.SetInt32(StretchCountKey, totalStretches + 1);
 		}
 
 		/// <summary>
@@ -56,19 +54,19 @@ namespace Files.App.Helpers
 			if (!SentrySdk.IsEnabled)
 				return;
 
-			var values = ApplicationData.Current.LocalSettings.Values;
-			values.TryGetValue(ActiveTimeKey, out var totalTime);
-			if (totalTime is not double activeTimeSeconds || activeTimeSeconds <= 0d)
+			var activeTimeSeconds = AppRuntime.LocalState.GetDouble(ActiveTimeKey);
+			if (activeTimeSeconds <= 0d)
 				return;
 
 			var transaction = SentrySdk.StartTransaction(TransactionName, TransactionOperation);
 			transaction.SetMeasurement("active_time", activeTimeSeconds, MeasurementUnit.Duration.Second);
-			if (values.TryGetValue(StretchCountKey, out var totalStretches) && totalStretches is int stretchCount)
+			var stretchCount = AppRuntime.LocalState.GetInt32(StretchCountKey);
+			if (stretchCount > 0)
 				transaction.SetMeasurement("active_stretches", stretchCount);
 			transaction.Finish();
 
-			values.Remove(ActiveTimeKey);
-			values.Remove(StretchCountKey);
+			AppRuntime.LocalState.Remove(ActiveTimeKey);
+			AppRuntime.LocalState.Remove(StretchCountKey);
 		}
 	}
 }

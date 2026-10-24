@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Collections.Specialized;
-using Windows.Storage;
 using Windows.System;
 using static Files.App.Helpers.MenuFlyoutHelper;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
@@ -226,7 +225,7 @@ namespace Files.App.ViewModels.Settings
 					UserSettingsService.GeneralSettingsService.OpenTabInExistingInstance = value;
 
 					// Needed in Program.cs
-					ApplicationData.Current.LocalSettings.Values["OpenTabInExistingInstance"] = value;
+					AppRuntime.LocalState.SetBoolean("OpenTabInExistingInstance", value);
 
 					OnPropertyChanged();
 				}
