@@ -21,6 +21,9 @@ namespace Files.App.Actions
 		public RichGlyph Glyph
 			=> new(themedIconStyle: "App.ThemedIcons.New.Window");
 
+		public bool IsExecutable
+			=> AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution);
+
 		public NewWindowAction()
 		{
 		}

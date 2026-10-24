@@ -93,8 +93,11 @@ namespace Files.App
 			}
 
 			var commandLineArgs = GetCommandLineArgs(activatedArgs);
+			var isNewWindowLaunch = activatedArgs.Data is ILaunchActivatedEventArgs newWindowArgs &&
+				newWindowArgs.Arguments is not null &&
+				CommandLineParser.SplitArguments(newWindowArgs.Arguments, true).Contains(AppProcessLauncher.NewWindowArgument);
 
-			if (commandLineArgs is not null)
+			if (!isNewWindowLaunch && commandLineArgs is not null)
 			{
 				var parsedCommands = CommandLineParser.ParseUntrustedCommands(commandLineArgs);
 
@@ -139,7 +142,7 @@ namespace Files.App
 				}
 			}
 
-			if (OpenTabInExistingInstance && commandLineArgs is null)
+			if (!isNewWindowLaunch && OpenTabInExistingInstance && commandLineArgs is null)
 			{
 				if (activatedArgs.Data is ILaunchActivatedEventArgs launchArgs)
 				{
@@ -224,6 +227,14 @@ namespace Files.App
 				MESSAGEBOX_STYLE.MB_ICONERROR);
 		}
 
+		internal static void ReleasePortableDataLease()
+		{
+#if DISTRIBUTION_PORTABLE
+			_portableDataLease?.Dispose();
+			_portableDataLease = null;
+#endif
+		}
+
 		internal static void RegisterCurrentInstance()
 		{
 			var instance = AppInstance.FindOrRegisterForKey($"{InstanceKeyPrefix}{Environment.ProcessId}");
@@ -241,8 +252,9 @@ namespace Files.App
 			var cmdLaunchArgs = activatedArgs.Data is ILaunchActivatedEventArgs launchArgs &&
 				launchArgs.Arguments is not null &&
 				CommandLineParser.SplitArguments(launchArgs.Arguments, true).FirstOrDefault() is string arg0 &&
-				(arg0.EndsWith($"files-dev.exe", StringComparison.OrdinalIgnoreCase) ||
-				arg0.EndsWith($"files-dev", StringComparison.OrdinalIgnoreCase)) ? launchArgs.Arguments : null;
+				(arg0.EndsWith($"{AppProcessLauncher.ProtocolScheme}.exe", StringComparison.OrdinalIgnoreCase) ||
+				arg0.EndsWith(AppProcessLauncher.ProtocolScheme, StringComparison.OrdinalIgnoreCase) ||
+				arg0.Equals(Path.Join(AppRuntime.Current.InstallDirectory, "Files.exe"), StringComparison.OrdinalIgnoreCase)) ? launchArgs.Arguments : null;
 			var cmdProtocolArgs = activatedArgs.Data is IProtocolActivatedEventArgs protocolArgs &&
 				protocolArgs.Uri.Query.TrimStart('?').Split('=') is string[] parsedArgs &&
 				parsedArgs.Length == 2 && parsedArgs[0] == "cmd" ? Uri.UnescapeDataString(parsedArgs[1]) : null;

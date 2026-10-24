@@ -803,7 +803,9 @@ namespace Files.App.Views.Shells
 
 		protected void InitToolbarCommands()
 		{
-			ToolbarViewModel.OpenNewWindowCommand = new AsyncRelayCommand(NavigationHelpers.LaunchNewWindowAsync);
+			ToolbarViewModel.OpenNewWindowCommand = new AsyncRelayCommand(
+				NavigationHelpers.LaunchNewWindowAsync,
+				() => AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution));
 			ToolbarViewModel.CreateNewFileCommand = new RelayCommand<ShellNewEntry>(x => _ = UIFilesystemHelpers.CreateFileFromDialogResultTypeAsync(AddItemDialogItemType.File, x, this));
 			ToolbarViewModel.UpdateCommand = new AsyncRelayCommand(async () => await updateSettingsService.DownloadUpdatesAsync());
 		}

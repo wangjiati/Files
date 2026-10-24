@@ -10,6 +10,7 @@ namespace Files.App.Actions
 			=> HotKey.None;
 
 		public override bool IsExecutable =>
+			AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution) &&
 			SidebarContext.IsItemRightClicked &&
 			SidebarContext.RightClickedItem is { } item &&
 			item.MenuOptions!.IsLocationItem;

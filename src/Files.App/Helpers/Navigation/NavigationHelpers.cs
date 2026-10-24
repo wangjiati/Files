@@ -389,15 +389,13 @@ namespace Files.App.Helpers
 			if (string.IsNullOrWhiteSpace(path))
 				return Task.FromResult(false);
 
-			var folderUri = new Uri($"files-dev:?folder={Uri.EscapeDataString(path)}");
-
-			return Launcher.LaunchUriAsync(folderUri).AsTask();
+			return AppProcessLauncher.LaunchNewWindowAsync($"folder={Uri.EscapeDataString(path)}");
 		}
 
 		public static Task<bool> OpenTabInNewWindowAsync(string tabArgs, int? dropX = null, int? dropY = null)
 		{
 			var drop = dropX is int x && dropY is int y ? $"&x={x}&y={y}" : "";
-			return Launcher.LaunchUriAsync(new Uri($"files-dev:?tab={Uri.EscapeDataString(tabArgs)}{drop}")).AsTask();
+			return AppProcessLauncher.LaunchNewWindowAsync($"tab={Uri.EscapeDataString(tabArgs)}{drop}");
 		}
 
 		public static void OpenInSecondaryPane(IShellPage associatedInstance, ListedItem listedItem, ShellPaneArrangement arrangement = ShellPaneArrangement.None)
@@ -410,9 +408,9 @@ namespace Files.App.Helpers
 			associatedInstance.PaneHolder?.OpenSecondaryPane(path, arrangement);
 		}
 
-		public static Task LaunchNewWindowAsync()
+		public static async Task LaunchNewWindowAsync()
 		{
-			return Launcher.LaunchUriAsync(new Uri("files-dev:?window=")).AsTask();
+			await AppProcessLauncher.LaunchNewWindowAsync("window=");
 		}
 
 		public static async Task OpenSelectedItemsAsync(IShellPage associatedInstance, bool openViaApplicationPicker = false)

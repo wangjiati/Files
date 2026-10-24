@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Files Community
 // Licensed under the MIT License.
 
-using Windows.System;
-
 namespace Files.App.Actions
 {
 	internal abstract class BaseOpenInNewWindowAction : ObservableObject, IAction
@@ -31,6 +29,7 @@ namespace Files.App.Actions
 			=> true;
 
 		public virtual bool IsExecutable =>
+			AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution) &&
 			ContentPageContext.ShellPage is not null &&
 			ContentPageContext.ShellPage.SlimContentPage is not null &&
 			ContentPageContext.PageType != ContentPageTypes.RecycleBin &&
@@ -54,9 +53,7 @@ namespace Files.App.Actions
 			{
 				var targetPath = (listedItem as IShortcutItem)?.TargetPath;
 				var selectedItemPath = !string.IsNullOrEmpty(targetPath) ? targetPath : listedItem.GetRequiredPath();
-				var folderUri = new Uri($"files-dev:?folder={@selectedItemPath}");
-
-				await Launcher.LaunchUriAsync(folderUri);
+				await NavigationHelpers.OpenPathInNewWindowAsync(selectedItemPath);
 			}
 		}
 

@@ -47,6 +47,9 @@ namespace Files.App.Helpers
 
 		public static Task MoveTabToNewWindow(TabBarItem tab, ITabBar multitaskingControl)
 		{
+			if (!AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution))
+				return Task.CompletedTask;
+
 			int index = MainPageViewModel.AppInstances.IndexOf(tab);
 			if (index < 0)
 				return Task.CompletedTask;

@@ -602,7 +602,8 @@ namespace Files.App.UserControls
 				await NavigationHelpers.OpenPathInNewWindowAsync(path);
 
 			flyout.Items.Add(openInNewTabItem);
-			flyout.Items.Add(openInNewWindowItem);
+			if (AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution))
+				flyout.Items.Add(openInNewWindowItem);
 
 			var paneHolder = ContentPageContext.ShellPage?.PaneHolder;
 			if (userSettingsService.GeneralSettingsService.ShowOpenInNewPane && paneHolder is not null)

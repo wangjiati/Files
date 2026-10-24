@@ -10,6 +10,7 @@ namespace Files.App.Actions
 			=> HotKey.None;
 
 		public override bool IsExecutable =>
+			AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution) &&
 			HomePageContext.IsAnyItemRightClicked &&
 			HomePageContext.RightClickedItem is not null &&
 			(HomePageContext.RightClickedItem is WidgetFileTagCardItem fileTagItem

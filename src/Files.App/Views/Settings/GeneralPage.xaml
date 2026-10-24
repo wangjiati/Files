@@ -260,7 +260,10 @@
 					</wctcontrols:SettingsCard>
 
 					<!--  Open in new window  -->
-					<wctcontrols:SettingsCard Header="{helpers:ResourceString Name=ShowOpenInNewWindow}">
+					<wctcontrols:SettingsCard
+						x:Name="OpenInNewWindowSettings"
+						x:Load="{x:Bind ViewModel.SupportsNewWindows, Mode=OneWay}"
+						Header="{helpers:ResourceString Name=ShowOpenInNewWindow}">
 						<ToggleSwitch AutomationProperties.Name="{helpers:ResourceString Name=ShowOpenInNewWindow}" IsOn="{x:Bind ViewModel.ShowOpenInNewWindow, Mode=TwoWay}" />
 					</wctcontrols:SettingsCard>
 

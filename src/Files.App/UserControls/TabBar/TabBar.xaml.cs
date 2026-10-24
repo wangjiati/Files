@@ -289,7 +289,7 @@ namespace Files.App.UserControls.TabBar
 			// Unsubscribe from the key down event, it's only needed when a tab is actively being dragged
 			PreviewKeyDown -= TabDragging_PreviewKeyDown;
 
-			if (isCancelingDragOperation)
+			if (isCancelingDragOperation || !AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution))
 				return;
 
 			PInvoke.GetCursorPos(out var droppedPoint);
@@ -342,7 +342,7 @@ namespace Files.App.UserControls.TabBar
 		[DynamicWindowsRuntimeCast(typeof(MenuFlyout))]
 		private void TabItemContextMenu_Opening(object sender, object e)
 		{
-			MenuItemMoveTabToNewWindow.IsEnabled = Items.Count > 1;
+			MenuItemMoveTabToNewWindow.IsEnabled = AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution) && Items.Count > 1;
 			SelectedTabItemChanged?.Invoke(null, ((MenuFlyout)sender).Target.DataContext as TabBarItem);
 		}
 

@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Collections.Specialized;
-using Windows.System;
 using static Files.App.Helpers.MenuFlyoutHelper;
 using DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue;
 
@@ -122,7 +121,7 @@ namespace Files.App.ViewModels.Settings
 			AppLifecycleHelper.SaveSessionTabs();
 
 			// Launches a new instance of Files
-			await Launcher.LaunchUriAsync(new Uri("files-dev:"));
+			await AppProcessLauncher.RelaunchAsync();
 
 			// Closes the current instance
 			Environment.Exit(0);
@@ -549,12 +548,15 @@ namespace Files.App.ViewModels.Settings
 			}
 		}
 
+		public bool SupportsNewWindows
+			=> AppProcessLauncher.SupportsNewWindows(AppRuntime.Current.Distribution);
+
 		public bool ShowOpenInNewWindow
 		{
-			get => UserSettingsService.GeneralSettingsService.ShowOpenInNewWindow;
+			get => SupportsNewWindows && UserSettingsService.GeneralSettingsService.ShowOpenInNewWindow;
 			set
 			{
-				if (value != UserSettingsService.GeneralSettingsService.ShowOpenInNewWindow)
+				if (SupportsNewWindows && value != UserSettingsService.GeneralSettingsService.ShowOpenInNewWindow)
 				{
 					UserSettingsService.GeneralSettingsService.ShowOpenInNewWindow = value;
 					OnPropertyChanged();

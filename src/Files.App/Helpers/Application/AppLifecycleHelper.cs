@@ -14,7 +14,6 @@ using Sentry.Protocol;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using Windows.System;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace Files.App.Helpers
@@ -373,7 +372,6 @@ namespace Files.App.Helpers
 					.AddSingleton<ISizeProvider, UserSizeProvider>()
 					.AddSingleton<IQuickAccessService, QuickAccessService>()
 					.AddSingleton<IResourcesService, ResourcesService>()
-					.AddSingleton<IWindowsJumpListService, WindowsJumpListService>()
 					.AddSingleton<IStorageTrashBinService, StorageTrashBinService>()
 					.AddSingleton<IRemovableDrivesService, RemovableDrivesService>()
 					.AddSingleton<INetworkService, NetworkService>()
@@ -407,13 +405,17 @@ namespace Files.App.Helpers
 					.AddSingleton<LibraryManager>()
 					.AddSingleton(appModel);
 
-			// Conditional DI
-			if (AppEnvironment is AppEnvironment.SideloadPreview or AppEnvironment.SideloadStable)
-				services.AddSingleton<IUpdateService, SideloadUpdateService>();
-			else if (AppEnvironment is AppEnvironment.StorePreview or AppEnvironment.StoreStable)
-				services.AddSingleton<IUpdateService, StoreUpdateService>();
+			services.AddSingleton<IUpdateService, ManualUpdateService>();
+			if (AppRuntime.Current.SupportsSystemIntegration)
+			{
+				services.AddSingleton<IWindowsJumpListService, WindowsJumpListService>();
+				services.AddSingleton<ISystemIntegrationService, WindowsSystemIntegrationService>();
+			}
 			else
-				services.AddSingleton<IUpdateService, DummyUpdateService>();
+			{
+				services.AddSingleton<IWindowsJumpListService, PortableJumpListService>();
+				services.AddSingleton<ISystemIntegrationService, PortableSystemIntegrationService>();
+			}
 
 			return services.BuildServiceProvider();
 		}
@@ -620,7 +622,7 @@ namespace Files.App.Helpers
 						// Try to re-launch and start over
 						MainWindow.Instance.DispatcherQueue.EnqueueOrInvokeAsync(async () =>
 						{
-							await Launcher.LaunchUriAsync(new Uri("files-dev:"));
+							await AppProcessLauncher.RelaunchAsync();
 						})
 						.Wait(100);
 					}

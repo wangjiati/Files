@@ -102,10 +102,18 @@ namespace Files.App
 			switch (activatedEventArgs)
 			{
 				case ILaunchActivatedEventArgs launchArgs:
-					if (launchArgs.Arguments is not null &&
-						(CommandLineParser.SplitArguments(launchArgs.Arguments, true)[0].EndsWith($"files-dev.exe", StringComparison.OrdinalIgnoreCase)
-						|| CommandLineParser.SplitArguments(launchArgs.Arguments, true)[0].EndsWith($"files-dev", StringComparison.OrdinalIgnoreCase)
-						|| CommandLineParser.SplitArguments(launchArgs.Arguments, true)[0].Equals(Path.Join(AppRuntime.Current.InstallDirectory, "Files.exe"), StringComparison.OrdinalIgnoreCase)))
+					var launchArguments = launchArgs.Arguments is not null
+						? CommandLineParser.SplitArguments(launchArgs.Arguments, true)
+						: [];
+					var newWindowArgumentIndex = Array.IndexOf(launchArguments, AppProcessLauncher.NewWindowArgument);
+					if (newWindowArgumentIndex >= 0 && newWindowArgumentIndex + 1 < launchArguments.Length)
+					{
+						await InitializeFromProtocolAsync(rootFrame, new Uri(launchArguments[newWindowArgumentIndex + 1]));
+					}
+					else if (launchArgs.Arguments is not null && launchArguments.Length > 0 &&
+						(launchArguments[0].EndsWith($"{AppProcessLauncher.ProtocolScheme}.exe", StringComparison.OrdinalIgnoreCase)
+						|| launchArguments[0].EndsWith(AppProcessLauncher.ProtocolScheme, StringComparison.OrdinalIgnoreCase)
+						|| launchArguments[0].Equals(Path.Join(AppRuntime.Current.InstallDirectory, "Files.exe"), StringComparison.OrdinalIgnoreCase)))
 					{
 						// WINUI3: When launching from commandline the argument is not ICommandLineActivatedEventArgs (#10370)
 						var ppm = CommandLineParser.ParseUntrustedCommands(launchArgs.Arguments);
@@ -134,56 +142,7 @@ namespace Files.App
 					break;
 
 				case IProtocolActivatedEventArgs eventArgs:
-					if (eventArgs.Uri.AbsoluteUri == "files-dev:")
-					{
-						rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
-
-						// Bring to foreground (#14730)
-						Win32Helper.BringToForegroundEx(new(WindowHandle));
-
-						// Ensure app-level keyboard shortcuts work immediately after Win+E activation.
-						_ = EnsureContentHasKeyboardFocusAsync();
-					}
-					else
-					{
-						var parsedArgs = eventArgs.Uri.Query.TrimStart('?').Split('=');
-						var unescapedValue = Uri.UnescapeDataString(parsedArgs[1].Split('&')[0]);
-						if (parsedArgs[0] == "tab" && parsedArgs.Length > 3 &&
-							int.TryParse(parsedArgs[2].Split('&')[0], out var dx) &&
-							int.TryParse(parsedArgs[3], out var dy))
-							AppWindow?.Move(new(dx - 100, dy - 16));
-						var folderResult = await FilesystemTasks.Wrap(() => StorageFolder.GetFolderFromPathAsync(unescapedValue).AsTask());
-						if (folderResult.Result is { } folder && !string.IsNullOrEmpty(folder.Path))
-						{
-							// Convert short name to long name (#6190)
-							unescapedValue = folder.Path;
-						}
-						switch (parsedArgs[0])
-						{
-							case "tab":
-								rootFrame.Navigate(typeof(MainPage),
-									new MainPageNavigationArguments() { Parameter = TabBarItemParameter.Deserialize(unescapedValue), IgnoreStartupSettings = true },
-									new SuppressNavigationTransitionInfo());
-								break;
-
-							case "folder":
-								rootFrame.Navigate(typeof(MainPage),
-									new MainPageNavigationArguments() { Parameter = unescapedValue, IgnoreStartupSettings = true },
-									new SuppressNavigationTransitionInfo());
-								break;
-
-							case "cmd":
-								var ppm = CommandLineParser.ParseUntrustedCommands(unescapedValue);
-								if (ppm.IsEmpty())
-									rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
-								else
-									await InitializeFromCmdLineArgsAsync(rootFrame, ppm, Environment.CurrentDirectory);
-								break;
-							default:
-								rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
-								break;
-						}
-					}
+					await InitializeFromProtocolAsync(rootFrame, eventArgs.Uri);
 					break;
 
 				case ICommandLineActivatedEventArgs cmdLineArgs:
@@ -263,6 +222,51 @@ namespace Files.App
 
 			if (Windows.Win32.PInvoke.IsIconic(new(WindowHandle)) && appWindow?.Presenter is OverlappedPresenter overlapped)
 				overlapped.Restore();
+		}
+
+		private async Task InitializeFromProtocolAsync(Frame rootFrame, Uri uri)
+		{
+			if (uri.AbsoluteUri == $"{AppProcessLauncher.ProtocolScheme}:")
+			{
+				rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
+				Win32Helper.BringToForegroundEx(new(WindowHandle));
+				_ = EnsureContentHasKeyboardFocusAsync();
+				return;
+			}
+
+			var parsedArgs = uri.Query.TrimStart('?').Split('=');
+			var unescapedValue = Uri.UnescapeDataString(parsedArgs[1].Split('&')[0]);
+			if (parsedArgs[0] == "tab" && parsedArgs.Length > 3 &&
+				int.TryParse(parsedArgs[2].Split('&')[0], out var dx) &&
+				int.TryParse(parsedArgs[3], out var dy))
+				AppWindow?.Move(new(dx - 100, dy - 16));
+			var folderResult = await FilesystemTasks.Wrap(() => StorageFolder.GetFolderFromPathAsync(unescapedValue).AsTask());
+			if (folderResult.Result is { } folder && !string.IsNullOrEmpty(folder.Path))
+				unescapedValue = folder.Path;
+
+			switch (parsedArgs[0])
+			{
+				case "tab":
+					rootFrame.Navigate(typeof(MainPage),
+						new MainPageNavigationArguments() { Parameter = TabBarItemParameter.Deserialize(unescapedValue), IgnoreStartupSettings = true },
+						new SuppressNavigationTransitionInfo());
+					break;
+				case "folder":
+					rootFrame.Navigate(typeof(MainPage),
+						new MainPageNavigationArguments() { Parameter = unescapedValue, IgnoreStartupSettings = true },
+						new SuppressNavigationTransitionInfo());
+					break;
+				case "cmd":
+					var ppm = CommandLineParser.ParseUntrustedCommands(unescapedValue);
+					if (ppm.IsEmpty())
+						rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
+					else
+						await InitializeFromCmdLineArgsAsync(rootFrame, ppm, Environment.CurrentDirectory);
+					break;
+				default:
+					rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
+					break;
+			}
 		}
 
 		private async Task EnsureContentHasKeyboardFocusAsync()
