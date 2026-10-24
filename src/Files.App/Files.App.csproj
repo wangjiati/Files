@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <Distribution Condition="'$(Distribution)' == ''">Msix</Distribution>
         <EnableMsixTooling>true</EnableMsixTooling>
         <PublishProfile>Properties\PublishProfiles\win-$(Platform).pubxml</PublishProfile>
         <TargetFramework>$(WindowsTargetFramework)</TargetFramework>
@@ -30,7 +31,7 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <CETCompat>false</CETCompat>
         <Configurations>Debug;Release</Configurations>
-        <CsWinRTIncludes>Files.App.Server;Microsoft.UI.Content.ContentExternalOutputLink;Microsoft.UI.Content.IContentExternalOutputLink</CsWinRTIncludes>
+        <CsWinRTIncludes>Microsoft.UI.Content.ContentExternalOutputLink;Microsoft.UI.Content.IContentExternalOutputLink</CsWinRTIncludes>
         <PublishDir>bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\publish\</PublishDir>
         <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
         <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
@@ -45,6 +46,19 @@
 
     <PropertyGroup>
         <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Distribution)' == 'Msix'">
+        <DefineConstants>$(DefineConstants);DISTRIBUTION_MSIX</DefineConstants>
+        <CsWinRTIncludes>Files.App.Server;$(CsWinRTIncludes)</CsWinRTIncludes>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Distribution)' == 'Portable'">
+        <DefineConstants>$(DefineConstants);DISTRIBUTION_PORTABLE</DefineConstants>
+        <WindowsPackageType>None</WindowsPackageType>
+        <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>false</PublishSingleFile>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(SENTRY_AUTH_TOKEN)' != ''">
@@ -151,9 +165,12 @@
 
     <ItemGroup>
         <CsWinRTInputs Include="Assets\Libraries\Microsoft.UI.winmd" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(Distribution)' == 'Msix'">
         <CsWinRTInputs Include="..\Files.App.Server\bin\$(Platform)\$(Configuration)\$(TargetFramework)\win-$(Platform)\Files.App.Server.winmd" />
         <None Include="..\Files.App.Server\bin\$(Platform)\$(Configuration)\$(TargetFramework)\win-$(Platform)\Files.App.Server.winmd">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <Link>Files.App.Server.winmd</Link>
             <Visible>false</Visible>
         </None>
@@ -171,13 +188,18 @@
         <AdditionalFiles Include="Strings\en-US\Resources.resw" />
     </ItemGroup>
 
+    <Target Name="ValidateDistribution" BeforeTargets="Build;Publish"
+            Condition="'$(Distribution)' != 'Msix' And '$(Distribution)' != 'Portable'">
+        <Error Text="Distribution must be either 'Msix' or 'Portable'. Actual value: '$(Distribution)'." />
+    </Target>
+
     <!-- Files.App.Server is an out-of-process COM server, not a project reference.
          Build it before we resolve assemblies so its .winmd is available for CsWinRT. -->
-    <Target Name="BuildFilesAppServer" BeforeTargets="ResolveAssemblyReferences">
+    <Target Name="BuildFilesAppServer" BeforeTargets="ResolveAssemblyReferences" Condition="'$(Distribution)' == 'Msix'">
         <MSBuild Projects="$(FilesAppServerProject)" Targets="Build" Properties="Configuration=$(Configuration);Platform=$(Platform)" />
     </Target>
 
-    <Target Name="PublishFilesAppServerForMsix" BeforeTargets="_ComputeAppxPackagePayload" Condition="'$(AppxPackage)' == 'true'">
+    <Target Name="PublishFilesAppServerForMsix" BeforeTargets="_ComputeAppxPackagePayload" Condition="'$(Distribution)' == 'Msix' And '$(AppxPackage)' == 'true'">
         <PropertyGroup>
             <FilesAppServerPublishDir>$(MSBuildThisFileDirectory)..\Files.App.Server\bin\$(Platform)\$(Configuration)\$(TargetFramework)\win-$(Platform)\publish\</FilesAppServerPublishDir>
         </PropertyGroup>
