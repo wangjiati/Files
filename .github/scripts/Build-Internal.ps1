@@ -393,7 +393,7 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
     }
 
     if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
-        Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory
+        Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory -Confirm:$false
         try {
             Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
         }
@@ -416,9 +416,9 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
 
         if ($hasOnlyReleaseFiles) {
             $backupDirectory = $DestinationDirectory + ".old-" + [Guid]::NewGuid().ToString("N")
-            Move-Item -LiteralPath $DestinationDirectory -Destination $backupDirectory
+            Move-Item -LiteralPath $DestinationDirectory -Destination $backupDirectory -Confirm:$false
             try {
-                Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory
+                Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory -Confirm:$false
                 Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
             }
             catch {
@@ -449,44 +449,69 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
         }
     }
 
+    foreach ($name in $FileNames) {
+        $destinationFile = Join-Path $DestinationDirectory $name
+        if (Test-Path -LiteralPath $destinationFile) {
+            if (-not (Test-Path -LiteralPath $destinationFile -PathType Leaf)) {
+                Fail "Release output path '$destinationFile' exists but is not a file."
+            }
+        }
+    }
+
     $destinationParent = Split-Path -Parent $DestinationDirectory
     $destinationLeaf = Split-Path -Leaf $DestinationDirectory
     $backupDirectory = Join-Path $destinationParent (".$destinationLeaf.backup-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
 
-    $movedNewFiles = New-Object System.Collections.Generic.List[string]
+    $replacedFiles = New-Object System.Collections.ArrayList
+    $addedFiles = New-Object System.Collections.Generic.List[string]
     try {
         foreach ($name in $FileNames) {
-            $existingFile = Join-Path $DestinationDirectory $name
-            if (Test-Path -LiteralPath $existingFile -PathType Leaf) {
-                Copy-Item -LiteralPath $existingFile -Destination (Join-Path $backupDirectory $name) -Force
+            $sourceFile = Join-Path $StagingDirectory $name
+            $destinationFile = Join-Path $DestinationDirectory $name
+            if (Test-Path -LiteralPath $destinationFile -PathType Leaf) {
+                $backupFile = Join-Path $backupDirectory $name
+                [System.IO.File]::Replace($sourceFile, $destinationFile, $backupFile, $true)
+                [void]$replacedFiles.Add([pscustomobject]@{ Destination = $destinationFile; Backup = $backupFile })
             }
-        }
-
-        foreach ($name in $FileNames) {
-            Move-Item -LiteralPath (Join-Path $StagingDirectory $name) -Destination (Join-Path $DestinationDirectory $name) -Force
-            $movedNewFiles.Add($name)
+            else {
+                [System.IO.File]::Move($sourceFile, $destinationFile)
+                $addedFiles.Add($name)
+            }
         }
 
         Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
     }
     catch {
         $publishError = $_
-        foreach ($name in $FileNames) {
-            $backupFile = Join-Path $backupDirectory $name
-            $destinationFile = Join-Path $DestinationDirectory $name
-            if (Test-Path -LiteralPath $backupFile -PathType Leaf) {
+        $rollbackErrors = @()
+        for ($index = $replacedFiles.Count - 1; $index -ge 0; $index--) {
+            $entry = $replacedFiles[$index]
+            if (Test-Path -LiteralPath $entry.Backup -PathType Leaf) {
                 try {
-                    Copy-Item -LiteralPath $backupFile -Destination $destinationFile -Force -ErrorAction Stop
+                    [System.IO.File]::Replace($entry.Backup, $entry.Destination, $null, $true)
                 }
                 catch {
-                    Fail "Publishing failed and the previous '$name' could not be restored: $($_.Exception.Message)"
+                    $rollbackErrors += "'$($entry.Destination)': $($_.Exception.Message)"
                 }
             }
-            elseif ($movedNewFiles.Contains($name) -and (Test-Path -LiteralPath $destinationFile)) {
-                Remove-Item -LiteralPath $destinationFile -Force
+        }
+        foreach ($name in $addedFiles) {
+            $destinationFile = Join-Path $DestinationDirectory $name
+            if (Test-Path -LiteralPath $destinationFile) {
+                try {
+                    Remove-Item -LiteralPath $destinationFile -Force -Confirm:$false -ErrorAction Stop
+                }
+                catch {
+                    $rollbackErrors += "'$destinationFile': $($_.Exception.Message)"
+                }
             }
         }
+
+        if ($rollbackErrors.Count -ne 0) {
+            Fail "Publishing failed and rollback could not restore the previous release. Backups remain in '$backupDirectory'. Errors: $($rollbackErrors -join '; '). Original error: $($publishError.Exception.Message)"
+        }
+        Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction SilentlyContinue
         throw $publishError
     }
 
