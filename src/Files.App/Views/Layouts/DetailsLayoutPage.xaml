@@ -785,7 +785,16 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateDeleted"
 								Header="{helpers:ResourceString Name=DateDeleted}"
-								Visibility="{x:Bind ColumnsViewModel.DateDeletedColumn.Visibility, Mode=OneWay}" />
+								Visibility="{x:Bind ColumnsViewModel.DateDeletedColumn.Visibility, Mode=OneWay}">
+								<uc:DataGridHeader.ContextFlyout>
+									<MenuFlyout>
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Deleted"
+											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
+									</MenuFlyout>
+								</uc:DataGridHeader.ContextFlyout>
+							</uc:DataGridHeader>
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
@@ -807,7 +816,16 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateModified"
 								Header="{helpers:ResourceString Name=DateModifiedLowerCase}"
-								Visibility="{x:Bind ColumnsViewModel.DateModifiedColumn.Visibility, Mode=OneWay}" />
+								Visibility="{x:Bind ColumnsViewModel.DateModifiedColumn.Visibility, Mode=OneWay}">
+								<uc:DataGridHeader.ContextFlyout>
+									<MenuFlyout>
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Modified"
+											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
+									</MenuFlyout>
+								</uc:DataGridHeader.ContextFlyout>
+							</uc:DataGridHeader>
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
@@ -829,7 +847,16 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateCreated"
 								Header="{helpers:ResourceString Name=DateCreated}"
-								Visibility="{x:Bind ColumnsViewModel.DateCreatedColumn.Visibility, Mode=OneWay}" />
+								Visibility="{x:Bind ColumnsViewModel.DateCreatedColumn.Visibility, Mode=OneWay}">
+								<uc:DataGridHeader.ContextFlyout>
+									<MenuFlyout>
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Created"
+											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
+									</MenuFlyout>
+								</uc:DataGridHeader.ContextFlyout>
+							</uc:DataGridHeader>
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter

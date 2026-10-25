@@ -2066,6 +2066,72 @@
   <data name="DateFormatSample" xml:space="preserve">
     <value>例如： {0}, {1}</value>
   </data>
+  <data name="DateTimeFormatAddDirectoryRule" xml:space="preserve">
+    <value>添加文件夹规则</value>
+  </data>
+  <data name="DateTimeFormatAppliesTo" xml:space="preserve">
+    <value>应用于</value>
+  </data>
+  <data name="DateTimeFormatColumnDefault" xml:space="preserve">
+    <value>文件夹默认格式</value>
+  </data>
+  <data name="DateTimeFormatColumns" xml:space="preserve">
+    <value>日期和时间列</value>
+  </data>
+  <data name="DateTimeFormatCustomPattern" xml:space="preserve">
+    <value>自定义格式</value>
+  </data>
+  <data name="DateTimeFormatCustomPatternPlaceholder" xml:space="preserve">
+    <value>.NET 格式，例如 yyyy-MM-dd HH:mm:ss.fff</value>
+  </data>
+  <data name="DateTimeFormatCustomValue" xml:space="preserve">
+    <value>自定义（{0}）</value>
+  </data>
+  <data name="DateTimeFormatDirectory" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="DateTimeFormatDirectoryRequired" xml:space="preserve">
+    <value>请选择文件夹。</value>
+  </data>
+  <data name="DateTimeFormatDirectoryRules" xml:space="preserve">
+    <value>文件夹日期格式</value>
+  </data>
+  <data name="DateTimeFormatForThisFolder" xml:space="preserve">
+    <value>此文件夹的日期和时间格式</value>
+  </data>
+  <data name="DateTimeFormatGlobalDefault" xml:space="preserve">
+    <value>全局默认格式</value>
+  </data>
+  <data name="DateTimeFormatIncludeSubdirectories" xml:space="preserve">
+    <value>应用到子文件夹</value>
+  </data>
+  <data name="DateTimeFormatIncludesSubfolders" xml:space="preserve">
+    <value>包含子文件夹</value>
+  </data>
+  <data name="DateTimeFormatNoDirectoryRules" xml:space="preserve">
+    <value>尚未配置文件夹规则。</value>
+  </data>
+  <data name="DateTimeFormatPatternInvalid" xml:space="preserve">
+    <value>此自定义日期时间格式无效。</value>
+  </data>
+  <data name="DateTimeFormatPatternRequired" xml:space="preserve">
+    <value>请输入自定义日期时间格式。</value>
+  </data>
+  <data name="DateTimeFormatPreview" xml:space="preserve">
+    <value>预览</value>
+  </data>
+  <data name="DateTimeFormatRuleAddTitle" xml:space="preserve">
+    <value>设置文件夹日期时间格式</value>
+  </data>
+  <data name="DateTimeFormatRuleEditTitle" xml:space="preserve">
+    <value>编辑文件夹日期时间格式</value>
+  </data>
+  <data name="DateTimeFormatRuleInvalid" xml:space="preserve">
+    <value>此日期时间格式规则无效。</value>
+  </data>
+  <data name="DateTimeFormatUseGlobalDefault" xml:space="preserve">
+    <value>使用全局默认格式</value>
+  </data>
   <data name="SettingsFilesAndFoldersShowThumbnails" xml:space="preserve">
     <value>显示缩略图</value>
   </data>

@@ -1,0 +1,87 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<ContentDialog
+	x:Class="Files.App.Dialogs.DateTimeFormatRuleDialog"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:helpers="using:Files.App.Helpers"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:wctconverters="using:CommunityToolkit.WinUI.Converters"
+	CloseButtonText="{helpers:ResourceString Name=Cancel}"
+	DefaultButton="Primary"
+	IsSecondaryButtonEnabled="{x:Bind ViewModel.CanDelete, Mode=OneWay}"
+	PrimaryButtonClick="ContentDialog_PrimaryButtonClick"
+	PrimaryButtonText="{helpers:ResourceString Name=Save}"
+	SecondaryButtonClick="ContentDialog_SecondaryButtonClick"
+	SecondaryButtonText="{helpers:ResourceString Name=Delete}"
+	Style="{StaticResource DefaultContentDialogStyle}"
+	Title="{x:Bind ViewModel.DialogTitle, Mode=OneWay}"
+	mc:Ignorable="d">
+
+	<ContentDialog.Resources>
+		<wctconverters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+	</ContentDialog.Resources>
+
+	<StackPanel Width="420" Spacing="12">
+
+		<!--  Folder  -->
+		<Grid ColumnSpacing="8">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
+
+			<TextBox
+				Header="{helpers:ResourceString Name=DateTimeFormatDirectory}"
+				PlaceholderText="{helpers:ResourceString Name=DateTimeFormatDirectory}"
+				Text="{x:Bind ViewModel.DirectoryPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+			<Button
+				Grid.Column="1"
+				VerticalAlignment="Bottom"
+				Click="BrowseFolder_Click"
+				Content="{helpers:ResourceString Name=Browse}" />
+		</Grid>
+
+		<!--  Scope  -->
+		<ComboBox
+			Header="{helpers:ResourceString Name=DateTimeFormatAppliesTo}"
+			DisplayMemberPath="Label"
+			ItemsSource="{x:Bind ViewModel.ScopeChoices, Mode=OneTime}"
+			SelectedIndex="{x:Bind ViewModel.SelectedScopeIndex, Mode=TwoWay}" />
+
+		<!--  Format preset or custom pattern  -->
+		<ComboBox
+			Header="{helpers:ResourceString Name=Format}"
+			DisplayMemberPath="Label"
+			ItemsSource="{x:Bind ViewModel.FormatChoices, Mode=OneTime}"
+			SelectedIndex="{x:Bind ViewModel.SelectedFormatIndex, Mode=TwoWay}" />
+
+		<TextBox
+			Header="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+			PlaceholderText="{helpers:ResourceString Name=DateTimeFormatCustomPatternPlaceholder}"
+			Text="{x:Bind ViewModel.CustomPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+			Visibility="{x:Bind ViewModel.ShowCustomPattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+		<!--  Recursive scope  -->
+		<ToggleSwitch
+			Header="{helpers:ResourceString Name=DateTimeFormatIncludeSubdirectories}"
+			IsOn="{x:Bind ViewModel.IncludeSubdirectories, Mode=TwoWay}" />
+
+		<!--  Live preview  -->
+		<StackPanel Spacing="4">
+			<TextBlock Text="{helpers:ResourceString Name=DateTimeFormatPreview}" />
+			<TextBlock
+				FontWeight="SemiBold"
+				Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" />
+		</StackPanel>
+
+		<!--  Validation message  -->
+		<InfoBar
+			IsClosable="False"
+			IsOpen="{x:Bind ViewModel.HasValidationError, Mode=OneWay}"
+			Message="{x:Bind ViewModel.ValidationErrorMessage, Mode=OneWay}"
+			Severity="Error" />
+
+	</StackPanel>
+</ContentDialog>

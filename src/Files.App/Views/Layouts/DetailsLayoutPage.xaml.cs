@@ -3,7 +3,10 @@
 
 using CommunityToolkit.WinUI;
 using Files.App.Controls;
+using Files.App.Dialogs;
+using Files.App.Services.DateTimeFormatter;
 using Files.App.UserControls.Selection;
+using Files.App.ViewModels.Settings;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -114,6 +117,34 @@ namespace Files.App.Views.Layouts
 		}
 
 		// Methods
+
+		private async void EditCurrentDirectoryDateFormat_Click(object sender, RoutedEventArgs e)
+		{
+			if (sender is not FrameworkElement { Tag: string columnName } ||
+				!Enum.TryParse<DateTimeColumnKind>(columnName, out var column))
+			{
+				return;
+			}
+
+			if (ParentShellPageInstance?.ShellViewModel?.WorkingDirectory is not { Length: > 0 } directoryPath)
+				return;
+
+			var viewModel = new DateTimeFormatSettingsViewModel(
+				Ioc.Default.GetRequiredService<IGeneralSettingsService>(),
+				Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>(),
+				Ioc.Default.GetRequiredService<IVolumePathProvider>());
+
+			var dialog = new DateTimeFormatRuleDialog(
+				viewModel,
+				existingRule: viewModel.FindExactDirectoryRule(directoryPath, column),
+				initialDirectoryPath: directoryPath,
+				initialColumn: column)
+			{
+				XamlRoot = MainWindow.Instance.Content.XamlRoot,
+			};
+
+			await dialog.ShowAsync();
+		}
 
 		protected override void ItemManipulationModel_ScrollIntoViewInvoked(object? sender, ListedItem e)
 		{

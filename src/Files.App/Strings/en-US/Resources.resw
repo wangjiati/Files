@@ -2093,6 +2093,72 @@
   <data name="DateFormatSample" xml:space="preserve">
     <value>ex: {0}, {1}</value>
   </data>
+  <data name="DateTimeFormatAddDirectoryRule" xml:space="preserve">
+    <value>Add folder rule</value>
+  </data>
+  <data name="DateTimeFormatAppliesTo" xml:space="preserve">
+    <value>Applies to</value>
+  </data>
+  <data name="DateTimeFormatColumnDefault" xml:space="preserve">
+    <value>Folder default</value>
+  </data>
+  <data name="DateTimeFormatColumns" xml:space="preserve">
+    <value>Date and time columns</value>
+  </data>
+  <data name="DateTimeFormatCustomPattern" xml:space="preserve">
+    <value>Custom format</value>
+  </data>
+  <data name="DateTimeFormatCustomPatternPlaceholder" xml:space="preserve">
+    <value>.NET pattern, for example yyyy-MM-dd HH:mm:ss.fff</value>
+  </data>
+  <data name="DateTimeFormatCustomValue" xml:space="preserve">
+    <value>Custom ({0})</value>
+  </data>
+  <data name="DateTimeFormatDirectory" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="DateTimeFormatDirectoryRequired" xml:space="preserve">
+    <value>Choose a folder.</value>
+  </data>
+  <data name="DateTimeFormatDirectoryRules" xml:space="preserve">
+    <value>Folder date formats</value>
+  </data>
+  <data name="DateTimeFormatForThisFolder" xml:space="preserve">
+    <value>Date and time format for this folder</value>
+  </data>
+  <data name="DateTimeFormatGlobalDefault" xml:space="preserve">
+    <value>Global default</value>
+  </data>
+  <data name="DateTimeFormatIncludeSubdirectories" xml:space="preserve">
+    <value>Apply to subfolders</value>
+  </data>
+  <data name="DateTimeFormatIncludesSubfolders" xml:space="preserve">
+    <value>Includes subfolders</value>
+  </data>
+  <data name="DateTimeFormatNoDirectoryRules" xml:space="preserve">
+    <value>No folder rules configured.</value>
+  </data>
+  <data name="DateTimeFormatPatternInvalid" xml:space="preserve">
+    <value>This custom date and time format is not valid.</value>
+  </data>
+  <data name="DateTimeFormatPatternRequired" xml:space="preserve">
+    <value>Enter a custom date and time format.</value>
+  </data>
+  <data name="DateTimeFormatPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="DateTimeFormatRuleAddTitle" xml:space="preserve">
+    <value>Set folder date and time format</value>
+  </data>
+  <data name="DateTimeFormatRuleEditTitle" xml:space="preserve">
+    <value>Edit folder date and time format</value>
+  </data>
+  <data name="DateTimeFormatRuleInvalid" xml:space="preserve">
+    <value>This date and time format rule is not valid.</value>
+  </data>
+  <data name="DateTimeFormatUseGlobalDefault" xml:space="preserve">
+    <value>Use global default</value>
+  </data>
   <data name="SettingsFilesAndFoldersShowThumbnails" xml:space="preserve">
     <value>Show thumbnails</value>
   </data>

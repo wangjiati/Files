@@ -47,17 +47,25 @@ namespace Files.App.ViewModels.Settings
 			set => SetProperty(ref isPageListEditEnabled, value);
 		}
 
-		private int selectedDateTimeFormatIndex;
 		public int SelectedDateTimeFormatIndex
 		{
-			get => selectedDateTimeFormatIndex;
+			get => DateTimeFormatSettings.SelectedGlobalFormatIndex;
 			set
 			{
-				if (SetProperty(ref selectedDateTimeFormatIndex, value))
-				{
-					OnPropertyChanged(nameof(SelectedDateTimeFormatIndex));
-					DateTimeFormat = (DateTimeFormats)value;
-				}
+				if (value == DateTimeFormatSettings.SelectedGlobalFormatIndex)
+					return;
+
+				DateTimeFormatSettings.SelectedGlobalFormatIndex = value;
+				var format = DateTimeFormatSettings.SelectedGlobalFormat;
+
+				if (format is DateTimeFormats.Custom)
+					UpdateCustomDateFormatItem();
+
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(DateFormatSample));
+				OnPropertyChanged(nameof(ShowCustomDateFormatPattern));
+				OnPropertyChanged(nameof(HasGlobalDateFormatError));
+				OnPropertyChanged(nameof(GlobalDateFormatErrorMessage));
 			}
 		}
 
@@ -78,6 +86,34 @@ namespace Files.App.ViewModels.Settings
 
 		public List<DateTimeFormatItem> DateFormats { get; set; } = null!;
 
+		public DateTimeFormatSettingsViewModel DateTimeFormatSettings { get; }
+
+		public string GlobalCustomPattern
+		{
+			get => DateTimeFormatSettings.GlobalCustomPattern;
+			set
+			{
+				if (value == DateTimeFormatSettings.GlobalCustomPattern)
+					return;
+
+				DateTimeFormatSettings.GlobalCustomPattern = value ?? string.Empty;
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(DateFormatSample));
+				OnPropertyChanged(nameof(HasGlobalDateFormatError));
+				OnPropertyChanged(nameof(GlobalDateFormatErrorMessage));
+				UpdateCustomDateFormatItem();
+			}
+		}
+
+		public bool ShowCustomDateFormatPattern
+			=> (DateTimeFormats)SelectedDateTimeFormatIndex is DateTimeFormats.Custom;
+
+		public bool HasGlobalDateFormatError
+			=> DateTimeFormatSettings.HasGlobalValidationError;
+
+		public string GlobalDateFormatErrorMessage
+			=> DateTimeFormatSettings.GlobalValidationErrorMessage;
+
 		public ObservableCollection<AppLanguageItem> AppLanguages => AppLanguageHelper.SupportedLanguages;
 
 		public Dictionary<ShellPaneArrangement, string> ShellPaneArrangementTypes { get; private set; } = [];
@@ -91,6 +127,11 @@ namespace Files.App.ViewModels.Settings
 			CancelRestartCommand = new RelayCommand(DoCancelRestart);
 
 			selectedAppLanguageIndex = AppLanguageHelper.SupportedLanguages.IndexOf(AppLanguageHelper.PreferredLanguage);
+
+			DateTimeFormatSettings = new(
+				UserSettingsService.GeneralSettingsService,
+				Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>(),
+				Ioc.Default.GetRequiredService<IVolumePathProvider>());
 
 			AddDateTimeOptions();
 			SelectedDateTimeFormatIndex = (int)Enum.Parse(typeof(DateTimeFormats), DateTimeFormat.ToString());
@@ -151,9 +192,18 @@ namespace Files.App.ViewModels.Settings
 			DateTimeOffset sampleDate1 = DateTime.Now.AddSeconds(-5);
 			DateTimeOffset sampleDate2 = new DateTime(sampleDate1.Year - 5, 12, 31, 14, 30, 0);
 
-			var styles = new DateTimeFormats[] { DateTimeFormats.Application, DateTimeFormats.System, DateTimeFormats.Universal };
+			var styles = new DateTimeFormats[] { DateTimeFormats.Application, DateTimeFormats.System, DateTimeFormats.Universal, DateTimeFormats.Custom };
 
-			DateFormats = styles.Select(style => new DateTimeFormatItem(style, sampleDate1, sampleDate2)).ToList();
+			DateFormats = styles
+				.Select(style => new DateTimeFormatItem(style, sampleDate1, sampleDate2, DateTimeFormatSettings.GlobalCustomPattern))
+				.ToList();
+		}
+
+		private void UpdateCustomDateFormatItem()
+		{
+			DateFormats?
+				.FirstOrDefault(item => item.Format is DateTimeFormats.Custom)
+				?.Update(DateTimeFormatSettings.GlobalCustomPattern);
 		}
 
 		private void InitStartupSettingsRecentFoldersFlyout()
@@ -647,22 +697,63 @@ namespace Files.App.ViewModels.Settings
 			=> Path = path;
 	}
 
-	public sealed class DateTimeFormatItem
+	public sealed class DateTimeFormatItem : INotifyPropertyChanged
 	{
-		public string Label { get; }
+		private readonly DateTimeOffset _sampleDate1;
+		private readonly DateTimeOffset _sampleDate2;
 
-		public string Sample1 { get; }
+		private string label = string.Empty;
+		private string sample1 = string.Empty;
+		private string sample2 = string.Empty;
 
-		public string Sample2 { get; }
+		public event PropertyChangedEventHandler? PropertyChanged;
 
-		public DateTimeFormatItem(DateTimeFormats style, DateTimeOffset sampleDate1, DateTimeOffset sampleDate2)
+		public DateTimeFormats Format { get; }
+
+		public string Label
+		{
+			get => label;
+			private set => SetProperty(ref label, value);
+		}
+
+		public string Sample1
+		{
+			get => sample1;
+			private set => SetProperty(ref sample1, value);
+		}
+
+		public string Sample2
+		{
+			get => sample2;
+			private set => SetProperty(ref sample2, value);
+		}
+
+		public DateTimeFormatItem(DateTimeFormats style, DateTimeOffset sampleDate1, DateTimeOffset sampleDate2, string? customPattern = null)
+		{
+			Format = style;
+			_sampleDate1 = sampleDate1;
+			_sampleDate2 = sampleDate2;
+
+			Update(customPattern);
+		}
+
+		public void Update(string? customPattern)
 		{
 			var factory = Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>();
-			var formatter = factory.GetDateTimeFormatter(style);
+			var formatter = factory.GetDateTimeFormatter(Format, customPattern);
 
 			Label = formatter.Name;
-			Sample1 = formatter.ToShortLabel(sampleDate1);
-			Sample2 = formatter.ToShortLabel(sampleDate2);
+			Sample1 = formatter.ToShortLabel(_sampleDate1);
+			Sample2 = formatter.ToShortLabel(_sampleDate2);
+		}
+
+		private void SetProperty<T>(ref T storage, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+		{
+			if (EqualityComparer<T>.Default.Equals(storage, value))
+				return;
+
+			storage = value;
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}
 	}
 }

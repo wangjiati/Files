@@ -11,11 +11,28 @@
 	xmlns:uc="using:Files.App.UserControls"
 	xmlns:vm="using:Files.App.ViewModels.Settings"
 	xmlns:wctcontrols="using:CommunityToolkit.WinUI.Controls"
+	xmlns:wctconverters="using:CommunityToolkit.WinUI.Converters"
 	mc:Ignorable="d">
 
 	<Page.DataContext>
 		<vm:GeneralViewModel x:Name="ViewModel" />
 	</Page.DataContext>
+
+	<Page.Resources>
+		<wctconverters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+		<wctconverters:BoolToVisibilityConverter
+			x:Key="NegationBoolToVisibilityConverter"
+			FalseValue="Visible"
+			TrueValue="Collapsed" />
+
+		<DataTemplate x:Key="DateTimeFormatChoiceTemplate" x:DataType="vm:DateTimeFormatChoice">
+			<TextBlock Text="{x:Bind Label}" />
+		</DataTemplate>
+
+		<DataTemplate x:Key="DateTimeFormatScopeChoiceTemplate" x:DataType="vm:DateTimeFormatScopeChoice">
+			<TextBlock Text="{x:Bind Label}" />
+		</DataTemplate>
+	</Page.Resources>
 
 	<Grid>
 		<StackPanel
@@ -51,36 +68,215 @@
 			<!--  Date settings  -->
 			<wctcontrols:SettingsCard
 				HorizontalAlignment="Stretch"
-				Description="{x:Bind ViewModel.DateFormatSample}"
+				Description="{x:Bind ViewModel.DateFormatSample, Mode=OneWay}"
 				Header="{helpers:ResourceString Name=DateFormat}">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xEC92;" />
 				</wctcontrols:SettingsCard.HeaderIcon>
-				<uc:ComboBoxEx
-					x:Name="DateFormatChooser"
-					Grid.Column="1"
-					AutomationProperties.Name="{helpers:ResourceString Name=DateFormat}"
-					ItemsSource="{x:Bind ViewModel.DateFormats}"
-					SelectedIndex="{x:Bind ViewModel.SelectedDateTimeFormatIndex, Mode=TwoWay}">
-					<uc:ComboBoxEx.ItemTemplate>
-						<DataTemplate x:DataType="vm:DateTimeFormatItem">
-							<StackPanel Orientation="Vertical">
-								<TextBlock Text="{x:Bind Label}" />
-								<TextBlock
-									FontSize="12"
-									FontWeight="Light"
-									Text="{x:Bind Sample1}"
-									Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
-								<TextBlock
-									FontSize="12"
-									FontWeight="Light"
-									Text="{x:Bind Sample2}"
-									Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
-							</StackPanel>
-						</DataTemplate>
-					</uc:ComboBoxEx.ItemTemplate>
-				</uc:ComboBoxEx>
+				<StackPanel
+					Width="320"
+					HorizontalAlignment="Right"
+					Spacing="8">
+					<uc:ComboBoxEx
+						x:Name="DateFormatChooser"
+						HorizontalAlignment="Stretch"
+						AutomationProperties.Name="{helpers:ResourceString Name=DateFormat}"
+						ItemsSource="{x:Bind ViewModel.DateFormats}"
+						SelectedIndex="{x:Bind ViewModel.SelectedDateTimeFormatIndex, Mode=TwoWay}">
+						<uc:ComboBoxEx.ItemTemplate>
+							<DataTemplate x:DataType="vm:DateTimeFormatItem">
+								<StackPanel Orientation="Vertical">
+									<TextBlock Text="{x:Bind Label, Mode=OneWay}" />
+									<TextBlock
+										FontSize="12"
+										FontWeight="Light"
+										Text="{x:Bind Sample1, Mode=OneWay}"
+										Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
+									<TextBlock
+										FontSize="12"
+										FontWeight="Light"
+										Text="{x:Bind Sample2, Mode=OneWay}"
+										Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
+								</StackPanel>
+							</DataTemplate>
+						</uc:ComboBoxEx.ItemTemplate>
+					</uc:ComboBoxEx>
+
+					<TextBox
+						AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+						Header="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+						PlaceholderText="{helpers:ResourceString Name=DateTimeFormatCustomPatternPlaceholder}"
+						Text="{x:Bind ViewModel.GlobalCustomPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+						Visibility="{x:Bind ViewModel.ShowCustomDateFormatPattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+					<InfoBar
+						IsClosable="False"
+						IsOpen="{x:Bind ViewModel.HasGlobalDateFormatError, Mode=OneWay}"
+						Message="{x:Bind ViewModel.GlobalDateFormatErrorMessage, Mode=OneWay}"
+						Severity="Error" />
+				</StackPanel>
 			</wctcontrols:SettingsCard>
+
+			<!--  Global per-column date formats  -->
+			<wctcontrols:SettingsExpander
+				Header="{helpers:ResourceString Name=DateTimeFormatColumns}"
+				IsExpanded="False">
+				<wctcontrols:SettingsExpander.HeaderIcon>
+					<FontIcon Glyph="&#xE787;" />
+				</wctcontrols:SettingsExpander.HeaderIcon>
+				<wctcontrols:SettingsExpander.Items>
+
+					<!--  Modified column  -->
+					<wctcontrols:SettingsCard Header="{helpers:ResourceString Name=DateModifiedLowerCase}">
+						<StackPanel Width="320" Spacing="8">
+							<ComboBox
+								HorizontalAlignment="Stretch"
+								AutomationProperties.Name="{helpers:ResourceString Name=DateModifiedLowerCase}"
+								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.FormatChoices}"
+								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.SelectedFormatIndex, Mode=TwoWay}" />
+							<TextBox
+								AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								Header="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								PlaceholderText="{helpers:ResourceString Name=DateTimeFormatCustomPatternPlaceholder}"
+								Text="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.CustomPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+								Visibility="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.ShowCustomPattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+							<TextBlock Text="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.PreviewText, Mode=OneWay}" />
+							<InfoBar
+								IsClosable="False"
+								IsOpen="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.HasValidationError, Mode=OneWay}"
+								Message="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.ValidationErrorMessage, Mode=OneWay}"
+								Severity="Error" />
+						</StackPanel>
+					</wctcontrols:SettingsCard>
+
+					<!--  Created column  -->
+					<wctcontrols:SettingsCard Header="{helpers:ResourceString Name=DateCreated}">
+						<StackPanel Width="320" Spacing="8">
+							<ComboBox
+								HorizontalAlignment="Stretch"
+								AutomationProperties.Name="{helpers:ResourceString Name=DateCreated}"
+								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.FormatChoices}"
+								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.SelectedFormatIndex, Mode=TwoWay}" />
+							<TextBox
+								AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								Header="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								PlaceholderText="{helpers:ResourceString Name=DateTimeFormatCustomPatternPlaceholder}"
+								Text="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.CustomPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+								Visibility="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.ShowCustomPattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+							<TextBlock Text="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.PreviewText, Mode=OneWay}" />
+							<InfoBar
+								IsClosable="False"
+								IsOpen="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.HasValidationError, Mode=OneWay}"
+								Message="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.ValidationErrorMessage, Mode=OneWay}"
+								Severity="Error" />
+						</StackPanel>
+					</wctcontrols:SettingsCard>
+
+					<!--  Deleted column  -->
+					<wctcontrols:SettingsCard Header="{helpers:ResourceString Name=DateDeleted}">
+						<StackPanel Width="320" Spacing="8">
+							<ComboBox
+								HorizontalAlignment="Stretch"
+								AutomationProperties.Name="{helpers:ResourceString Name=DateDeleted}"
+								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.FormatChoices}"
+								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.SelectedFormatIndex, Mode=TwoWay}" />
+							<TextBox
+								AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								Header="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
+								PlaceholderText="{helpers:ResourceString Name=DateTimeFormatCustomPatternPlaceholder}"
+								Text="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.CustomPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+								Visibility="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.ShowCustomPattern, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+							<TextBlock Text="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.PreviewText, Mode=OneWay}" />
+							<InfoBar
+								IsClosable="False"
+								IsOpen="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.HasValidationError, Mode=OneWay}"
+								Message="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.ValidationErrorMessage, Mode=OneWay}"
+								Severity="Error" />
+						</StackPanel>
+					</wctcontrols:SettingsCard>
+				</wctcontrols:SettingsExpander.Items>
+			</wctcontrols:SettingsExpander>
+
+			<!--  Directory date format rules  -->
+			<wctcontrols:SettingsExpander
+				Header="{helpers:ResourceString Name=DateTimeFormatDirectoryRules}"
+				IsExpanded="False">
+				<wctcontrols:SettingsExpander.HeaderIcon>
+					<FontIcon Glyph="&#xE8B7;" />
+				</wctcontrols:SettingsExpander.HeaderIcon>
+				<wctcontrols:SettingsExpander.Items>
+					<wctcontrols:SettingsCard HorizontalContentAlignment="Stretch">
+						<StackPanel Spacing="8">
+							<Button
+								HorizontalAlignment="Left"
+								AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatAddDirectoryRule}"
+								Click="AddDirectoryFormatRule_Click">
+								<StackPanel Orientation="Horizontal" Spacing="8">
+									<FontIcon FontSize="14" Glyph="&#xE710;" />
+									<TextBlock Text="{helpers:ResourceString Name=DateTimeFormatAddDirectoryRule}" />
+								</StackPanel>
+							</Button>
+
+							<TextBlock
+								Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+								Text="{helpers:ResourceString Name=DateTimeFormatNoDirectoryRules}"
+								Visibility="{x:Bind ViewModel.DateTimeFormatSettings.HasDirectoryRules, Mode=OneWay, Converter={StaticResource NegationBoolToVisibilityConverter}}" />
+
+							<ListView
+								MaxHeight="260"
+								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.DirectoryRules}"
+								SelectionMode="None">
+								<ListView.ItemTemplate>
+									<DataTemplate x:DataType="vm:DateTimeFormatDirectoryRuleViewModel">
+										<Grid HorizontalAlignment="Stretch" ColumnSpacing="8">
+											<Grid.ColumnDefinitions>
+												<ColumnDefinition Width="*" />
+												<ColumnDefinition Width="Auto" />
+											</Grid.ColumnDefinitions>
+											<StackPanel VerticalAlignment="Center">
+												<TextBlock
+													Text="{x:Bind DirectoryPath}"
+													TextTrimming="CharacterEllipsis"
+													ToolTipService.ToolTip="{x:Bind DirectoryPath}" />
+												<TextBlock
+													FontSize="12"
+													Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+													Text="{x:Bind Description}" />
+												<TextBlock
+													FontSize="12"
+													Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+													Text="{x:Bind SubdirectoryLabel}" />
+											</StackPanel>
+											<StackPanel
+												Grid.Column="1"
+												Orientation="Horizontal"
+												Spacing="4">
+												<Button
+													AutomationProperties.Name="{helpers:ResourceString Name=Edit}"
+													Click="EditDirectoryFormatRule_Click"
+													Tag="{x:Bind}"
+													ToolTipService.ToolTip="{helpers:ResourceString Name=Edit}">
+													<FontIcon FontSize="14" Glyph="&#xE70F;" />
+												</Button>
+												<Button
+													AutomationProperties.Name="{helpers:ResourceString Name=Delete}"
+													Click="DeleteDirectoryFormatRule_Click"
+													Tag="{x:Bind}"
+													ToolTipService.ToolTip="{helpers:ResourceString Name=Delete}">
+													<FontIcon FontSize="14" Glyph="&#xE74D;" />
+												</Button>
+											</StackPanel>
+										</Grid>
+									</DataTemplate>
+								</ListView.ItemTemplate>
+							</ListView>
+						</StackPanel>
+					</wctcontrols:SettingsCard>
+				</wctcontrols:SettingsExpander.Items>
+			</wctcontrols:SettingsExpander>
 
 			<!--  Startup settings  -->
 			<wctcontrols:SettingsExpander Header="{helpers:ResourceString Name=StartupSettings}" IsExpanded="False">
@@ -262,8 +458,8 @@
 					<!--  Open in new window  -->
 					<wctcontrols:SettingsCard
 						x:Name="OpenInNewWindowSettings"
-						x:Load="{x:Bind ViewModel.SupportsNewWindows, Mode=OneWay}"
-						Header="{helpers:ResourceString Name=ShowOpenInNewWindow}">
+						Header="{helpers:ResourceString Name=ShowOpenInNewWindow}"
+						Visibility="{x:Bind ViewModel.SupportsNewWindows, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
 						<ToggleSwitch AutomationProperties.Name="{helpers:ResourceString Name=ShowOpenInNewWindow}" IsOn="{x:Bind ViewModel.ShowOpenInNewWindow, Mode=TwoWay}" />
 					</wctcontrols:SettingsCard>
 
