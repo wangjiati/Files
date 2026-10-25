@@ -93,6 +93,7 @@ $excludedArchiveExtensions = @(".pdb")
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $appProject = Join-Path $repoRoot "src\Files.App\Files.App.csproj"
 $appManifest = Join-Path $repoRoot "src\Files.App\Package.appxmanifest"
+$serverProject = Join-Path $repoRoot "src\Files.App.Server\Files.App.Server.csproj"
 $portablePublishProfile = "win-x64-portable"
 
 $tempRoot = $null
@@ -512,6 +513,10 @@ try {
         Fail "Package manifest not found at '$appManifest'."
     }
 
+    if (-not (Test-Path -LiteralPath $serverProject)) {
+        Fail "Server project not found at '$serverProject'."
+    }
+
     if ([string]::IsNullOrWhiteSpace($CertificatePath)) {
         Fail "A signing certificate is required. Pass -CertificatePath or set the release environment. No unsigned or pseudo-signed package was produced."
     }
@@ -644,6 +649,19 @@ try {
     $env:PackageCertificatePassword = $CertificatePassword
 
     $builtUtc = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    # Files.App.Server is built by a custom target outside the app's project
+    # references, so a clean checkout needs an explicit restore for its assets.
+    Invoke-MSBuild "Restore Files.App.Server" @(
+        $serverProject,
+        "-t:Restore",
+        "-p:Configuration=$configuration",
+        "-p:Platform=$platform",
+        "-m:1",
+        "-nr:false",
+        "-v:quiet",
+        "-clp:ErrorsOnly"
+    )
 
     Invoke-MSBuild "Build signed internal MSIX" @(
         $appProject,
