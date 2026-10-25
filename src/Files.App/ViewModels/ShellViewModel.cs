@@ -34,6 +34,14 @@ namespace Files.App.ViewModels
 	{
 		private const int MaxSearchResultsAppendedPerTick = 500;
 
+		private sealed record DateLabelFormatters(
+			IDateTimeFormatter Modified,
+			IDateTimeFormatter Created,
+			IDateTimeFormatter Accessed,
+			IDateTimeFormatter Deleted);
+
+		private DateLabelFormatters? dateLabelFormatters;
+
 		private readonly SemaphoreSlim enumFolderSemaphore;
 		private readonly SemaphoreSlim getFileOrFolderSemaphore;
 		private readonly SemaphoreSlim bulkOperationSemaphore;
@@ -70,6 +78,8 @@ namespace Files.App.ViewModels
 		private readonly IWindowsSecurityService WindowsSecurityService = Ioc.Default.GetRequiredService<IWindowsSecurityService>();
 		private readonly IStorageTrashBinService StorageTrashBinService = Ioc.Default.GetRequiredService<IStorageTrashBinService>();
 		private readonly IContentPageContext ContentPageContext = Ioc.Default.GetRequiredService<IContentPageContext>();
+		private readonly IDateTimeFormatResolver dateTimeFormatResolver = Ioc.Default.GetRequiredService<IDateTimeFormatResolver>();
+		private readonly IDateTimeFormatterFactory dateTimeFormatterFactory = Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>();
 
 		// Only used for Binding and ApplyFilesAndFoldersChangesAsync, don't manipulate on this!
 		public BulkConcurrentObservableCollection<ListedItem> FilesAndFolders { get; }
@@ -2114,6 +2124,8 @@ namespace Files.App.ViewModels
 			if (isDisposed)
 				return;
 
+			dateLabelFormatters = ResolveDateLabelFormatters();
+
 			IsSearchResults = false;
 			HasNoWatcher = false;
 			IsLocationUnavailable = false;
@@ -2415,6 +2427,7 @@ namespace Files.App.ViewModels
 				if (library is null)
 					currentFolder.ItemDateCreatedReal = rootFolder?.DateCreated ?? DateTimeOffset.Now;
 
+				RefreshDateLabels(currentFolder);
 				CurrentFolder = currentFolder;
 				await EnumFromStorageFolderAsync(path, rootFolder, currentStorageFolder, cancellationToken);
 
@@ -2458,6 +2471,7 @@ namespace Files.App.ViewModels
 					FileSizeBytes = 0,
 				};
 
+				RefreshDateLabels(currentFolder);
 				CurrentFolder = currentFolder;
 
 				if (hFile is null)
@@ -2487,6 +2501,7 @@ namespace Files.App.ViewModels
 					{
 						List<ListedItem> fileList = await Win32StorageEnumerator.ListEntries(path, hFile, findData, cancellationToken, -1, GetPreloadIconSize(), intermediateAction: async (intermediateList) =>
 						{
+							RefreshDateLabels(intermediateList);
 							filesAndFolders.AddRange(intermediateList);
 
 							// The stable sort lands new items in final position without reordering visible ones; capped for huge listings
@@ -2496,6 +2511,7 @@ namespace Files.App.ViewModels
 							await ApplyFilesAndFoldersChangesAsync();
 						});
 
+						RefreshDateLabels(fileList);
 						filesAndFolders.AddRange(fileList);
 
 						await OrderFilesAndFoldersAsync();
@@ -2556,6 +2572,7 @@ namespace Files.App.ViewModels
 						GetPreloadIconSize(),
 						async (intermediateList) =>
 						{
+							RefreshDateLabels(intermediateList);
 							filesAndFolders.AddRange(intermediateList);
 
 							// The stable sort lands new items in final position without reordering visible ones; capped for huge listings
@@ -2565,6 +2582,7 @@ namespace Files.App.ViewModels
 							await ApplyFilesAndFoldersChangesAsync();
 						});
 
+					RefreshDateLabels(finalList);
 					filesAndFolders.AddRange(finalList);
 
 					await OrderFilesAndFoldersAsync();
@@ -3197,6 +3215,7 @@ namespace Files.App.ViewModels
 
 			if (!filesAndFolders.ToList().Any(x => x.GetRequiredPath().Equals(item.GetRequiredPath(), StringComparison.OrdinalIgnoreCase))) // Avoid adding duplicate items
 			{
+				RefreshDateLabels(item);
 				filesAndFolders.Add(item);
 
 				if (UserSettingsService.FoldersSettingsService.AreAlternateStreamsVisible)
@@ -3205,6 +3224,7 @@ namespace Files.App.ViewModels
 					foreach (var ads in Win32Helper.GetAlternateStreams(item.GetRequiredPath()))
 					{
 						var adsItem = Win32StorageEnumerator.GetAlternateStream(ads, item);
+						RefreshDateLabels(adsItem);
 						filesAndFolders.Add(adsItem);
 					}
 				}
@@ -3448,6 +3468,7 @@ namespace Files.App.ViewModels
 		public async Task AddSearchResultsToCollectionAsync(ObservableCollection<ListedItem> searchItems, string currentSearchPath)
 		{
 			filesAndFolders.Clear();
+			RefreshDateLabels(searchItems);
 			filesAndFolders.AddRange(searchItems);
 
 			await OrderFilesAndFoldersAsync();
@@ -3462,6 +3483,7 @@ namespace Files.App.ViewModels
 			var currentSearchCTS = searchCTS = new CancellationTokenSource();
 			var token = currentSearchCTS.Token;
 			filesAndFolders.Clear();
+			dateLabelFormatters = ResolveDateLabelFormatters();
 			IsLoadingItems = true;
 			IsSearchResults = true;
 			HasNoWatcher = true;
@@ -3529,6 +3551,7 @@ namespace Files.App.ViewModels
 					if (token.IsCancellationRequested)
 						return;
 
+					RefreshDateLabels(newItems);
 					filesAndFolders.AddRange(newItems);
 					foreach (var item in newItems)
 						pendingSearchResults.Enqueue(item);
@@ -3574,11 +3597,63 @@ namespace Files.App.ViewModels
 		{
 			App.Logger.LogDebug($"UpdateDateDisplay: itemCount={filesAndFolders.Count}");
 
+			var formatters = dateLabelFormatters = ResolveDateLabelFormatters();
 			foreach (var item in filesAndFolders)
-			{
-				if (item.IsRealChanges)
-					item.UpdateReal();
-			}
+				ApplyDateLabels(item, formatters);
+
+			if (currentFolder is not null)
+				ApplyDateLabels(currentFolder, formatters);
+		}
+
+		private void RefreshDateLabels(IEnumerable<ListedItem> items)
+		{
+			var formatters = GetDateLabelFormatters();
+			foreach (var item in items)
+				ApplyDateLabels(item, formatters);
+		}
+
+		private void RefreshDateLabels(ListedItem item)
+			=> ApplyDateLabels(item, GetDateLabelFormatters());
+
+		private DateLabelFormatters GetDateLabelFormatters()
+			=> dateLabelFormatters ??= ResolveDateLabelFormatters();
+
+		private static void ApplyDateLabels(ListedItem item, DateLabelFormatters formatters)
+		{
+			if (item is RecycleBinItem recycleBinItem)
+				recycleBinItem.RefreshDateLabels(formatters.Modified, formatters.Created, formatters.Accessed, formatters.Deleted);
+			else
+				item.RefreshDateLabels(formatters.Modified, formatters.Created, formatters.Accessed);
+		}
+
+		private DateLabelFormatters ResolveDateLabelFormatters()
+		{
+			var directoryPath = WorkingDirectory;
+			if (string.IsNullOrWhiteSpace(directoryPath) || !Path.IsPathRooted(directoryPath))
+				directoryPath = string.Empty;
+
+			return new DateLabelFormatters(
+				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Modified)),
+				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Created)),
+				CreateGlobalDateFormatter(),
+				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Deleted)));
+		}
+
+		private IDateTimeFormatter CreateGlobalDateFormatter()
+		{
+			var settings = UserSettingsService.GeneralSettingsService;
+
+			return CreateDateFormatter(settings.DateTimeFormat, settings.DateTimeFormatCustomPattern);
+		}
+
+		private IDateTimeFormatter CreateDateFormatter(DateTimeFormatRule rule)
+			=> CreateDateFormatter(rule.Format, rule.CustomPattern);
+
+		private IDateTimeFormatter CreateDateFormatter(DateTimeFormats format, string? customPattern)
+		{
+			var validFormat = Enum.IsDefined(format) ? format : DateTimeFormats.Application;
+
+			return dateTimeFormatterFactory.GetDateTimeFormatter(validFormat, customPattern);
 		}
 
 		public void Dispose()

@@ -19,13 +19,11 @@ namespace Files.App.Utils
 {
 	public partial class ListedItem : ObservableObject, IGroupableItem, IListedItem
 	{
-		protected static IUserSettingsService UserSettingsService { get; } = Ioc.Default.GetRequiredService<IUserSettingsService>();
+		protected static IUserSettingsService UserSettingsService => Ioc.Default.GetRequiredService<IUserSettingsService>();
 
-		protected static IStartMenuService StartMenuService { get; } = Ioc.Default.GetRequiredService<IStartMenuService>();
+		protected static IStartMenuService StartMenuService => Ioc.Default.GetRequiredService<IStartMenuService>();
 
-		protected static readonly IFileTagsSettingsService fileTagsSettingsService = Ioc.Default.GetRequiredService<IFileTagsSettingsService>();
-
-		protected static readonly IDateTimeFormatter dateTimeFormatter = Ioc.Default.GetRequiredService<IDateTimeFormatter>();
+		protected static IFileTagsSettingsService FileTagsSettingsService => Ioc.Default.GetRequiredService<IFileTagsSettingsService>();
 
 		public bool IsHiddenItem { get; set; } = false;
 
@@ -57,7 +55,7 @@ namespace Files.App.Utils
 				if (!string.IsNullOrWhiteSpace(MediaDuration))
 					tooltipBuilder.Append($"{Environment.NewLine}{Strings.PropertyDuration.GetLocalizedResource()}: {MediaDuration}");
 				if (SyncStatusUI.LoadSyncStatus)
-					tooltipBuilder.Append($"{Environment.NewLine}{Strings.StatusWithColon.GetLocalizedResource()} {syncStatusUI.SyncStatusString}");
+					tooltipBuilder.Append($"{Environment.NewLine}{Strings.StatusWithColon.GetLocalizedResource()} {SyncStatusUI.SyncStatusString}");
 
 				return tooltipBuilder.ToString();
 			}
@@ -124,7 +122,7 @@ namespace Files.App.Utils
 
 		public IList<TagViewModel>? FileTagsUI
 		{
-			get => fileTagsSettingsService.GetTagsByIds(FileTags);
+			get => FileTagsSettingsService.GetTagsByIds(FileTags);
 		}
 
 		private Uri? customIconSource;
@@ -148,10 +146,10 @@ namespace Files.App.Utils
 			set => SetProperty(ref hasTags, value);
 		}
 
-		private CloudDriveSyncStatusUI syncStatusUI = new();
+		private CloudDriveSyncStatusUI? syncStatusUI;
 		public CloudDriveSyncStatusUI SyncStatusUI
 		{
-			get => syncStatusUI;
+			get => syncStatusUI ??= new CloudDriveSyncStatusUI();
 			set
 			{
 				// For some reason this being null will cause a crash with bindings
@@ -331,14 +329,18 @@ namespace Files.App.Utils
 			private set => SetProperty(ref itemDateAccessed, value);
 		}
 
+		private IDateTimeFormatter? modifiedDateTimeFormatter;
+		private IDateTimeFormatter? createdDateTimeFormatter;
+		private IDateTimeFormatter? accessedDateTimeFormatter;
+
 		private DateTimeOffset itemDateModifiedReal;
 		public DateTimeOffset ItemDateModifiedReal
 		{
 			get => itemDateModifiedReal;
 			set
 			{
-				ItemDateModified = dateTimeFormatter.ToShortLabel(value);
 				itemDateModifiedReal = value;
+				ItemDateModified = modifiedDateTimeFormatter?.ToShortLabel(value);
 			}
 		}
 
@@ -348,8 +350,8 @@ namespace Files.App.Utils
 			get => itemDateCreatedReal;
 			set
 			{
-				ItemDateCreated = dateTimeFormatter.ToShortLabel(value);
 				itemDateCreatedReal = value;
+				ItemDateCreated = createdDateTimeFormatter?.ToShortLabel(value);
 			}
 		}
 
@@ -359,8 +361,8 @@ namespace Files.App.Utils
 			get => itemDateAccessedReal;
 			set
 			{
-				ItemDateAccessed = dateTimeFormatter.ToShortLabel(value);
 				itemDateAccessedReal = value;
+				ItemDateAccessed = accessedDateTimeFormatter?.ToShortLabel(value);
 			}
 		}
 
@@ -493,15 +495,15 @@ namespace Files.App.Utils
 
 		public string? Key { get; set; }
 
-		public virtual bool IsRealChanges =>  ItemDateAccessed != dateTimeFormatter.ToShortLabel(ItemDateAccessedReal)
-			|| ItemDateCreated != dateTimeFormatter.ToShortLabel(ItemDateCreatedReal)
-			|| ItemDateModified != dateTimeFormatter.ToShortLabel(ItemDateModifiedReal);
-
-		public virtual void UpdateReal()
+		public virtual void RefreshDateLabels(IDateTimeFormatter modified, IDateTimeFormatter created, IDateTimeFormatter accessed)
 		{
-			ItemDateAccessed = dateTimeFormatter.ToShortLabel(ItemDateAccessedReal);
-			ItemDateCreated = dateTimeFormatter.ToShortLabel(ItemDateCreatedReal);
-			ItemDateModified = dateTimeFormatter.ToShortLabel(ItemDateModifiedReal);
+			modifiedDateTimeFormatter = modified;
+			createdDateTimeFormatter = created;
+			accessedDateTimeFormatter = accessed;
+
+			ItemDateModified = modified.ToShortLabel(itemDateModifiedReal);
+			ItemDateCreated = created.ToShortLabel(itemDateCreatedReal);
+			ItemDateAccessed = accessed.ToShortLabel(itemDateAccessedReal);
 		}
 
 		/// <summary>
@@ -530,25 +532,24 @@ namespace Files.App.Utils
 			}
 		}
 
+		private IDateTimeFormatter? deletedDateTimeFormatter;
+
 		public DateTimeOffset ItemDateDeletedReal
 		{
 			get => itemDateDeletedReal;
 			set
 			{
-				ItemDateDeleted = dateTimeFormatter.ToShortLabel(value);
 				itemDateDeletedReal = value;
+				ItemDateDeleted = deletedDateTimeFormatter?.ToShortLabel(value);
 			}
 		}
 
-
-		public override bool IsRealChanges => base.IsRealChanges
-			|| ItemDateDeleted != dateTimeFormatter.ToShortLabel(ItemDateDeletedReal);
-
-		public override void UpdateReal()
+		public void RefreshDateLabels(IDateTimeFormatter modified, IDateTimeFormatter created, IDateTimeFormatter accessed, IDateTimeFormatter deleted)
 		{
-			base.UpdateReal();
+			deletedDateTimeFormatter = deleted;
+			RefreshDateLabels(modified, created, accessed);
 
-			ItemDateDeleted = dateTimeFormatter.ToShortLabel(ItemDateDeletedReal);
+			ItemDateDeleted = deleted.ToShortLabel(itemDateDeletedReal);
 		}
 
 		private DateTimeOffset itemDateDeletedReal;
@@ -750,19 +751,18 @@ namespace Files.App.Utils
 		}
 
 
-		public override bool IsRealChanges => base.IsRealChanges
-			|| GitLastCommitDateHumanized != CreateGitLastCommitDateHumanized(GitLastCommitDate);
-
-		public override void UpdateReal()
+		public override void RefreshDateLabels(IDateTimeFormatter modified, IDateTimeFormatter created, IDateTimeFormatter accessed)
 		{
-			base.UpdateReal();
+			base.RefreshDateLabels(modified, created, accessed);
 
 			GitLastCommitDateHumanized = CreateGitLastCommitDateHumanized(GitLastCommitDate);
 		}
 
-		private string CreateGitLastCommitDateHumanized(DateTimeOffset? dateTimeOffset)
+		private static string CreateGitLastCommitDateHumanized(DateTimeOffset? dateTimeOffset)
 		{
-			return dateTimeOffset is DateTimeOffset dto ? dateTimeFormatter.ToShortLabel(dto) : "";
+			return dateTimeOffset is DateTimeOffset dto
+				? Ioc.Default.GetRequiredService<IDateTimeFormatter>().ToShortLabel(dto)
+				: "";
 		}
 
 		private string? _GitLastCommitDateHumanized;

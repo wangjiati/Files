@@ -884,7 +884,7 @@ namespace Files.App.Views.Layouts
 				ResizeColumnToFit(columnIndex);
 		}
 
-		private void AutoFitColumnsIfEnabled()
+		internal void AutoFitColumnsIfEnabled()
 		{
 			if (!UserSettingsService.LayoutSettingsService.AutoSizeColumnsInDetailsLayout)
 				return;

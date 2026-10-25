@@ -221,6 +221,7 @@ namespace Files.App.Views.Shells
 			GitHelpers.GitFetchCompleted += FilesystemViewModel_GitDirectoryUpdated;
 
 			userSettingsService.AppearanceSettingsService.PropertyChanged += AppearanceSettingsService_PropertyChanged;
+			userSettingsService.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
 
 			_updateDateDisplayTimer = DispatcherQueue.CreateTimer();
 			_updateDateDisplayTimer.Interval = TimeSpan.FromSeconds(1);
@@ -903,6 +904,30 @@ namespace Files.App.Views.Shells
 
 		public abstract void NavigateToPath(string? navigationPath, Type? sourcePageType, NavigationArguments? navArgs = null);
 
+		private void UserSettingsService_OnSettingChangedEvent(object? sender, SettingChangedEventArgs e)
+		{
+			if (e.SettingName is not (
+				nameof(IGeneralSettingsService.DateTimeFormat) or
+				nameof(IGeneralSettingsService.DateTimeFormatCustomPattern) or
+				nameof(IGeneralSettingsService.DateTimeColumnFormatRules) or
+				nameof(IGeneralSettingsService.DateTimeFormatDirectoryRules)))
+			{
+				return;
+			}
+
+			if (isDisposed || App.AppModel.IsMainWindowClosed)
+				return;
+
+			DispatcherQueue.TryEnqueue(() =>
+			{
+				if (isDisposed)
+					return;
+
+				_lastDateTimeFormats = userSettingsService.GeneralSettingsService.DateTimeFormat;
+				RefreshDateDisplay();
+			});
+		}
+
 		private void UpdateDateDisplayTimer_Tick(object sender, object e)
 		{
 			if (App.AppModel.IsMainWindowClosed)
@@ -911,12 +936,20 @@ namespace Files.App.Views.Shells
 			if (userSettingsService.GeneralSettingsService.DateTimeFormat != _lastDateTimeFormats)
 			{
 				_lastDateTimeFormats = userSettingsService.GeneralSettingsService.DateTimeFormat;
-				ShellViewModel?.UpdateDateDisplay();
+				RefreshDateDisplay();
 			}
 			else if (userSettingsService.GeneralSettingsService.DateTimeFormat == DateTimeFormats.Application)
 			{
 				ShellViewModel?.UpdateDateDisplay();
 			}
+		}
+
+		private void RefreshDateDisplay()
+		{
+			ShellViewModel?.UpdateDateDisplay();
+
+			if (ContentPage is DetailsLayoutPage detailsLayoutPage)
+				detailsLayoutPage.AutoFitColumnsIfEnabled();
 		}
 
 		public virtual void Dispose()
@@ -931,6 +964,7 @@ namespace Files.App.Views.Shells
 			PointerPressed -= CoreWindow_PointerPressed;
 			drivesViewModel.PropertyChanged -= DrivesManager_PropertyChanged;
 			userSettingsService.AppearanceSettingsService.PropertyChanged -= AppearanceSettingsService_PropertyChanged;
+			userSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
 
 			if (_PaneHolder is not null)
 				_PaneHolder.PropertyChanged -= PaneHolder_PropertyChanged;
