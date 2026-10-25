@@ -48,6 +48,14 @@ namespace Files.App.Helpers
 		/// </summary>
 		static AppLanguageHelper()
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+			{
+				// ApplicationLanguages relies on package identity and cannot be used by the portable build.
+				SupportedLanguages = [new(CultureInfo.InstalledUICulture.Name)];
+				PreferredLanguage = SupportedLanguages[0];
+				return;
+			}
+
 			// Populate the Languages collection with available languages
 			var appLanguages = ApplicationLanguages.ManifestLanguages
 			   .Append(string.Empty) // Add default language code
@@ -81,6 +89,9 @@ namespace Files.App.Helpers
 		/// <returns>True if the language was successfully changed; otherwise, false.</returns>
 		public static bool TryChange(int index)
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+				return false;
+
 			if (index >= SupportedLanguages.Count || PreferredLanguage == SupportedLanguages[index])
 				return false;
 
@@ -99,6 +110,9 @@ namespace Files.App.Helpers
 		/// <returns>True if the language was successfully changed; otherwise, false.</returns>
 		public static bool TryChange(string code)
 		{
+			if (!AppRuntime.Current.SupportsSystemIntegration)
+				return false;
+
 			var lang = new AppLanguageItem(code);
 			var find = SupportedLanguages.FirstOrDefault(dl => dl.Name == lang.Name);
 			if (find is null)
