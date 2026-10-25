@@ -8,17 +8,22 @@ namespace Files.App.Services
 		[Obsolete("See IStartMenuService for further information.")]
 		public bool IsPinned(string itemPath)
 		{
-			var tileId = GetNativeTileId(itemPath);
-			return SecondaryTile.Exists(tileId);
+			try
+			{
+				var tileId = GetNativeTileId(itemPath);
+				return SecondaryTile.Exists(tileId);
+			}
+			catch (Exception)
+			{
+				// SecondaryTile requires package identity and is unavailable in portable mode.
+				return false;
+			}
 		}
 
 		/// <inheritdoc/>
 		public Task<bool> IsPinnedAsync(IStorable storable)
 		{
-			var tileId = GetNativeTileId(storable.Id);
-			var exists = SecondaryTile.Exists(tileId);
-
-			return Task.FromResult(exists);
+			return Task.FromResult(IsPinned(storable.Id));
 		}
 
 		/// <inheritdoc/>

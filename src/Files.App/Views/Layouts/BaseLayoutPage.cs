@@ -688,7 +688,6 @@ namespace Files.App.Views.Layouts
 				SelectedItemsPropertiesViewModel.CheckAllFileExtensions(selectedItems.Select(x => x.FileExtension).ToList());
 
 				var items = ContentPageContextFlyoutFactory.GetItemContextCommandsWithoutShellItems(currentInstanceViewModel: instanceViewModel, selectedItems: selectedItems, selectedItemsPropertiesViewModel: SelectedItemsPropertiesViewModel, commandsViewModel: commandsViewModel, shiftPressed: shiftPressed, itemViewModel: null);
-				App.Logger.LogInformation("Item context menu built with {Count} items.", items.Count);
 				var host = ItemContextFlyoutHost;
 				host.Build(items);
 
@@ -723,7 +722,6 @@ namespace Files.App.Views.Layouts
 
 					var shellMenuItems = await ContentPageContextFlyoutFactory.GetItemContextShellCommandsAsync(
 						shellViewModel.WorkingDirectory, selectedItems, shiftPressed, false, token);
-					App.Logger.LogInformation("Item context menu shell items loaded: {Count}.", shellMenuItems.Count);
 
 					if (token.IsCancellationRequested)
 						return;
