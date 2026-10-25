@@ -91,5 +91,27 @@ namespace Files.Storage
 
 			return false;
 		}
+
+		public static bool TryGetVolumeSerialNumber(string path, out uint serialNumber)
+		{
+			serialNumber = 0;
+
+			if (string.IsNullOrWhiteSpace(path))
+				return false;
+
+			string? root;
+
+			try
+			{
+				root = SystemIO.Path.GetPathRoot(path);
+			}
+			catch (ArgumentException)
+			{
+				return false;
+			}
+
+			return !string.IsNullOrEmpty(root) &&
+				PInvoke.GetVolumeInformation(root, default, out serialNumber, out _, out _, default);
+		}
 	}
 }

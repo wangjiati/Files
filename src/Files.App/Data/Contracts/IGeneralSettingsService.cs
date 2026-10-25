@@ -71,6 +71,21 @@ namespace Files.App.Data.Contracts
 		DateTimeFormats DateTimeFormat { get; set; }
 
 		/// <summary>
+		/// Gets or sets the custom pattern used by the global default when <see cref="DateTimeFormat"/> is custom.
+		/// </summary>
+		string? DateTimeFormatCustomPattern { get; set; }
+
+		/// <summary>
+		/// Gets or sets the global per-column date time format rules.
+		/// </summary>
+		List<DateTimeFormatRule> DateTimeColumnFormatRules { get; set; }
+
+		/// <summary>
+		/// Gets or sets the directory-scoped date time format rules.
+		/// </summary>
+		List<DateTimeFormatRule> DateTimeFormatDirectoryRules { get; set; }
+
+		/// <summary>
 		/// Gets or sets a value indicating whether or not to always open a second pane when opening a new tab.
 		/// </summary>
 		bool AlwaysOpenDualPaneInNewTab { get; set; }

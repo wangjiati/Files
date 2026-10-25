@@ -3,10 +3,14 @@
 
 namespace Files.App.Services.Settings
 {
-	internal sealed partial class GeneralSettingsService : BaseObservableJsonSettings, IGeneralSettingsService
+	internal sealed partial class GeneralSettingsService : BaseObservableJsonSettings, IGeneralSettingsService, IDateTimeFormatRuleSource
 	{
-		public GeneralSettingsService(ISettingsSharingContext settingsSharingContext)
+		private readonly IVolumePathProvider? _volumePathProvider;
+
+		public GeneralSettingsService(ISettingsSharingContext settingsSharingContext, IVolumePathProvider? volumePathProvider = null)
 		{
+			_volumePathProvider = volumePathProvider;
+
 			// Register root
 			RegisterSettingsContext(settingsSharingContext);
 		}
@@ -87,6 +91,24 @@ namespace Files.App.Services.Settings
 		{
 			get => Get(DateTimeFormats.Application);
 			set => Set(value);
+		}
+
+		public string? DateTimeFormatCustomPattern
+		{
+			get => Get<string?>(null);
+			set => Set(value);
+		}
+
+		public List<DateTimeFormatRule> DateTimeColumnFormatRules
+		{
+			get => Get<List<DateTimeFormatRule>>(null) ?? [];
+			set => Set(NormalizeColumnRules(value));
+		}
+
+		public List<DateTimeFormatRule> DateTimeFormatDirectoryRules
+		{
+			get => Get<List<DateTimeFormatRule>>(null) ?? [];
+			set => Set(NormalizeDirectoryRules(value));
 		}
 
 		public bool AlwaysOpenDualPaneInNewTab
@@ -457,6 +479,80 @@ namespace Files.App.Services.Settings
 		{
 			get => Get(512d);
 			set => Set(value);
+		}
+
+		IReadOnlyList<DateTimeFormatRule> IDateTimeFormatRuleSource.ColumnFormatRules
+			=> DateTimeColumnFormatRules;
+
+		IReadOnlyList<DateTimeFormatRule> IDateTimeFormatRuleSource.DirectoryFormatRules
+			=> DateTimeFormatDirectoryRules;
+
+		DateTimeFormats IDateTimeFormatRuleSource.DefaultDateTimeFormat
+			=> DateTimeFormat;
+
+		string? IDateTimeFormatRuleSource.DefaultDateTimeFormatPattern
+			=> DateTimeFormatCustomPattern;
+
+		private List<DateTimeFormatRule> NormalizeColumnRules(List<DateTimeFormatRule>? rules)
+		{
+			if (rules is null)
+				return [];
+
+			var result = new List<DateTimeFormatRule>();
+			var indexByColumn = new Dictionary<string, int>(StringComparer.Ordinal);
+
+			foreach (var rule in rules.OfType<DateTimeFormatRule>())
+			{
+				var columnId = rule.Column?.ToString() ?? "*";
+
+				if (indexByColumn.TryGetValue(columnId, out var index))
+					result[index] = rule;
+				else
+				{
+					indexByColumn[columnId] = result.Count;
+					result.Add(rule);
+				}
+			}
+
+			return result;
+		}
+
+		private List<DateTimeFormatRule> NormalizeDirectoryRules(List<DateTimeFormatRule>? rules)
+		{
+			if (rules is null)
+				return [];
+
+			var result = new List<DateTimeFormatRule>();
+			var indexByScope = new Dictionary<string, int>(StringComparer.Ordinal);
+
+			foreach (var rule in rules.OfType<DateTimeFormatRule>())
+			{
+				var normalized = _volumePathProvider is null
+					? rule
+					: PortableDirectoryKey.NormalizeRule(rule, _volumePathProvider);
+
+				var scopeId = GetRuleScopeId(normalized);
+
+				if (indexByScope.TryGetValue(scopeId, out var index))
+					result[index] = normalized;
+				else
+				{
+					indexByScope[scopeId] = result.Count;
+					result.Add(normalized);
+				}
+			}
+
+			return result;
+		}
+
+		private static string GetRuleScopeId(DateTimeFormatRule rule)
+		{
+			var key = PortableDirectoryKey.FromRule(rule);
+			var column = rule.Column?.ToString() ?? "*";
+
+			return key.IsVolumeScoped
+				? $"V|{key.VolumeId!.ToUpperInvariant()}|{key.RelativePath.ToUpperInvariant()}|{column}"
+				: $"A|{key.AbsolutePath.ToUpperInvariant()}|{column}";
 		}
 
 		protected override void RaiseOnSettingChangedEvent(object sender, SettingChangedEventArgs e)

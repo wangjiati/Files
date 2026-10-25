@@ -31,6 +31,16 @@ namespace Files.App.Services.DateTimeFormatter
 		string? CustomPattern)
 	{
 		/// <summary>
+		/// Gets the identity of the removable volume that contains <see cref="DirectoryPath"/>.
+		/// </summary>
+		public string? VolumeId { get; init; }
+
+		/// <summary>
+		/// Gets the path relative to the removable volume root.
+		/// </summary>
+		public string? RelativePath { get; init; }
+
+		/// <summary>
 		/// Validates the rule without throwing, so invalid persisted settings cannot break list rendering.
 		/// </summary>
 		/// <returns>A localizable validation error; <see cref="DateTimeFormatRuleValidationError.None"/> when valid.</returns>
