@@ -15,6 +15,7 @@ namespace Files.App.Services.DateTimeFormatter
 		InvalidPattern = 4,
 		MissingRelativePath = 5,
 		MissingDirectory = 6,
+		UnsupportedDirectory = 7,
 	}
 
 	/// <summary>

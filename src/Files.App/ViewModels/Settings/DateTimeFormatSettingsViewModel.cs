@@ -59,6 +59,7 @@ namespace Files.App.ViewModels.Settings
 				DateTimeFormatRuleValidationError.MissingPattern => Strings.DateTimeFormatPatternRequired.GetLocalizedResource(),
 				DateTimeFormatRuleValidationError.InvalidPattern => Strings.DateTimeFormatPatternInvalid.GetLocalizedResource(),
 				DateTimeFormatRuleValidationError.MissingDirectory => Strings.DateTimeFormatDirectoryRequired.GetLocalizedResource(),
+				DateTimeFormatRuleValidationError.UnsupportedDirectory => Strings.DateTimeFormatDirectoryUnsupported.GetLocalizedResource(),
 				_ => Strings.DateTimeFormatRuleInvalid.GetLocalizedResource(),
 			};
 	}
@@ -284,6 +285,8 @@ namespace Files.App.ViewModels.Settings
 		{
 			var error = ValidateFormat(format, customPattern);
 			GlobalValidationError = error;
+			OnPropertyChanged(nameof(HasGlobalValidationError));
+			OnPropertyChanged(nameof(GlobalPreview));
 
 			if (error is DateTimeFormatRuleValidationError.None)
 			{
@@ -329,6 +332,21 @@ namespace Files.App.ViewModels.Settings
 			return error;
 		}
 
+		public static bool IsSupportedDirectoryPath(string? directoryPath)
+		{
+			if (string.IsNullOrWhiteSpace(directoryPath))
+				return false;
+
+			try
+			{
+				return SystemIO.Path.IsPathRooted(directoryPath.Trim());
+			}
+			catch (ArgumentException)
+			{
+				return false;
+			}
+		}
+
 		public DateTimeFormatRuleValidationError ValidateDirectoryRule(
 			string directoryPath,
 			DateTimeFormats format,
@@ -336,6 +354,9 @@ namespace Files.App.ViewModels.Settings
 		{
 			if (string.IsNullOrWhiteSpace(directoryPath))
 				return DateTimeFormatRuleValidationError.MissingDirectory;
+
+			if (!IsSupportedDirectoryPath(directoryPath))
+				return DateTimeFormatRuleValidationError.UnsupportedDirectory;
 
 			return ValidateFormat(format, customPattern);
 		}
@@ -353,7 +374,8 @@ namespace Files.App.ViewModels.Settings
 			if (error is not DateTimeFormatRuleValidationError.None)
 				return error;
 
-			var normalizedDirectoryPath = PortableDirectoryKey.NormalizePath(directoryPath);
+			var trimmedDirectoryPath = directoryPath.Trim();
+			var normalizedDirectoryPath = PortableDirectoryKey.NormalizePath(trimmedDirectoryPath);
 			var directoryChanged = existingRule is null ||
 				!string.Equals(
 					PortableDirectoryKey.NormalizePath(existingRule.DirectoryPath),
@@ -367,13 +389,9 @@ namespace Files.App.ViewModels.Settings
 				format,
 				format is DateTimeFormats.Custom ? customPattern : null);
 
-			if (_volumePathProvider is not null)
+			if (!directoryChanged && existingRule is not null)
 			{
-				// Only an explicit directory change may discard the stored volume identity.
-				rule = PortableDirectoryKey.NormalizeRule(rule, _volumePathProvider, resetVolumeIdentity: directoryChanged);
-			}
-			else if (!directoryChanged && existingRule is not null)
-			{
+				// Carry the stored identity forward so an offline or remounted volume is never rebound.
 				rule = rule with
 				{
 					VolumeId = existingRule.VolumeId,
@@ -381,16 +399,29 @@ namespace Files.App.ViewModels.Settings
 				};
 			}
 
+			if (_volumePathProvider is not null)
+			{
+				// Only an explicit directory change may discard the stored volume identity.
+				rule = PortableDirectoryKey.NormalizeRule(rule, _volumePathProvider, resetVolumeIdentity: directoryChanged);
+			}
+
 			var rules = _settings.DateTimeFormatDirectoryRules.ToList();
-			var existingIndex = existingRule is null ? -1 : FindRuleIndex(rules, existingRule);
 
-			if (existingIndex < 0)
-				existingIndex = rules.FindIndex(candidate => IsSameScope(candidate, rule));
+			if (existingRule is not null)
+			{
+				var existingIndex = FindRuleIndex(rules, existingRule);
 
-			if (existingIndex >= 0)
-				rules[existingIndex] = rule;
-			else
-				rules.Add(rule);
+				if (existingIndex < 0)
+					existingIndex = rules.FindIndex(candidate => IsSameScope(candidate, existingRule));
+
+				if (existingIndex >= 0)
+					rules.RemoveAt(existingIndex);
+			}
+
+			// The rule that was just saved is authoritative for its scope and must be the last one
+			// so settings normalization cannot replace it with a stale duplicate.
+			rules.RemoveAll(candidate => IsSameScope(candidate, rule));
+			rules.Add(rule);
 
 			_settings.DateTimeFormatDirectoryRules = rules;
 			RefreshDirectoryRules();
@@ -620,6 +651,6 @@ namespace Files.App.ViewModels.Settings
 				: string.Empty;
 
 		public string Description
-			=> $"{ScopeLabel}: {FormatLabel}";
+			=> string.Format(Strings.DateTimeFormatRuleDescription.GetLocalizedResource(), ScopeLabel, FormatLabel);
 	}
 }

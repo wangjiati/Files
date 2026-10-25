@@ -129,6 +129,14 @@ namespace Files.App.Views.Layouts
 			if (ParentShellPageInstance?.ShellViewModel?.WorkingDirectory is not { Length: > 0 } directoryPath)
 				return;
 
+			if (!DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath(directoryPath))
+			{
+				await DialogDisplayHelper.ShowDialogAsync(
+					Strings.DateTimeFormatUnsupportedLocationTitle.GetLocalizedResource(),
+					Strings.DateTimeFormatUnsupportedLocationMessage.GetLocalizedResource());
+				return;
+			}
+
 			var viewModel = new DateTimeFormatSettingsViewModel(
 				Ioc.Default.GetRequiredService<IGeneralSettingsService>(),
 				Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>(),

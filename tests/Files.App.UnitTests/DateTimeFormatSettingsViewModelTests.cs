@@ -299,6 +299,138 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void SaveDirectoryRule_FormatOnlyEditKeepsVolumeIdentityWhenVolumeIsUnavailable()
+		{
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Projects", "VOL1", @"\Projects");
+			var (settings, viewModel) = CreateTarget(volumes);
+
+			viewModel.SaveDirectoryRule(null, @"E:\Projects", DateTimeColumnKind.Modified, DateTimeFormats.Universal, null, false);
+			var stored = settings.DateTimeFormatDirectoryRules.Single();
+			volumes.RemoveVolume(@"E:\Projects");
+
+			var error = viewModel.SaveDirectoryRule(stored, stored.DirectoryPath!, DateTimeColumnKind.Modified, DateTimeFormats.Custom, "yyyy", false);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.None, error);
+			stored = settings.DateTimeFormatDirectoryRules.Single();
+			Assert.AreEqual("VOL1", stored.VolumeId);
+			Assert.AreEqual(@"\Projects", stored.RelativePath);
+			Assert.AreEqual(DateTimeFormats.Custom, stored.Format);
+			Assert.AreEqual("yyyy", stored.CustomPattern);
+		}
+
+		[TestMethod]
+		public void SaveDirectoryRule_FormatOnlyEditDoesNotRebindAfterDriveLetterChange()
+		{
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Projects", "VOL1", @"\Projects");
+			var (settings, viewModel) = CreateTarget(volumes);
+
+			viewModel.SaveDirectoryRule(null, @"E:\Projects", DateTimeColumnKind.Modified, DateTimeFormats.Universal, null, false);
+			var stored = settings.DateTimeFormatDirectoryRules.Single();
+			volumes.RemoveVolume(@"E:\Projects");
+			volumes.AddVolume(@"F:\Projects", "NEWVOL", @"\Projects");
+
+			var error = viewModel.SaveDirectoryRule(stored, stored.DirectoryPath!, DateTimeColumnKind.Modified, DateTimeFormats.System, null, false);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.None, error);
+			stored = settings.DateTimeFormatDirectoryRules.Single();
+			Assert.AreEqual("VOL1", stored.VolumeId);
+			Assert.AreEqual(@"\Projects", stored.RelativePath);
+			Assert.AreNotEqual("NEWVOL", stored.VolumeId);
+		}
+
+		[TestMethod]
+		public void SaveDirectoryRule_ReplacesSameScopeRuleWithoutStaleDuplicateOverride()
+		{
+			// The volume is unavailable, so the absolute and volume identities remain distinct persisted scopes.
+			var volumes = new FakeVolumePathProvider();
+			var (settings, viewModel) = CreateTarget(volumes);
+			settings.DateTimeFormatDirectoryRules =
+			[
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, @"E:\Projects", false, DateTimeFormats.System, null)
+				{
+					VolumeId = "VOL1",
+					RelativePath = @"\Projects",
+				},
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, @"E:\Projects", false, DateTimeFormats.Universal, null),
+			];
+
+			var existingRule = settings.DateTimeFormatDirectoryRules.First(rule => rule.VolumeId is not null);
+			var error = viewModel.SaveDirectoryRule(
+				existingRule,
+				@"E:\Projects",
+				DateTimeColumnKind.Modified,
+				DateTimeFormats.Custom,
+				"yyyy",
+				false);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.None, error);
+			var stored = settings.DateTimeFormatDirectoryRules.Single();
+			Assert.AreEqual(DateTimeFormats.Custom, stored.Format);
+			Assert.AreEqual("yyyy", stored.CustomPattern);
+			Assert.AreEqual("VOL1", stored.VolumeId);
+		}
+
+		[TestMethod]
+		public void SaveDirectoryRule_RejectsNonRootedAndShellPaths()
+		{
+			var (settings, viewModel) = CreateTarget();
+
+			var error = viewModel.SaveDirectoryRule(null, @"relative\folder", null, DateTimeFormats.Universal, null, false);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.UnsupportedDirectory, error);
+			Assert.AreEqual(0, settings.DateTimeFormatDirectoryRules.Count);
+			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("Home"));
+			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("Shell:RecycleBinFolder"));
+			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("ftp://server/share"));
+		}
+
+		[TestMethod]
+		public void SaveDirectoryRule_TrimsDirectoryPath()
+		{
+			var (settings, viewModel) = CreateTarget();
+
+			var error = viewModel.SaveDirectoryRule(null, @"  C:\Work  ", null, DateTimeFormats.Universal, null, false);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.None, error);
+			Assert.AreEqual(@"C:\Work", settings.DateTimeFormatDirectoryRules.Single().DirectoryPath);
+		}
+
+		[TestMethod]
+		public void GlobalPreviewNotifiesWhenCustomPatternChanges()
+		{
+			var (_, viewModel) = CreateTarget();
+			var changedProperties = new System.Collections.Generic.HashSet<string>();
+			viewModel.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName ?? string.Empty);
+
+			viewModel.SelectedGlobalFormatIndex = 3;
+			viewModel.GlobalCustomPattern = "yyyy";
+
+			CollectionAssert.Contains(
+				changedProperties.ToList(),
+				nameof(DateTimeFormatSettingsViewModel.GlobalPreview));
+			CollectionAssert.Contains(
+				changedProperties.ToList(),
+				nameof(DateTimeFormatSettingsViewModel.HasGlobalValidationError));
+		}
+
+		[TestMethod]
+		public void RuleDialog_UnsupportedDirectoryBlocksSave()
+		{
+			var (settings, settingsViewModel) = CreateTarget();
+			var dialog = new DateTimeFormatRuleDialogViewModel(
+				settingsViewModel,
+				existingRule: null,
+				initialDirectoryPath: "Shell:RecycleBinFolder",
+				initialColumn: DateTimeColumnKind.Modified);
+
+			Assert.IsFalse(dialog.Save());
+			Assert.IsTrue(dialog.HasValidationError);
+			Assert.AreEqual(0, settings.DateTimeFormatDirectoryRules.Count);
+		}
+
+		[TestMethod]
 		public void SaveDirectoryRule_ChangingDirectoryClearsOldVolumeIdentity()
 		{
 			var volumes = new FakeVolumePathProvider();
@@ -332,6 +464,9 @@ namespace Files.App.UnitTests
 
 			public void AddVolume(string path, string volumeId, string relativePath)
 				=> _volumes[PortableDirectoryKey.NormalizePath(path)] = (volumeId, relativePath);
+
+			public void RemoveVolume(string path)
+				=> _volumes.Remove(PortableDirectoryKey.NormalizePath(path));
 
 			public bool TryGetVolumeIdentity(string directoryPath, out string volumeId, out string relativePath)
 			{

@@ -2096,6 +2096,9 @@
   <data name="DateTimeFormatDirectoryRules" xml:space="preserve">
     <value>文件夹日期格式</value>
   </data>
+  <data name="DateTimeFormatDirectoryUnsupported" xml:space="preserve">
+    <value>请选择本地文件夹路径。此位置不受支持。</value>
+  </data>
   <data name="DateTimeFormatForThisFolder" xml:space="preserve">
     <value>此文件夹的日期和时间格式</value>
   </data>
@@ -2123,11 +2126,20 @@
   <data name="DateTimeFormatRuleAddTitle" xml:space="preserve">
     <value>设置文件夹日期时间格式</value>
   </data>
+  <data name="DateTimeFormatRuleDescription" xml:space="preserve">
+    <value>{0}：{1}</value>
+  </data>
   <data name="DateTimeFormatRuleEditTitle" xml:space="preserve">
     <value>编辑文件夹日期时间格式</value>
   </data>
   <data name="DateTimeFormatRuleInvalid" xml:space="preserve">
     <value>此日期时间格式规则无效。</value>
+  </data>
+  <data name="DateTimeFormatUnsupportedLocationMessage" xml:space="preserve">
+    <value>此位置不支持文件夹日期和时间格式。</value>
+  </data>
+  <data name="DateTimeFormatUnsupportedLocationTitle" xml:space="preserve">
+    <value>日期和时间格式</value>
   </data>
   <data name="DateTimeFormatUseGlobalDefault" xml:space="preserve">
     <value>使用全局默认格式</value>

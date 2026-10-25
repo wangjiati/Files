@@ -2123,6 +2123,9 @@
   <data name="DateTimeFormatDirectoryRules" xml:space="preserve">
     <value>Folder date formats</value>
   </data>
+  <data name="DateTimeFormatDirectoryUnsupported" xml:space="preserve">
+    <value>Choose a local folder path. This location is not supported.</value>
+  </data>
   <data name="DateTimeFormatForThisFolder" xml:space="preserve">
     <value>Date and time format for this folder</value>
   </data>
@@ -2150,11 +2153,20 @@
   <data name="DateTimeFormatRuleAddTitle" xml:space="preserve">
     <value>Set folder date and time format</value>
   </data>
+  <data name="DateTimeFormatRuleDescription" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
   <data name="DateTimeFormatRuleEditTitle" xml:space="preserve">
     <value>Edit folder date and time format</value>
   </data>
   <data name="DateTimeFormatRuleInvalid" xml:space="preserve">
     <value>This date and time format rule is not valid.</value>
+  </data>
+  <data name="DateTimeFormatUnsupportedLocationMessage" xml:space="preserve">
+    <value>Folder date and time formats are not available for this location.</value>
+  </data>
+  <data name="DateTimeFormatUnsupportedLocationTitle" xml:space="preserve">
+    <value>Date and time format</value>
   </data>
   <data name="DateTimeFormatUseGlobalDefault" xml:space="preserve">
     <value>Use global default</value>
