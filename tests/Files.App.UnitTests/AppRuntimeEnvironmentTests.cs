@@ -2,15 +2,23 @@
 // Licensed under the MIT License.
 
 using Files.App;
+using Files.App.Utils;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
+using System.Linq;
+using System.Xml.Linq;
 
 namespace Files.App.UnitTests
 {
 	[TestClass]
 	public sealed class AppRuntimeEnvironmentTests
 	{
+		[TestCleanup]
+		public void Cleanup()
+		{
+			AppRuntime.Reset();
+		}
 		[TestMethod]
 		public void Portable_KeepsApplicationDirectoriesBelowTheProvidedRoot()
 		{
@@ -37,6 +45,29 @@ namespace Files.App.UnitTests
 
 			Assert.AreEqual(Path.GetFullPath(AppContext.BaseDirectory), environment.InstallDirectory);
 			Assert.AreEqual(typeof(AppRuntime).Assembly.GetName().Version, environment.Version);
+		}
+
+		[TestMethod]
+		public void Portable_VersionMatchesThePackageManifest()
+		{
+			var manifestPath = FindRepositoryFile(Path.Combine("src", "Files.App", "Package.appxmanifest"));
+			var manifestVersion = XDocument.Load(manifestPath)
+				.Descendants()
+				.First(element => element.Name.LocalName == "Identity")
+				.Attribute("Version")?.Value;
+
+			Assert.IsNotNull(manifestVersion);
+			var expectedVersion = Version.Parse(manifestVersion);
+			Assert.AreEqual(expectedVersion, typeof(AppRuntime).Assembly.GetName().Version);
+			Assert.AreEqual(expectedVersion, new PortableAppRuntimeEnvironment().Version);
+		}
+
+		[TestMethod]
+		public void QuickAccess_DoesNotAutoPinRecycleBinWithoutSystemIntegration()
+		{
+			Assert.IsFalse(QuickAccessManager.ShouldPinRecycleBinOnFirstRun(supportsSystemIntegration: false, isFirstRun: true, isAlreadyPinned: false));
+			Assert.IsTrue(QuickAccessManager.ShouldPinRecycleBinOnFirstRun(supportsSystemIntegration: true, isFirstRun: true, isAlreadyPinned: false));
+			Assert.IsFalse(QuickAccessManager.ShouldPinRecycleBinOnFirstRun(supportsSystemIntegration: true, isFirstRun: true, isAlreadyPinned: true));
 		}
 
 		[TestMethod]
@@ -82,6 +113,18 @@ namespace Files.App.UnitTests
 			Assert.IsTrue(environment.SupportsSystemIntegration);
 			Assert.AreEqual(snapshot.DisplayName, environment.DisplayName);
 			Assert.AreEqual(1, reads);
+		}
+
+		private static string FindRepositoryFile(string relativePath)
+		{
+			for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+			{
+				var candidate = Path.Combine(directory.FullName, relativePath);
+				if (File.Exists(candidate))
+					return candidate;
+			}
+
+			throw new FileNotFoundException($"Could not find '{relativePath}' above '{AppContext.BaseDirectory}'.");
 		}
 
 		private static void AssertDirectoryBelow(string root, string path)

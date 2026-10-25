@@ -52,6 +52,10 @@ Allow building from a working tree with uncommitted changes. By default a dirty
 working tree is rejected before any build starts. Artifacts built with this
 switch are recorded as Dirty and are not reproducible from the recorded commit.
 
+.PARAMETER ReplaceExistingRelease
+Replace release files already present in the output directory. Without this
+switch a non-empty output directory is rejected before any build starts.
+
 .EXAMPLE
 $securePassword = Read-Host -AsSecureString "Signing certificate password"
 $env:FILES_INTERNAL_CERT_PASSWORD = (New-Object System.Net.NetworkCredential("", $securePassword)).Password
@@ -75,7 +79,8 @@ param(
     [string]$UpstreamCommit = "",
     [string]$CertificatePath = "",
     [string]$CertificatePassword = "",
-    [switch]$AllowDirty
+    [switch]$AllowDirty,
+    [switch]$ReplaceExistingRelease
 )
 
 Set-StrictMode -Version Latest
@@ -94,6 +99,26 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $appProject = Join-Path $repoRoot "src\Files.App\Files.App.csproj"
 $appManifest = Join-Path $repoRoot "src\Files.App\Package.appxmanifest"
 $serverProject = Join-Path $repoRoot "src\Files.App.Server\Files.App.Server.csproj"
+$testProject = Join-Path $repoRoot "tests\Files.App.UnitTests\Files.App.UnitTests.csproj"
+$launcherProject = Join-Path $repoRoot "src\Files.App.Launcher\Files.App.Launcher.vcxproj"
+$openDialogProject = Join-Path $repoRoot "src\Files.App.OpenDialog\Files.App.OpenDialog.vcxproj"
+$openDialogWin32Project = Join-Path $repoRoot "src\Files.App.OpenDialog\Files.App.OpenDialog.Win32.vcxproj"
+$saveDialogProject = Join-Path $repoRoot "src\Files.App.SaveDialog\Files.App.SaveDialog.vcxproj"
+$saveDialogWin32Project = Join-Path $repoRoot "src\Files.App.SaveDialog\Files.App.SaveDialog.Win32.vcxproj"
+$integrationAssetsDirectory = Join-Path $repoRoot "src\Files.App\Assets\FilesOpenDialog"
+$integrationAssetNames = @(
+    "Files.App.Launcher.exe"
+    "Files.App.OpenDialog32.dll"
+    "Files.App.OpenDialog64.dll"
+    "Files.App.SaveDialog32.dll"
+    "Files.App.SaveDialog64.dll"
+)
+$requiredPortableAssets = @(
+    "Assets/AppTiles/Dev/Logo.ico"
+    "Assets/Sidebar/EmptySidebar_48_ThemeLight.svg"
+    "Assets/WSL/alpinepng.png"
+    "Assets/error.png"
+)
 $portablePublishProfile = "win-x64-portable"
 
 $tempRoot = $null
@@ -143,6 +168,86 @@ function Invoke-MSBuild([string]$Step, [string[]]$Arguments) {
 
     $elapsed = (Get-Date) - $started
     Write-Host ("    {0} completed in {1:n1} minutes." -f $Step, $elapsed.TotalMinutes)
+}
+
+function Invoke-DotnetTest([string]$Step, [string[]]$Arguments) {
+    Write-Host "==> $Step"
+    $started = Get-Date
+    & dotnet @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        Fail "$Step failed with exit code $exitCode."
+    }
+
+    $elapsed = (Get-Date) - $started
+    Write-Host ("    {0} completed in {1:n1} minutes." -f $Step, $elapsed.TotalMinutes)
+}
+
+function Clear-GeneratedIntegrationAssets {
+    if (-not (Test-Path -LiteralPath $integrationAssetsDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $integrationAssetsDirectory -Force | Out-Null
+        return
+    }
+
+    Get-ChildItem -LiteralPath $integrationAssetsDirectory -File -Force |
+        Where-Object { $_.Name -match "^Files\.App\.(Launcher\.exe|OpenDialog.*\.dll|SaveDialog.*\.dll)$" } |
+        Remove-Item -Force -ErrorAction Stop
+}
+
+function Assert-SourceIntegrationAssets {
+    foreach ($fileName in $integrationAssetNames) {
+        $path = Join-Path $integrationAssetsDirectory $fileName
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Fail "The integration asset '$path' was not produced. Build the native launcher and dialog projects before packaging."
+        }
+        if ((Get-Item -LiteralPath $path).Length -eq 0) {
+            Fail "The integration asset '$path' is empty."
+        }
+    }
+}
+
+function Assert-PortableRequiredAssets([string]$Root, [string]$Description) {
+    foreach ($relativePath in $requiredPortableAssets) {
+        $path = Join-Path $Root ($relativePath.Replace("/", "\"))
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            Fail "$Description is missing required asset '$relativePath'."
+        }
+        if ((Get-Item -LiteralPath $path).Length -eq 0) {
+            Fail "$Description contains an empty required asset '$relativePath'."
+        }
+    }
+}
+
+function Assert-MsixIntegrationAssets([string]$MsixPath) {
+    try {
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($MsixPath)
+    }
+    catch {
+        Fail "The MSIX could not be opened for integration asset validation: $($_.Exception.Message)"
+    }
+
+    try {
+        $entries = @{}
+        foreach ($entry in $archive.Entries) {
+            $entries[$entry.FullName.Replace("\", "/")] = $entry.Length
+        }
+
+        foreach ($fileName in $integrationAssetNames) {
+            $suffix = "Assets/FilesOpenDialog/$fileName"
+            $entryName = $entries.Keys |
+                Where-Object { $_ -eq $suffix -or $_.EndsWith("/$suffix", [System.StringComparison]::OrdinalIgnoreCase) } |
+                Select-Object -First 1
+            if ($null -eq $entryName) {
+                Fail "The MSIX payload is missing integration asset '$suffix'."
+            }
+            if ($entries[$entryName] -eq 0) {
+                Fail "The MSIX payload contains an empty integration asset '$entryName'."
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
 }
 
 function Find-MSBuild {
@@ -304,6 +409,11 @@ function Assert-PortableZip([string]$ZipPath, [string]$PortableRoot, [string]$Re
         if (-not $expected.ContainsKey($ReleaseInfoName)) {
             Fail "The staged portable directory is missing $ReleaseInfoName."
         }
+        foreach ($requiredAsset in $requiredPortableAssets) {
+            if (-not $expected.ContainsKey($requiredAsset)) {
+                Fail "The staged portable directory is missing required asset '$requiredAsset'."
+            }
+        }
 
         foreach ($entry in $archive.Entries) {
             if (-not $remaining.ContainsKey($entry.FullName)) {
@@ -461,15 +571,20 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
     $destinationParent = Split-Path -Parent $DestinationDirectory
     $destinationLeaf = Split-Path -Leaf $DestinationDirectory
     $backupDirectory = Join-Path $destinationParent (".$destinationLeaf.backup-" + [Guid]::NewGuid().ToString("N"))
-    New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
 
     $replacedFiles = New-Object System.Collections.ArrayList
     $addedFiles = New-Object System.Collections.Generic.List[string]
+    $backupCreated = $false
     try {
         foreach ($name in $FileNames) {
             $sourceFile = Join-Path $StagingDirectory $name
             $destinationFile = Join-Path $DestinationDirectory $name
             if (Test-Path -LiteralPath $destinationFile -PathType Leaf) {
+                if (-not $backupCreated) {
+                    New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
+                    $backupCreated = $true
+                }
+
                 $backupFile = Join-Path $backupDirectory $name
                 [System.IO.File]::Replace($sourceFile, $destinationFile, $backupFile, $true)
                 [void]$replacedFiles.Add([pscustomobject]@{ Destination = $destinationFile; Backup = $backupFile })
@@ -515,7 +630,7 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
         throw $publishError
     }
 
-    if (Test-Path -LiteralPath $backupDirectory) {
+    if ($backupCreated -and (Test-Path -LiteralPath $backupDirectory)) {
         try {
             Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction Stop
         }
@@ -654,6 +769,12 @@ try {
             Fail "Release output path '$outputFullPath' exists but is not a directory."
         }
     }
+    if (Test-Path -LiteralPath $outputFullPath -PathType Container) {
+        $existingOutputEntries = @(Get-ChildItem -LiteralPath $outputFullPath -Force -ErrorAction Stop)
+        if ($existingOutputEntries.Count -ne 0 -and -not $ReplaceExistingRelease) {
+            Fail "Release output directory '$outputFullPath' is not empty. Pass -ReplaceExistingRelease to replace an existing release explicitly."
+        }
+    }
     if (Test-PathUnderDirectory $certificatePathResolved $outputFullPath) {
         Fail "The signing certificate must not be inside the release output directory."
     }
@@ -675,8 +796,13 @@ try {
 
     $builtUtc = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
 
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        Fail "dotnet is required to build and run the unit tests."
+    }
+
     # Files.App.Server is built by a custom target outside the app's project
-    # references, so a clean checkout needs an explicit restore for its assets.
+    # references, so a clean checkout needs an explicit restore before any
+    # project that references Files.App is built.
     Invoke-MSBuild "Restore Files.App.Server" @(
         $serverProject,
         "-t:Restore",
@@ -687,6 +813,79 @@ try {
         "-v:quiet",
         "-clp:ErrorsOnly"
     )
+
+    Invoke-MSBuild "Build unit tests (Debug)" @(
+        $testProject,
+        "-restore",
+        "-t:Build",
+        "-p:Configuration=Debug",
+        "-p:Platform=$platform",
+        "-m:1",
+        "-nr:false",
+        "-v:quiet",
+        "-clp:ErrorsOnly"
+    )
+    Invoke-DotnetTest "Run unit tests" @(
+        "test",
+        $testProject,
+        "-c", "Debug",
+        "-p:Platform=$platform",
+        "--no-build",
+        "--no-restore"
+    )
+
+    Invoke-MSBuild "Build Msix (Debug)" @(
+        $appProject,
+        "-restore",
+        "-t:Build",
+        "-p:Configuration=Debug",
+        "-p:Platform=$platform",
+        "-p:Distribution=Msix",
+        "-m:1",
+        "-nr:false",
+        "-v:quiet",
+        "-clp:ErrorsOnly"
+    )
+
+    Invoke-MSBuild "Build Portable (Debug)" @(
+        $appProject,
+        "-restore",
+        "-t:Build",
+        "-p:Configuration=Debug",
+        "-p:Platform=$platform",
+        "-p:Distribution=Portable",
+        "-p:RuntimeIdentifier=$runtimeIdentifier",
+        "-m:1",
+        "-nr:false",
+        "-v:quiet",
+        "-clp:ErrorsOnly"
+    )
+
+    # The native launcher and dialog projects copy their outputs into the app's
+    # Assets\FilesOpenDialog folder. Remove stale copies so the MSIX cannot carry
+    # binaries from an earlier build configuration.
+    Clear-GeneratedIntegrationAssets
+    $nativeProjects = @(
+        @{ Name = "Build launcher (Release)"; Project = $launcherProject; TargetPlatform = $platform }
+        @{ Name = "Build open dialog (Release x64)"; Project = $openDialogProject; TargetPlatform = $platform }
+        @{ Name = "Build open dialog (Release x86)"; Project = $openDialogWin32Project; TargetPlatform = "Win32" }
+        @{ Name = "Build save dialog (Release x64)"; Project = $saveDialogProject; TargetPlatform = $platform }
+        @{ Name = "Build save dialog (Release x86)"; Project = $saveDialogWin32Project; TargetPlatform = "Win32" }
+    )
+    foreach ($nativeProject in $nativeProjects) {
+        Invoke-MSBuild $nativeProject.Name @(
+            $nativeProject.Project,
+            "-restore",
+            "-t:Build",
+            "-p:Configuration=$configuration",
+            "-p:Platform=$($nativeProject.TargetPlatform)",
+            "-m:1",
+            "-nr:false",
+            "-v:quiet",
+            "-clp:ErrorsOnly"
+        )
+    }
+    Assert-SourceIntegrationAssets
 
     Invoke-MSBuild "Build signed internal MSIX" @(
         $appProject,
@@ -787,6 +986,7 @@ try {
     if ($authenticodeStatus -ne "Valid") {
         Write-Warning "MSIX Authenticode status is '$authenticodeStatus'. This is expected for an untrusted test certificate; verify certificate trust on target machines."
     }
+    Assert-MsixIntegrationAssets $msixSourcePath
     Assert-ZipHasNoPrivateKeyFiles $msixSourcePath "The MSIX package"
 
     Invoke-MSBuild "Publish portable application" @(
@@ -810,6 +1010,12 @@ try {
         Fail "Portable publish did not produce Files.exe in '$portableStaging'."
     }
 
+    $portableVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($portableExe).FileVersion
+    if ($portableVersion -ne $version) {
+        Fail "The portable executable version '$portableVersion' does not match Package.appxmanifest version '$version'."
+    }
+
+    Assert-PortableRequiredAssets $portableStaging "The portable publish output"
     foreach ($requiredPortableFile in @("Microsoft.WindowsAppRuntime.Bootstrap.dll", "Microsoft.WindowsAppRuntime.dll", "Microsoft.ui.xaml.dll", "Files.pri")) {
         if (-not (Test-Path -LiteralPath (Join-Path $portableStaging $requiredPortableFile))) {
             Fail "Portable publish is missing '$requiredPortableFile'. The Windows App SDK must be self-contained."
@@ -883,7 +1089,6 @@ try {
 
     Publish-ReleaseSet $releaseStaging $outputFullPath $releaseFileNames $checksumsName
     $releaseStaging = $null
-    Assert-ReleaseChecksums (Join-Path $outputFullPath $checksumsName) $outputFullPath @($msixName, $zipName, $releaseInfoName)
 
     Write-Host ""
     Write-Host "Internal release artifacts:"

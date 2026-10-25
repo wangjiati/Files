@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Helpers;
 using Files.App.Helpers.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -302,8 +303,10 @@ namespace Files.App
 				SafetyExtensions.IgnoreExceptions(() =>
 				{
 					var dataPackage = Clipboard.GetContent();
-					if (AppRuntime.Current.PackageFamilyName is { } packageFamilyName &&
-						dataPackage.Properties.PackageFamilyName == packageFamilyName && dataPackage.Contains(StandardDataFormats.StorageItems))
+					var isOwnedFileClipboard = AppRuntime.Current.PackageFamilyName is { } packageFamilyName
+						? dataPackage.Properties.PackageFamilyName == packageFamilyName
+						: ClipboardFileOperations.WasFileClipboardSetByThisProcess;
+					if (isOwnedFileClipboard && dataPackage.Contains(StandardDataFormats.StorageItems))
 						Clipboard.Flush();
 				}, Logger);
 

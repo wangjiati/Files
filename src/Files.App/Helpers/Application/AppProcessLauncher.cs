@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Files.App.Helpers
@@ -35,11 +36,29 @@ namespace Files.App.Helpers
 			Action releasePortableDataLease,
 			Action restorePortableDataLease)
 		{
-			releasePortableDataLease();
+			try
+			{
+				releasePortableDataLease();
+			}
+			catch (Exception ex)
+			{
+				App.Logger?.LogError(ex, "Unable to release the portable data lease before restarting.");
+				return Task.FromResult(false);
+			}
+
 			if (start(processPath, string.Empty))
 				return Task.FromResult(true);
 
-			restorePortableDataLease();
+			try
+			{
+				restorePortableDataLease();
+			}
+			catch (Exception ex)
+			{
+				// The caller reports the failed restart; never let lease recovery escape an async void handler.
+				App.Logger?.LogError(ex, "Unable to reacquire the portable data lease after a failed restart.");
+			}
+
 			return Task.FromResult(false);
 		}
 

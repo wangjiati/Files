@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.Concurrent;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -18,6 +19,8 @@ namespace Files.App.Utils.Serialization.Implementation
 
 		private JsonTypeInfo<ConcurrentDictionary<string, JsonElement>?> SettingsTypeInfo { get; }
 
+		private bool _unreadableDataPreserved;
+
 		public DefaultJsonSettingsDatabase(
 			ISettingsSerializer settingsSerializer,
 			IJsonSettingsSerializer jsonSettingsSerializer,
@@ -31,7 +34,16 @@ namespace Files.App.Utils.Serialization.Implementation
 
 		protected ConcurrentDictionary<string, JsonElement> GetFreshSettings()
 		{
-			string data = SettingsSerializer.ReadFromFile();
+			string data;
+			try
+			{
+				data = SettingsSerializer.ReadFromFile();
+			}
+			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException or System.Text.Json.JsonException)
+			{
+				PreserveUnreadableData(ex);
+				data = "null";
+			}
 
 			if (string.IsNullOrWhiteSpace(data))
 			{
@@ -42,12 +54,21 @@ namespace Files.App.Utils.Serialization.Implementation
 			{
 				return JsonSettingsSerializer.DeserializeFromJson(data, SettingsTypeInfo) ?? [];
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				// Occurs if the settings file has invalid json
-				// TODO Display prompt to notify user #710
+				// Invalid settings must not prevent startup. Keep a copy before a later write replaces them.
+				PreserveUnreadableData(ex);
 				return JsonSettingsSerializer.DeserializeFromJson("null", SettingsTypeInfo) ?? [];
 			}
+		}
+
+		private void PreserveUnreadableData(Exception exception)
+		{
+			if (_unreadableDataPreserved || SettingsSerializer.FilePath is not { } filePath)
+				return;
+
+			_unreadableDataPreserved = true;
+			VersionedJsonFile.PreserveUnreadableFile(filePath, exception);
 		}
 
 		protected bool SaveSettings(ConcurrentDictionary<string, JsonElement> data)

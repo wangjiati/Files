@@ -26,5 +26,11 @@ namespace Files.App
 				? new ApplicationDataLocalStateStore()
 				: new JsonLocalStateStore(System.IO.Path.Combine(Current.DataDirectory, "local-state.json"));
 		}
+
+		internal static void Reset()
+		{
+			_localState = null;
+			_current = null;
+		}
 	}
 }

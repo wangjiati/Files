@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Helpers;
 using Files.App.Utils.Storage.Operations;
 using Files.Shared.Helpers;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,7 @@ namespace Files.App.Utils.Storage
 					? DataPackageOperation.Copy | DataPackageOperation.Link
 					: DataPackageOperation.Move);
 				ShellDataObject.SetClipboard(filesToCopy, preferredDropEffect);
+				ClipboardFileOperations.MarkFileClipboardSet();
 			}, App.Logger);
 		}
 

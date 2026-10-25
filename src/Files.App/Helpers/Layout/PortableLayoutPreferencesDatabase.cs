@@ -15,10 +15,18 @@ namespace Files.App.Helpers
 		public PortableLayoutPreferencesDatabase(string filePath)
 		{
 			_filePath = Path.GetFullPath(filePath);
-			var items = VersionedJsonFile.Read(_filePath, "items");
-			_items = items is null
-				? []
-				: JsonSerializer.Deserialize(items.ToJsonString(), AppJsonSerializerContext.Default.ListLayoutPreferencesDatabaseItem) ?? [];
+			try
+			{
+				var items = VersionedJsonFile.Read(_filePath, "items");
+				_items = items is null
+					? []
+					: JsonSerializer.Deserialize(items.ToJsonString(), AppJsonSerializerContext.Default.ListLayoutPreferencesDatabaseItem) ?? [];
+			}
+			catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+			{
+				VersionedJsonFile.PreserveUnreadableFile(_filePath, ex);
+				_items = [];
+			}
 		}
 
 		public LayoutPreferencesItem? GetPreferences(string filePath, ulong? frn)

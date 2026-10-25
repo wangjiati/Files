@@ -58,7 +58,7 @@ namespace Files.App.Views.Settings
 			var appWindow = window.AppWindow;
 			appWindow.Title = Strings.CustomizeToolbar.GetLocalizedResource();
 			appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-			appWindow.SetIcon(AppLifecycleHelper.AppIconPath);
+			AppLifecycleHelper.TrySetAppIcon(appWindow);
 			frame.Navigate(typeof(ToolbarCustomizationPage), window, new SuppressNavigationTransitionInfo());
 			appWindow.Resize(new SizeInt32(
 				Math.Max(1, Convert.ToInt32(760 * App.AppModel.AppWindowDPI)),

@@ -102,6 +102,29 @@ namespace Files.App.Helpers
 			}));
 
 		/// <summary>
+		/// Applies the application icon when the asset is present, without failing startup.
+		/// </summary>
+		public static bool TrySetAppIcon(Microsoft.UI.Windowing.AppWindow appWindow)
+		{
+			try
+			{
+				if (!SystemIO.File.Exists(AppIconPath))
+				{
+					App.Logger?.LogWarning("The application icon '{IconPath}' was not found.", AppIconPath);
+					return false;
+				}
+
+				appWindow.SetIcon(AppIconPath);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				App.Logger?.LogWarning(ex, "Unable to set the application icon from '{IconPath}'.", AppIconPath);
+				return false;
+			}
+		}
+
+		/// <summary>
 		/// Initializes the app components.
 		/// </summary>
 		public static async Task InitializeAppComponentsAsync()

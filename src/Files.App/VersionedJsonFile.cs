@@ -1,6 +1,8 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json.Nodes;
 
@@ -48,6 +50,39 @@ namespace Files.App
 
 			return root[payloadName]?.DeepClone()
 				?? throw new InvalidDataException($"The data file must contain a '{payloadName}' value.");
+		}
+
+		public static string? PreserveUnreadableFile(string filePath, Exception exception)
+		{
+			string? backupPath = null;
+			try
+			{
+				if (File.Exists(filePath))
+				{
+					backupPath = $"{filePath}.corrupt-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+					File.Copy(filePath, backupPath, overwrite: false);
+				}
+			}
+			catch (Exception copyException) when (copyException is not OutOfMemoryException)
+			{
+				Debug.WriteLine($"Unable to preserve the unreadable data file '{filePath}': {copyException}");
+				backupPath = null;
+			}
+
+			try
+			{
+				App.Logger?.LogWarning(
+					exception,
+					"An unreadable data file was reset to defaults. Original: '{FilePath}'. Backup: '{BackupPath}'.",
+					filePath,
+					backupPath ?? "<not created>");
+			}
+			catch (Exception loggingException) when (loggingException is not OutOfMemoryException)
+			{
+				Debug.WriteLine(loggingException);
+			}
+
+			return backupPath;
 		}
 
 		public static void Write(string filePath, string? payloadName, JsonNode? payload)

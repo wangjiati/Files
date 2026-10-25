@@ -117,7 +117,7 @@ namespace Files.App.Utils.Storage
 			appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
 			appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
 
-			appWindow.SetIcon(AppLifecycleHelper.AppIconPath);
+			AppLifecycleHelper.TrySetAppIcon(appWindow);
 
 			frame.Navigate(
 				typeof(MainPropertiesPage),

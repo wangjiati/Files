@@ -53,9 +53,10 @@ namespace Files.App.ViewModels.Settings
 				if (IsSetAsDefaultFileManager == SystemIntegrationService.IsDefaultFileManager())
 					return;
 
+				var errorVersion = shellIntegrationErrorVersion;
 				await SystemIntegrationService.SetDefaultFileManagerAsync(IsSetAsDefaultFileManager);
 				await DetectResult();
-				ClearShellIntegrationError();
+				ClearShellIntegrationError(errorVersion);
 			}
 			catch (Exception ex)
 			{
@@ -84,10 +85,11 @@ namespace Files.App.ViewModels.Settings
 				if (IsSetAsOpenFileDialog == SystemIntegrationService.IsOpenFileDialog())
 					return;
 
+				var errorVersion = shellIntegrationErrorVersion;
 				await SystemIntegrationService.SetOpenFileDialogAsync(IsSetAsOpenFileDialog);
 				IsSetAsOpenFileDialog = SystemIntegrationService.IsOpenFileDialog();
 				UpdateIntegrationStatus();
-				ClearShellIntegrationError();
+				ClearShellIntegrationError(errorVersion);
 			}
 			catch (Exception ex)
 			{
@@ -224,6 +226,7 @@ namespace Files.App.ViewModels.Settings
 		}
 
 		private string shellIntegrationErrorMessage = string.Empty;
+		private int shellIntegrationErrorVersion;
 		public string ShellIntegrationErrorMessage
 			=> shellIntegrationErrorMessage;
 
@@ -247,6 +250,7 @@ namespace Files.App.ViewModels.Settings
 
 		private void SetShellIntegrationError(Exception ex)
 		{
+			shellIntegrationErrorVersion++;
 			if (ex is ShellIntegrationOperationException operationException)
 			{
 				foreach (var failure in operationException.Failures)
@@ -263,8 +267,10 @@ namespace Files.App.ViewModels.Settings
 			OnPropertyChanged(nameof(HasShellIntegrationError));
 		}
 
-		private void ClearShellIntegrationError()
+		private void ClearShellIntegrationError(int? expectedVersion = null)
 		{
+			if (expectedVersion is int version && version != shellIntegrationErrorVersion)
+				return;
 			if (string.IsNullOrEmpty(shellIntegrationErrorMessage))
 				return;
 

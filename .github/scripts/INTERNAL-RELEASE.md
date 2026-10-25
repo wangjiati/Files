@@ -48,10 +48,20 @@ The script rejects a dirty working tree by default. Pass `-AllowDirty` only when
 an uncommitted build is intentional; such artifacts are recorded as `Dirty` and
 are not reproducible from the recorded commit.
 
-All builds, ZIP validation, checksum generation, and hash verification happen in
-staging directories. The previous release is replaced only after the complete
-new release passes validation. A failed build leaves the previous release intact
-and removes the failed staging output.
+The script always builds and runs the unit tests, builds both Msix and Portable
+in Debug, builds the native launcher and 32/64-bit open/save dialog projects in
+Release, then creates the signed Release MSIX and the Portable Native AOT
+publish. It rejects the MSIX payload when any launcher or dialog binary is
+missing, and rejects the Portable output when required UI/assets files such as
+`Assets/AppTiles/Dev/Logo.ico`, `Assets/Sidebar/EmptySidebar_48_ThemeLight.svg`,
+`Assets/WSL/alpinepng.png`, and `Assets/error.png` are absent. It also checks
+that the Portable executable file version matches the manifest version.
+
+A non-empty output directory is rejected unless `-ReplaceExistingRelease` is
+passed explicitly. All builds, ZIP validation, checksum generation, and hash
+verification happen in staging directories. The previous release is replaced
+only after the complete new release passes validation. A failed build leaves the
+previous release intact and removes the failed staging output.
 
 Default output: `artifacts\internal\<version>\`.
 
@@ -96,6 +106,12 @@ The package identity is `Files.Internal`, isolated from the original package.
 Coexistence with the original Files package must be verified in the acceptance
 checklist. Exclusive shell integration is off by default and is only enabled
 from Advanced settings.
+
+Turn off shell takeover before uninstalling or resetting the package. Takeover
+writes real HKCU values that point to integration files copied into
+`%LocalAppData%\Files.Internal`. Uninstalling removes package-local assets and
+virtualized app data, but it does not reliably remove those HKCU values or the
+copied integration files, so leftover values can point to missing files.
 
 Portable: extract the whole ZIP to a writable directory, including directories
 with spaces or non-ASCII characters, and run `Files.exe`. The package is designed

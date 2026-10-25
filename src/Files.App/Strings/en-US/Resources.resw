@@ -4008,7 +4008,7 @@
     <value>The option to open Files on Windows Startup is not available due to your system settings or group policy. To re-enable, open the startup page in Task Manager.</value>
   </data>
   <data name="ShellIntegrationCleanupNote" xml:space="preserve">
-    <value>Turn off shell integrations here before uninstalling Files - Internal. The shell integration registry keys are written to the real HKCU; other app registry data remains virtualized and is removed with the package. Uninstalling does not remove %LocalAppData%\Files.Internal, and values changed by other apps are never overwritten.</value>
+    <value>Turn off shell integrations here before uninstalling Files - Internal. Takeover writes real HKCU values that point to integration files copied into %LocalAppData%\Files.Internal. Uninstalling or resetting the package removes the package-local assets and virtualized app data, but it does not turn off takeover or reliably remove those HKCU values or the copied integration files; leftover values can point to missing files. Other app registry data remains virtualized and is removed with the package. Values changed by other apps are never overwritten.</value>
   </data>
   <data name="ShellIntegrationUnavailable" xml:space="preserve">
     <value>Unable to read or update shell integrations. Try again, or close and reopen Settings.</value>

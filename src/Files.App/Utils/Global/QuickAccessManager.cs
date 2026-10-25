@@ -56,8 +56,16 @@ namespace Files.App.Utils
 			PinnedItemsModified += Model.LoadAsync;
 			await Model.LoadAsync();
 
-			if (!Model.PinnedFolders.Contains(Constants.UserEnvironmentPaths.RecycleBinPath) && AppLifecycleHelper.IsFirstRun)
+			if (ShouldPinRecycleBinOnFirstRun(
+				AppRuntime.Current.SupportsSystemIntegration,
+				AppLifecycleHelper.IsFirstRun,
+				Model.PinnedFolders.Contains(Constants.UserEnvironmentPaths.RecycleBinPath)))
+			{
 				await QuickAccessService.PinToSidebarAsync(Constants.UserEnvironmentPaths.RecycleBinPath);
+			}
 		}
+
+		internal static bool ShouldPinRecycleBinOnFirstRun(bool supportsSystemIntegration, bool isFirstRun, bool isAlreadyPinned)
+			=> supportsSystemIntegration && isFirstRun && !isAlreadyPinned;
 	}
 }

@@ -65,14 +65,16 @@ namespace Files.App
 			try
 			{
 				_portableDataLease = PreparePortableData();
+				AppRuntime.LocalState.SetString(LaunchCwdKey, Environment.CurrentDirectory);
 			}
-			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+			catch (Exception ex) when (ex is not OutOfMemoryException)
 			{
 				ShowPortableDataError(ex);
 				return;
 			}
-#endif
+#else
 			AppRuntime.LocalState.SetString(LaunchCwdKey, Environment.CurrentDirectory);
+#endif
 
 			var OpenTabInExistingInstance = AppRuntime.LocalState.GetBoolean("OpenTabInExistingInstance", true);
 
@@ -183,7 +185,7 @@ namespace Files.App
 			});
 		}
 
-		private static PortableDataLease PreparePortableData()
+		internal static PortableDataLease PreparePortableData()
 		{
 			var environment = AppRuntime.Current;
 			Directory.CreateDirectory(environment.DataDirectory);
@@ -212,19 +214,46 @@ namespace Files.App
 
 		private static void ShowPortableDataError(Exception exception)
 		{
-			var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
-			var message = resourceManager.MainResourceMap.TryGetSubtree("Resources")?.TryGetValue(
-				"PortableDataStartupFailed",
-				resourceManager.CreateResourceContext())?.ValueAsString;
-			message = string.IsNullOrEmpty(message)
-				? exception.Message
-				: string.Format(message, AppRuntime.Current.DataDirectory, exception.Message);
+			string dataDirectory;
+			try
+			{
+				dataDirectory = AppRuntime.Current.DataDirectory;
+			}
+			catch (Exception ex)
+			{
+				Debug.WriteLine(ex);
+				dataDirectory = "<unknown>";
+			}
 
-			Windows.Win32.PInvoke.MessageBox(
-				default,
-				message,
-				Constants.Startup.MissingRuntimeTitle,
-				MESSAGEBOX_STYLE.MB_ICONERROR);
+			var message = exception.Message;
+			try
+			{
+				var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
+				var resource = resourceManager.MainResourceMap.TryGetSubtree("Resources")?.TryGetValue(
+					"PortableDataStartupFailed",
+					resourceManager.CreateResourceContext())?.ValueAsString;
+
+				if (!string.IsNullOrEmpty(resource))
+					message = string.Format(resource, dataDirectory, exception.Message);
+			}
+			catch (Exception ex)
+			{
+				// The portable error dialog must survive a missing or broken resource map.
+				Debug.WriteLine(ex);
+			}
+
+			try
+			{
+				Windows.Win32.PInvoke.MessageBox(
+					default,
+					message,
+					Constants.Startup.MissingRuntimeTitle,
+					MESSAGEBOX_STYLE.MB_ICONERROR);
+			}
+			catch (Exception ex)
+			{
+				Debug.WriteLine(ex);
+			}
 		}
 
 		internal static void ReleasePortableDataLease()

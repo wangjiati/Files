@@ -201,9 +201,13 @@ namespace Files.App.Services
 			}
 			catch
 			{
+				var failuresBeforeRollback = _failures.Count;
 				RestoreDefaultFileManagerValues(state.DefaultFileManager, requireOwnership: false);
-				state.DefaultFileManager = null;
-				SaveState(state);
+				if (_failures.Count == failuresBeforeRollback)
+					state.DefaultFileManager = null;
+
+				// Keep the original snapshot when rollback is incomplete so a retry can still restore it.
+				TrySaveState(state);
 				throw;
 			}
 
@@ -252,31 +256,40 @@ namespace Files.App.Services
 			foreach (var (keyPath, _, _) in LauncherCommandKeys)
 			{
 				var isOwned = IsLauncherCommandGroupOwned(keyPath);
-				var existingGroup = isOwned
-					? existingValues?.Where(value => value.KeyPath == keyPath).ToList()
-					: null;
-
-				if (existingGroup is { Count: > 0 })
-				{
-					values.AddRange(existingGroup);
-					continue;
-				}
+				var existingGroup = existingValues?.Where(value => value.KeyPath == keyPath).ToList();
 
 				if (isOwned)
 				{
-					unknownOriginalKeyPaths.Add(keyPath);
+					if (existingGroup is { Count: > 0 })
+						values.AddRange(existingGroup);
+					else
+						unknownOriginalKeyPaths.Add(keyPath);
 					continue;
 				}
 
+				var isPartialOwnGroup =
+					existingGroup is { Count: > 0 } &&
+					IsOwnedResidue(null, _registry.ReadValue(keyPath, null));
+
 				foreach (var valueName in new string?[] { null, DelegateExecuteValueName })
 				{
-					var value = _registry.ReadValue(keyPath, valueName);
+					var currentValue = _registry.ReadValue(keyPath, valueName);
+					var savedValue = existingGroup?.FirstOrDefault(value => value.ValueName == valueName);
+
+					// A previous attempt may have written only part of this group. Keep the original
+					// snapshot for our own residue, but let any external change replace it.
+					if (savedValue is not null && (isPartialOwnGroup || IsOwnedResidue(valueName, currentValue)))
+					{
+						values.Add(savedValue);
+						continue;
+					}
+
 					values.Add(new ShellRegistryValueState
 					{
 						KeyPath = keyPath,
 						ValueName = valueName,
-						Existed = value is not null,
-						Value = value,
+						Existed = currentValue is not null,
+						Value = currentValue,
 					});
 				}
 			}
@@ -351,17 +364,30 @@ namespace Files.App.Services
 
 			state.OpenFileDialog ??= new OpenFileDialogTakeoverState();
 			if (!openDialogOwned)
-				state.OpenFileDialog.OpenDialog = _registry.ReadKey(OpenDialogClsidKey);
+				state.OpenFileDialog.OpenDialog ??= _registry.ReadKey(OpenDialogClsidKey);
 			if (!saveDialogOwned)
-				state.OpenFileDialog.SaveDialog = _registry.ReadKey(SaveDialogClsidKey);
+				state.OpenFileDialog.SaveDialog ??= _registry.ReadKey(SaveDialogClsidKey);
 			SaveState(state);
 
+			var failuresBeforeRegistration = _failures.Count;
 			if (!openDialogOwned)
-				_openDialogRegistration.RegisterOpenDialog(_paths.IntegrationDirectory);
+				TryRegister(() => _openDialogRegistration.RegisterOpenDialog(_paths.IntegrationDirectory));
 			if (!saveDialogOwned)
-				_openDialogRegistration.RegisterSaveDialog(_paths.IntegrationDirectory);
+				TryRegister(() => _openDialogRegistration.RegisterSaveDialog(_paths.IntegrationDirectory));
 
-			return true;
+			return _failures.Count == failuresBeforeRegistration;
+		}
+
+		private void TryRegister(Action registration)
+		{
+			try
+			{
+				registration();
+			}
+			catch (Exception ex) when (ex is not OutOfMemoryException)
+			{
+				_failures.Add(ex);
+			}
 		}
 
 		private bool DisableOpenFileDialog()
@@ -448,6 +474,11 @@ namespace Files.App.Services
 		private bool IsInternalLauncherCommand(string? command)
 			=> !string.IsNullOrWhiteSpace(command) &&
 				command.Contains(_paths.LauncherPath, StringComparison.OrdinalIgnoreCase);
+
+		private bool IsOwnedResidue(string? valueName, ShellRegistryValue? value)
+			=> valueName is null
+				? IsInternalLauncherCommand(value?.Data)
+				: value is not null && string.Equals(value.Data, string.Empty, StringComparison.Ordinal);
 
 		private string BuildLauncherCommand(bool hasTargetArgument)
 			=> hasTargetArgument

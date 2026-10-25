@@ -46,7 +46,7 @@ namespace Files.App
 			if (_isWindowIconInitialized)
 				return;
 
-			AppWindow.SetIcon(AppLifecycleHelper.AppIconPath);
+			AppLifecycleHelper.TrySetAppIcon(AppWindow);
 			_isWindowIconInitialized = true;
 		}
 

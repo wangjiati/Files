@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Files Community
 // SPDX-License-Identifier: MPL-2.0
 
+using Files.App.Helpers;
 using Microsoft.Extensions.Logging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -75,6 +76,7 @@ namespace Files.App.Actions
 				dataPackage.SetStorageItems(new[] { storageItem }, false);
 
 				Clipboard.SetContent(dataPackage);
+				ClipboardFileOperations.MarkFileClipboardSet();
 			}
 			catch (Exception ex)
 			{

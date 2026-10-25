@@ -14,6 +14,8 @@ namespace Files.App.Utils.Serialization.Implementation
 	{
 		private string? _filePath;
 
+		public string? FilePath => _filePath;
+
 		public bool CreateFile(string path)
 		{
 			PInvoke.CreateDirectoryFromApp(Path.GetDirectoryName(path), null);

@@ -61,6 +61,7 @@ namespace Files.App.Helpers
 				dataPackage.SetStorageItems(items, false);
 
 				Clipboard.SetContent(dataPackage);
+				ClipboardFileOperations.MarkFileClipboardSet();
 			}
 			catch (Exception ex)
 			{
@@ -157,6 +158,7 @@ namespace Files.App.Helpers
 				dataPackage.SetStorageItems(items, false);
 
 				Clipboard.SetContent(dataPackage);
+				ClipboardFileOperations.MarkFileClipboardSet();
 			}
 			catch (Exception ex)
 			{

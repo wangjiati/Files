@@ -101,6 +101,69 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void EnableDefaultFileManager_WhenSecondValueWriteFails_RestoresAndAllowsRetry()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			var failOnce = true;
+			registry.ThrowOnSet = (keyPath, valueName) =>
+			{
+				if (!failOnce ||
+					!keyPath.Equals(ShellIntegrationTakeover.FolderOpenCommandKey, StringComparison.OrdinalIgnoreCase) ||
+					valueName != "DelegateExecute")
+					return false;
+
+				failOnce = false;
+				return true;
+			};
+
+			Assert.ThrowsExactly<UnauthorizedAccessException>(() => takeover.SetDefaultFileManager(true));
+
+			AssertExplorerValues(registry);
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+
+			registry.ThrowOnSet = null;
+			Assert.IsTrue(takeover.SetDefaultFileManager(true));
+			AssertInternalLauncher(registry, ShellIntegrationTakeover.FolderOpenCommandKey, withTargetArgument: true);
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+			AssertExplorerValues(registry);
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+		}
+
+		[TestMethod]
+		public void EnableDefaultFileManager_WhenRollbackFails_PreservesStateForRetry()
+		{
+			using var directory = new TemporaryDirectory();
+			var registry = new FakeRegistry();
+			SeedExplorer(registry);
+			var takeover = CreateTakeover(directory, registry, new FakeOpenDialogRegistration(registry));
+			registry.ThrowOnSet = (keyPath, valueName) =>
+			{
+				if (!keyPath.Equals(ShellIntegrationTakeover.FolderOpenCommandKey, StringComparison.OrdinalIgnoreCase))
+					return false;
+				if (valueName == "DelegateExecute")
+					return true;
+
+				return valueName is null &&
+					registry.ReadValue(keyPath, null)?.Data?.Contains("Files.App.Launcher.exe", StringComparison.OrdinalIgnoreCase) is true;
+			};
+
+			Assert.ThrowsExactly<UnauthorizedAccessException>(() => takeover.SetDefaultFileManager(true));
+
+			Assert.IsTrue(takeover.LastFailures.Count > 0);
+			Assert.IsNotNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+
+			registry.ThrowOnSet = null;
+			Assert.IsTrue(takeover.SetDefaultFileManager(true));
+			Assert.IsTrue(takeover.SetDefaultFileManager(false));
+
+			AssertExplorerValues(registry);
+			Assert.IsNull(directory.Store.GetString(ShellIntegrationTakeover.StateKey));
+		}
+
+		[TestMethod]
 		public void DisableDefaultFileManager_RestoresOnlyValuesStillOwned()
 		{
 			using var directory = new TemporaryDirectory();
@@ -470,6 +533,8 @@ namespace Files.App.UnitTests
 
 			public Func<string, string?, bool>? ThrowOnRead { get; set; }
 
+			public Func<string, string?, bool>? ThrowOnSet { get; set; }
+
 			public ShellRegistryValue? ReadValue(string keyPath, string? valueName)
 			{
 				if (ThrowOnRead?.Invoke(keyPath, valueName) == true)
@@ -483,6 +548,9 @@ namespace Files.App.UnitTests
 
 			public void SetValue(string keyPath, string? valueName, ShellRegistryValue value)
 			{
+				if (ThrowOnSet?.Invoke(keyPath, valueName) == true)
+					throw new UnauthorizedAccessException($"Simulated registry write failure for '{keyPath}'.");
+
 				_keys.Add(keyPath);
 				if (!_values.TryGetValue(keyPath, out var values))
 				{

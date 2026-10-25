@@ -15,10 +15,18 @@ namespace Files.App.Utils.FileTags
 		public PortableFileTagsDatabase(string filePath)
 		{
 			_filePath = Path.GetFullPath(filePath);
-			var items = VersionedJsonFile.Read(_filePath, "items");
-			_items = items is null
-				? []
-				: JsonSerializer.Deserialize(items.ToJsonString(), AppJsonSerializerContext.Default.ListTaggedFile) ?? [];
+			try
+			{
+				var items = VersionedJsonFile.Read(_filePath, "items");
+				_items = items is null
+					? []
+					: JsonSerializer.Deserialize(items.ToJsonString(), AppJsonSerializerContext.Default.ListTaggedFile) ?? [];
+			}
+			catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+			{
+				VersionedJsonFile.PreserveUnreadableFile(_filePath, ex);
+				_items = [];
+			}
 		}
 
 		public void SetTags(string filePath, ulong? frn, string[] tags)
@@ -69,12 +77,9 @@ namespace Files.App.Utils.FileTags
 
 				var item = _items[index];
 				if ((frn is not null && item.Frn != frn) || (filePath is not null && !PathsEqual(item.FilePath, filePath)))
-				{
-					UpdateAt(index, frn, filePath);
-					return _items[^1].Tags.ToArray();
-				}
+					return UpdateAt(index, frn, filePath).Tags.ToArray();
 
-				return _items[index].Tags.ToArray();
+				return item.Tags.ToArray();
 			}
 		}
 
@@ -122,7 +127,7 @@ namespace Files.App.Utils.FileTags
 			return frn is null ? -1 : _items.FindIndex(item => item.Frn == frn);
 		}
 
-		private void UpdateAt(int index, ulong? frn, string? newFilePath)
+		private TaggedFile UpdateAt(int index, ulong? frn, string? newFilePath)
 		{
 			var current = _items[index];
 			var updatedItem = new TaggedFile
@@ -134,6 +139,7 @@ namespace Files.App.Utils.FileTags
 			var updated = _items.Where((item, itemIndex) => itemIndex != index && !Matches(item, updatedItem.FilePath, updatedItem.Frn)).ToList();
 			updated.Add(updatedItem);
 			Persist(updated);
+			return updatedItem;
 		}
 
 		private void Persist(List<TaggedFile> items)

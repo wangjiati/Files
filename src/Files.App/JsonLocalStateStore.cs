@@ -21,24 +21,40 @@ namespace Files.App
 		}
 
 		public bool GetBoolean(string key, bool defaultValue = false) =>
-			_values[key] is JsonNode value ? value.GetValue<bool>() : defaultValue;
+			GetValue(key, defaultValue);
 
 		public void SetBoolean(string key, bool value) => Update(key, JsonValue.Create(value));
 
 		public int GetInt32(string key, int defaultValue = 0) =>
-			_values[key] is JsonNode value ? value.GetValue<int>() : defaultValue;
+			GetValue(key, defaultValue);
 
 		public void SetInt32(string key, int value) => Update(key, JsonValue.Create(value));
 
 		public double GetDouble(string key, double defaultValue = 0d) =>
-			_values[key] is JsonNode value ? value.GetValue<double>() : defaultValue;
+			GetValue(key, defaultValue);
 
 		public void SetDouble(string key, double value) => Update(key, JsonValue.Create(value));
 
 		public string? GetString(string key, string? defaultValue = null) =>
-			_values[key] is JsonNode value ? value.GetValue<string>() : defaultValue;
+			GetValue(key, defaultValue);
 
 		public void SetString(string key, string value) => Update(key, JsonValue.Create(value));
+
+		private TValue GetValue<TValue>(string key, TValue defaultValue)
+		{
+			if (!_values.TryGetPropertyValue(key, out var node) || node is null)
+				return defaultValue;
+
+			try
+			{
+				return node.GetValue<TValue>();
+			}
+			catch (Exception ex) when (ex is InvalidOperationException or FormatException or System.Text.Json.JsonException)
+			{
+				// Match the packaged ApplicationData fallback when a stored value has a different type.
+				return defaultValue;
+			}
+		}
 
 		public void Remove(string key)
 		{
@@ -113,8 +129,18 @@ namespace Files.App
 			}
 			catch (JsonException ex)
 			{
-				throw new InvalidDataException("The local state file is malformed.", ex);
+				return RecoverUnreadableState(filePath, new InvalidDataException("The local state file is malformed.", ex));
 			}
+			catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or IOException or UnauthorizedAccessException)
+			{
+				return RecoverUnreadableState(filePath, ex);
+			}
+		}
+
+		private static JsonObject RecoverUnreadableState(string filePath, Exception exception)
+		{
+			VersionedJsonFile.PreserveUnreadableFile(filePath, exception);
+			return [];
 		}
 	}
 }

@@ -5,6 +5,8 @@ namespace Files.App.Utils.Serialization
 {
 	internal interface ISettingsSerializer
 	{
+		string? FilePath { get; }
+
 		bool CreateFile(string path);
 
 		string ReadFromFile();

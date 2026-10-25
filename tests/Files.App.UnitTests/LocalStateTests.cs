@@ -50,23 +50,54 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
-		public void Json_RejectsMalformedData()
+		public void Json_MalformedDataDegradesAndPreservesTheOriginal()
 		{
 			using var directory = new TemporaryDirectory();
 			var path = Path.Combine(directory.Path, "local-state.json");
 			File.WriteAllText(path, "{not-json");
 
-			Assert.ThrowsExactly<InvalidDataException>(() => new JsonLocalStateStore(path));
+			var store = new JsonLocalStateStore(path);
+
+			Assert.IsFalse(store.GetBoolean("missing"));
+			Assert.AreEqual("fallback", store.GetString("missing-string", "fallback"));
+			var backups = Directory.GetFiles(directory.Path, "local-state.json.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual("{not-json", File.ReadAllText(backups[0]));
 		}
 
 		[TestMethod]
-		public void Json_RejectsFutureSchema()
+		public void Json_FutureSchemaDegradesAndPreservesTheOriginal()
 		{
 			using var directory = new TemporaryDirectory();
 			var path = Path.Combine(directory.Path, "local-state.json");
-			File.WriteAllText(path, "{\"schemaVersion\":2,\"values\":{}}");
+			const string futureState = "{\"schemaVersion\":2,\"values\":{}}";
+			File.WriteAllText(path, futureState);
 
-			Assert.ThrowsExactly<NotSupportedException>(() => new JsonLocalStateStore(path));
+			var store = new JsonLocalStateStore(path);
+
+			Assert.IsFalse(store.GetBoolean("missing"));
+			var backups = Directory.GetFiles(directory.Path, "local-state.json.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual(futureState, File.ReadAllText(backups[0]));
+		}
+
+		[TestMethod]
+		public void Json_TypeMismatchFallsBackToDefaultsWithoutDroppingOtherValues()
+		{
+			using var directory = new TemporaryDirectory();
+			var path = Path.Combine(directory.Path, "local-state.json");
+			var store = new JsonLocalStateStore(path);
+			store.SetString("typed", "text");
+			store.SetString("keep", "value");
+
+			Assert.IsFalse(store.GetBoolean("typed", false));
+			Assert.AreEqual(7, store.GetInt32("typed", 7));
+			store.SetString("after", "write");
+
+			var reloaded = new JsonLocalStateStore(path);
+			Assert.AreEqual("text", reloaded.GetString("typed"));
+			Assert.AreEqual("value", reloaded.GetString("keep"));
+			Assert.AreEqual("write", reloaded.GetString("after"));
 		}
 
 		[TestMethod]
@@ -94,6 +125,29 @@ namespace Files.App.UnitTests
 
 			var reloaded = new JsonLocalStateStore(path);
 			Assert.AreEqual("old", reloaded.GetString("key"));
+		}
+
+		[TestMethod]
+		public void PortableWriteProbe_CreatesDataDirectoriesAndRemovesTheProbe()
+		{
+			using var directory = new TemporaryDirectory();
+			AppRuntime.Initialize(DistributionKind.Portable, directory.Path);
+			try
+			{
+				using var lease = Program.PreparePortableData();
+				var environment = AppRuntime.Current;
+
+				Assert.IsTrue(Directory.Exists(environment.DataDirectory));
+				Assert.IsTrue(Directory.Exists(environment.SettingsDirectory));
+				Assert.IsTrue(Directory.Exists(environment.LogDirectory));
+				Assert.IsTrue(Directory.Exists(environment.CacheDirectory));
+				Assert.AreEqual(0, Directory.GetFiles(environment.DataDirectory, "*.write-probe").Length);
+				Assert.IsTrue(File.Exists(Path.Combine(environment.DataDirectory, ".instance.lock")));
+			}
+			finally
+			{
+				AppRuntime.Reset();
+			}
 		}
 
 		[TestMethod]

@@ -62,8 +62,8 @@ namespace Files.App.Services
 
 		public async Task SetDefaultFileManagerAsync(bool enabled)
 		{
-			if (enabled && !TryCopyIntegrationAssets())
-				return;
+			if (enabled)
+				CopyIntegrationAssets();
 
 			await Task.Run(() =>
 			{
@@ -80,8 +80,8 @@ namespace Files.App.Services
 
 		public async Task SetOpenFileDialogAsync(bool enabled)
 		{
-			if (enabled && !TryCopyIntegrationAssets())
-				return;
+			if (enabled)
+				CopyIntegrationAssets();
 
 			await Task.Run(() =>
 			{
@@ -98,30 +98,44 @@ namespace Files.App.Services
 			throw new ShellIntegrationOperationException(_takeover.LastFailures.ToArray());
 		}
 
-		private bool TryCopyIntegrationAssets()
+		private void CopyIntegrationAssets()
 		{
+			var sourceDirectory = Path.Combine(AppRuntime.Current.InstallDirectory, "Assets", "FilesOpenDialog");
+			if (!Directory.Exists(sourceDirectory))
+				throw new FileNotFoundException($"The shell integration assets were not found at '{sourceDirectory}'.");
+
+			foreach (var fileName in RequiredIntegrationFileNames)
+			{
+				var sourcePath = Path.Combine(sourceDirectory, fileName);
+				if (!File.Exists(sourcePath))
+					throw new FileNotFoundException($"The shell integration asset '{sourcePath}' was not found.");
+			}
+
 			try
 			{
-				var sourceDirectory = Path.Combine(AppRuntime.Current.InstallDirectory, "Assets", "FilesOpenDialog");
-				if (!Directory.Exists(sourceDirectory))
-					return false;
-
 				Directory.CreateDirectory(_integrationPaths.IntegrationDirectory);
-				foreach (var sourcePath in Directory.GetFiles(sourceDirectory))
+				foreach (var fileName in RequiredIntegrationFileNames)
 				{
 					File.Copy(
-						sourcePath,
-						Path.Combine(_integrationPaths.IntegrationDirectory, Path.GetFileName(sourcePath)),
+						Path.Combine(sourceDirectory, fileName),
+						Path.Combine(_integrationPaths.IntegrationDirectory, fileName),
 						overwrite: true);
 				}
-
-				return true;
 			}
 			catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 			{
 				App.Logger?.LogWarning(ex, "Unable to copy the shell integration files.");
-				return false;
+				throw;
 			}
 		}
+
+		internal static readonly string[] RequiredIntegrationFileNames =
+		[
+			"Files.App.Launcher.exe",
+			"Files.App.OpenDialog32.dll",
+			"Files.App.OpenDialog64.dll",
+			"Files.App.SaveDialog32.dll",
+			"Files.App.SaveDialog64.dll",
+		];
 	}
 }

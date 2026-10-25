@@ -4,6 +4,10 @@
     <PropertyGroup>
         <Distribution Condition="'$(Distribution)' == ''">Msix</Distribution>
         <EnableMsixTooling>true</EnableMsixTooling>
+        <Version>4.3.1.0</Version>
+        <AssemblyVersion>4.3.1.0</AssemblyVersion>
+        <FileVersion>4.3.1.0</FileVersion>
+        <InformationalVersion>4.3.1.0</InformationalVersion>
         <PublishProfile>Properties\PublishProfiles\win-$(Platform).pubxml</PublishProfile>
         <TargetFramework>$(WindowsTargetFramework)</TargetFramework>
         <OutputType>WinExe</OutputType>
@@ -90,11 +94,9 @@
   
     <ItemGroup>
         <Manifest Include="app.manifest" />
-        <Content Update="Assets\Resources\**">
+        <Content Update="Assets\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Update="Assets\FilesOpenDialog\Files.App.Launcher.exe">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </Content>
         <Content Include="7z.dll" Condition="'$(Platform)' == 'x86'">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

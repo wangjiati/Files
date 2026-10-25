@@ -343,8 +343,14 @@ namespace Files.App.Services.Settings
 
 		public bool CloseToBackground
 		{
-			get => Get(BackgroundSettings.CloseToBackgroundDefault, BackgroundSettings.CloseToBackgroundKey);
-			set => Set(value, BackgroundSettings.CloseToBackgroundKey);
+			get => AppRuntime.Current.SupportsSystemIntegration &&
+				Get(BackgroundSettings.CloseToBackgroundDefault, BackgroundSettings.CloseToBackgroundKey);
+			set
+			{
+				// Portable has no tray or integration owner, so it must never keep running after the window closes.
+				if (AppRuntime.Current.SupportsSystemIntegration)
+					Set(value, BackgroundSettings.CloseToBackgroundKey);
+			}
 		}
 
 		public bool EnableNaturalLanguageSearch

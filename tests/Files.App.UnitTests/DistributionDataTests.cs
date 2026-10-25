@@ -8,11 +8,13 @@ using Files.App.Data.Enums;
 using Files.App.Helpers;
 using Files.App.Services.Settings;
 using Files.App.Utils.FileTags;
+using Files.App.Utils.Serialization;
 using Files.App.Utils.Serialization.Implementation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
 
 namespace Files.App.UnitTests
@@ -85,6 +87,48 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void Settings_FutureSchemaFallsBackAndPreservesTheOriginal()
+		{
+			using var directory = new TemporaryDirectory();
+			var path = Path.Combine(directory.Path, "user_settings.json");
+			const string futureSettings = "{\"schemaVersion\":2,\"ShowFileTagsSection\":true}";
+			File.WriteAllText(path, futureSettings);
+			var serializer = new DefaultSettingsSerializer();
+			Assert.IsTrue(serializer.CreateFile(path));
+			var database = new CachingJsonSettingsDatabase(
+				serializer,
+				new DefaultJsonSettingsSerializer(),
+				UserSettingsJsonSerializationContext.Default);
+
+			Assert.IsFalse(database.GetValue("ShowFileTagsSection", false));
+			var backups = Directory.GetFiles(directory.Path, "user_settings.json.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual(futureSettings, File.ReadAllText(backups[0]));
+
+			Assert.IsTrue(database.SetValue("ShowFileTagsSection", true));
+			Assert.IsTrue(database.GetValue("ShowFileTagsSection", false));
+		}
+
+		[TestMethod]
+		public void Settings_MalformedJsonFallsBackAndPreservesTheOriginal()
+		{
+			using var directory = new TemporaryDirectory();
+			var path = Path.Combine(directory.Path, "user_settings.json");
+			File.WriteAllText(path, "{not-json");
+			var serializer = new DefaultSettingsSerializer();
+			Assert.IsTrue(serializer.CreateFile(path));
+			var database = new CachingJsonSettingsDatabase(
+				serializer,
+				new DefaultJsonSettingsSerializer(),
+				UserSettingsJsonSerializationContext.Default);
+
+			Assert.IsFalse(database.GetValue("ShowFileTagsSection", false));
+			var backups = Directory.GetFiles(directory.Path, "user_settings.json.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual("{not-json", File.ReadAllText(backups[0]));
+		}
+
+		[TestMethod]
 		public void Settings_FailedReplacementPreservesPreviousData()
 		{
 			using var directory = new TemporaryDirectory();
@@ -145,13 +189,36 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
-		public void PortableTags_RejectsFutureSchema()
+		public void PortableTags_GetTagsByRenameAndFrnReturnsTheUpdatedItem()
 		{
 			using var directory = new TemporaryDirectory();
 			var path = Path.Combine(directory.Path, "filetags.db");
-			File.WriteAllText(path, "{\"schemaVersion\":2,\"items\":[]}");
+			var database = new PortableFileTagsDatabase(path);
+			database.SetTags(@"D:\Documents\old.txt", 42, ["work"]);
 
-			Assert.ThrowsExactly<NotSupportedException>(() => new PortableFileTagsDatabase(path));
+			CollectionAssert.AreEqual(new[] { "work" }, database.GetTags(@"D:\Documents\new.txt", 42));
+			CollectionAssert.AreEqual(new[] { "work" }, database.GetTags(@"D:\Documents\new.txt", null));
+			CollectionAssert.AreEqual(new[] { "work" }, database.GetTags(null, 42));
+			Assert.AreEqual(0, database.GetTags(@"D:\Documents\old.txt", null).Length);
+
+			var reloaded = new PortableFileTagsDatabase(path);
+			CollectionAssert.AreEqual(new[] { "work" }, reloaded.GetTags(@"D:\Documents\new.txt", null));
+		}
+
+		[TestMethod]
+		public void PortableTags_FutureSchemaFallsBackAndPreservesTheOriginal()
+		{
+			using var directory = new TemporaryDirectory();
+			var path = Path.Combine(directory.Path, "filetags.db");
+			const string futureTags = "{\"schemaVersion\":2,\"items\":[]}";
+			File.WriteAllText(path, futureTags);
+
+			var database = new PortableFileTagsDatabase(path);
+
+			Assert.AreEqual(0, database.GetAll().Count());
+			var backups = Directory.GetFiles(directory.Path, "filetags.db.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual(futureTags, File.ReadAllText(backups[0]));
 		}
 
 		[TestMethod]
@@ -180,6 +247,24 @@ namespace Files.App.UnitTests
 			var reloaded = new PortableFileTagsDatabase(path);
 			CollectionAssert.AreEqual(new[] { "old" }, reloaded.GetTags(@"D:\old.txt", null));
 			Assert.AreEqual(0, reloaded.GetTags(@"D:\new.txt", null).Length);
+		}
+
+		[TestMethod]
+		public void Portable_CloseToBackgroundIsIgnoredAtTheBehaviorLevel()
+		{
+			using var directory = new TemporaryDirectory();
+			AppRuntime.Initialize(DistributionKind.Portable, directory.Path);
+			Directory.CreateDirectory(AppRuntime.Current.SettingsDirectory);
+			File.WriteAllText(
+				Path.Combine(AppRuntime.Current.SettingsDirectory, Constants.LocalSettings.UserSettingsFileName),
+				"{\"schemaVersion\":1,\"CloseToBackground\":true}");
+
+			var userSettings = new UserSettingsService();
+			var generalSettings = new GeneralSettingsService(userSettings.GetSharingContext());
+
+			Assert.IsFalse(generalSettings.CloseToBackground);
+			generalSettings.CloseToBackground = true;
+			Assert.IsFalse(generalSettings.CloseToBackground);
 		}
 
 		[TestMethod]
@@ -242,13 +327,25 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
-		public void PortableLayout_RejectsFutureSchema()
+		public void PortableLayout_FutureSchemaFallsBackAndPreservesTheOriginal()
 		{
 			using var directory = new TemporaryDirectory();
 			var path = Path.Combine(directory.Path, "user_settings.db");
-			File.WriteAllText(path, "{\"schemaVersion\":2,\"items\":[]}");
+			const string futureLayout = "{\"schemaVersion\":2,\"items\":[]}";
+			File.WriteAllText(path, futureLayout);
 
-			Assert.ThrowsExactly<NotSupportedException>(() => new PortableLayoutPreferencesDatabase(path));
+			var database = new PortableLayoutPreferencesDatabase(path);
+
+			Assert.AreEqual("[]", database.Export());
+			var backups = Directory.GetFiles(directory.Path, "user_settings.db.corrupt-*");
+			Assert.AreEqual(1, backups.Length);
+			Assert.AreEqual(futureLayout, File.ReadAllText(backups[0]));
+		}
+
+		[TestCleanup]
+		public void Cleanup()
+		{
+			AppRuntime.Reset();
 		}
 
 		private static LayoutPreferencesItem CreateLayoutPreferences()
