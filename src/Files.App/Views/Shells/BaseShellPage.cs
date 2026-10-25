@@ -938,9 +938,9 @@ namespace Files.App.Views.Shells
 				_lastDateTimeFormats = userSettingsService.GeneralSettingsService.DateTimeFormat;
 				RefreshDateDisplay();
 			}
-			else if (userSettingsService.GeneralSettingsService.DateTimeFormat == DateTimeFormats.Application)
+			else if (ShellViewModel?.UsesRelativeDateLabels == true)
 			{
-				ShellViewModel?.UpdateDateDisplay();
+				ShellViewModel.RefreshDateLabelsFromCache();
 			}
 		}
 

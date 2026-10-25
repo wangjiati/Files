@@ -34,11 +34,7 @@ namespace Files.App.ViewModels
 	{
 		private const int MaxSearchResultsAppendedPerTick = 500;
 
-		private sealed record DateLabelFormatters(
-			IDateTimeFormatter Modified,
-			IDateTimeFormatter Created,
-			IDateTimeFormatter Accessed,
-			IDateTimeFormatter Deleted);
+		private readonly DateLabelFormatterProvider dateLabelFormatterProvider;
 
 		private DateLabelFormatters? dateLabelFormatters;
 
@@ -78,8 +74,6 @@ namespace Files.App.ViewModels
 		private readonly IWindowsSecurityService WindowsSecurityService = Ioc.Default.GetRequiredService<IWindowsSecurityService>();
 		private readonly IStorageTrashBinService StorageTrashBinService = Ioc.Default.GetRequiredService<IStorageTrashBinService>();
 		private readonly IContentPageContext ContentPageContext = Ioc.Default.GetRequiredService<IContentPageContext>();
-		private readonly IDateTimeFormatResolver dateTimeFormatResolver = Ioc.Default.GetRequiredService<IDateTimeFormatResolver>();
-		private readonly IDateTimeFormatterFactory dateTimeFormatterFactory = Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>();
 
 		// Only used for Binding and ApplyFilesAndFoldersChangesAsync, don't manipulate on this!
 		public BulkConcurrentObservableCollection<ListedItem> FilesAndFolders { get; }
@@ -766,6 +760,11 @@ namespace Files.App.ViewModels
 			loadThumbnailSemaphore = new SemaphoreSlim(8, 8);
 			gitPropertiesSemaphore = new SemaphoreSlim(1, 1);
 			dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+			dateLabelFormatterProvider = new DateLabelFormatterProvider(
+				Ioc.Default.GetRequiredService<IDateTimeFormatResolver>(),
+				Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>(),
+				() => UserSettingsService.GeneralSettingsService.DateTimeFormat,
+				() => UserSettingsService.GeneralSettingsService.DateTimeFormatCustomPattern);
 
 			UserSettingsService.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
 			fileTagsSettingsService.OnSettingImportedEvent += FileTagsSettingsService_OnSettingUpdated;
@@ -3518,6 +3517,7 @@ namespace Files.App.ViewModels
 			if (!token.IsCancellationRequested)
 			{
 				await PreloadIconsAsync(results);
+				RefreshDateLabels(results);
 				filesAndFolders = new ConcurrentCollection<ListedItem>(results);
 
 				await OrderFilesAndFoldersAsync();
@@ -3593,68 +3593,48 @@ namespace Files.App.ViewModels
 			searchCTS?.Cancel();
 		}
 
+		/// <summary>
+		/// Gets whether any effective date column uses the relative application format.
+		/// </summary>
+		public bool UsesRelativeDateLabels
+			=> dateLabelFormatters?.UsesApplicationFormat == true;
+
 		public void UpdateDateDisplay()
 		{
 			App.Logger.LogDebug($"UpdateDateDisplay: itemCount={filesAndFolders.Count}");
 
 			var formatters = dateLabelFormatters = ResolveDateLabelFormatters();
-			foreach (var item in filesAndFolders)
-				ApplyDateLabels(item, formatters);
+			ApplyDateLabels(formatters);
+		}
+
+		/// <summary>
+		/// Refreshes labels with the cached formatters, without resolving directory rules again.
+		/// </summary>
+		public void RefreshDateLabelsFromCache()
+		{
+			if (dateLabelFormatters is { } formatters)
+				ApplyDateLabels(formatters);
+		}
+
+		private void ApplyDateLabels(DateLabelFormatters formatters)
+		{
+			dateLabelFormatterProvider.Apply(filesAndFolders, formatters);
 
 			if (currentFolder is not null)
-				ApplyDateLabels(currentFolder, formatters);
+				dateLabelFormatterProvider.Apply(currentFolder, formatters);
 		}
 
 		private void RefreshDateLabels(IEnumerable<ListedItem> items)
-		{
-			var formatters = GetDateLabelFormatters();
-			foreach (var item in items)
-				ApplyDateLabels(item, formatters);
-		}
+			=> dateLabelFormatterProvider.Apply(items, GetDateLabelFormatters());
 
 		private void RefreshDateLabels(ListedItem item)
-			=> ApplyDateLabels(item, GetDateLabelFormatters());
+			=> dateLabelFormatterProvider.Apply(item, GetDateLabelFormatters());
 
 		private DateLabelFormatters GetDateLabelFormatters()
 			=> dateLabelFormatters ??= ResolveDateLabelFormatters();
 
-		private static void ApplyDateLabels(ListedItem item, DateLabelFormatters formatters)
-		{
-			if (item is RecycleBinItem recycleBinItem)
-				recycleBinItem.RefreshDateLabels(formatters.Modified, formatters.Created, formatters.Accessed, formatters.Deleted);
-			else
-				item.RefreshDateLabels(formatters.Modified, formatters.Created, formatters.Accessed);
-		}
-
 		private DateLabelFormatters ResolveDateLabelFormatters()
-		{
-			var directoryPath = WorkingDirectory;
-			if (string.IsNullOrWhiteSpace(directoryPath) || !Path.IsPathRooted(directoryPath))
-				directoryPath = string.Empty;
-
-			return new DateLabelFormatters(
-				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Modified)),
-				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Created)),
-				CreateGlobalDateFormatter(),
-				CreateDateFormatter(dateTimeFormatResolver.Resolve(directoryPath, DateTimeColumnKind.Deleted)));
-		}
-
-		private IDateTimeFormatter CreateGlobalDateFormatter()
-		{
-			var settings = UserSettingsService.GeneralSettingsService;
-
-			return CreateDateFormatter(settings.DateTimeFormat, settings.DateTimeFormatCustomPattern);
-		}
-
-		private IDateTimeFormatter CreateDateFormatter(DateTimeFormatRule rule)
-			=> CreateDateFormatter(rule.Format, rule.CustomPattern);
-
-		private IDateTimeFormatter CreateDateFormatter(DateTimeFormats format, string? customPattern)
-		{
-			var validFormat = Enum.IsDefined(format) ? format : DateTimeFormats.Application;
-
-			return dateTimeFormatterFactory.GetDateTimeFormatter(validFormat, customPattern);
-		}
+			=> dateLabelFormatterProvider.Resolve(WorkingDirectory);
 
 		public void Dispose()
 		{
