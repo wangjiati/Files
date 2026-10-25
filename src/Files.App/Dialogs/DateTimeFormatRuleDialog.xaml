@@ -46,14 +46,12 @@
 		<!--  Scope  -->
 		<ComboBox
 			Header="{helpers:ResourceString Name=DateTimeFormatAppliesTo}"
-			DisplayMemberPath="Label"
 			ItemsSource="{x:Bind ViewModel.ScopeChoices, Mode=OneTime}"
 			SelectedIndex="{x:Bind ViewModel.SelectedScopeIndex, Mode=TwoWay}" />
 
 		<!--  Format preset or custom pattern  -->
 		<ComboBox
 			Header="{helpers:ResourceString Name=Format}"
-			DisplayMemberPath="Label"
 			ItemsSource="{x:Bind ViewModel.FormatChoices, Mode=OneTime}"
 			SelectedIndex="{x:Bind ViewModel.SelectedFormatIndex, Mode=TwoWay}" />
 

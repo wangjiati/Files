@@ -52,6 +52,8 @@ namespace Files.App.ViewModels.Settings
 		internal string ResourceKey { get; }
 
 		public string Label => ResourceKey.GetLocalizedResource();
+
+		public override string ToString() => Label;
 	}
 
 	/// <summary>
