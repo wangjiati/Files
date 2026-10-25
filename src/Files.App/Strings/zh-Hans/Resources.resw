@@ -2120,6 +2120,18 @@
   <data name="DateTimeFormatPatternRequired" xml:space="preserve">
     <value>请输入自定义日期时间格式。</value>
   </data>
+  <data name="DateTimeFormatPresetDate" xml:space="preserve">
+    <value>日期 (yyyy-MM-dd)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTime" xml:space="preserve">
+    <value>日期和时分 (yyyy-MM-dd HH:mm)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTimeMilliseconds" xml:space="preserve">
+    <value>日期和时分秒毫秒 (yyyy-MM-dd HH:mm:ss.fff)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTimeSeconds" xml:space="preserve">
+    <value>日期和时分秒 (yyyy-MM-dd HH:mm:ss)</value>
+  </data>
   <data name="DateTimeFormatPreview" xml:space="preserve">
     <value>预览</value>
   </data>

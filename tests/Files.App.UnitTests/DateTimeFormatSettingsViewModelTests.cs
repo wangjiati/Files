@@ -42,9 +42,28 @@ namespace Files.App.UnitTests
 			Assert.AreEqual(DateTimeFormats.System, DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(1));
 			Assert.AreEqual(DateTimeFormats.Universal, DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(2));
 			Assert.AreEqual(DateTimeFormats.Custom, DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(3));
+			Assert.AreEqual(DateTimeFormats.Custom, DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(6));
 
-			Assert.AreEqual(3, DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Custom));
-			Assert.AreEqual(2, DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Universal));
+			Assert.AreEqual(
+				3,
+				DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(
+					DateTimeFormats.Custom,
+					DateTimeFormatSettingsViewModel.DatePresetPattern));
+			Assert.AreEqual(
+				6,
+				DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(
+					DateTimeFormats.Custom,
+					DateTimeFormatSettingsViewModel.DateAndTimeMillisecondsPresetPattern));
+			Assert.AreEqual(
+				DateTimeFormatSettingsViewModel.CustomFormatChoiceIndex,
+				DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Custom, "yyyy"));
+			Assert.AreEqual(2, DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Universal, null));
+			Assert.AreEqual(
+				DateTimeFormatSettingsViewModel.DatePresetPattern,
+				DateTimeFormatSettingsViewModel.GetPatternForChoiceIndex(3, null));
+			Assert.AreEqual(DateTimeFormats.Application, DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(-1));
+			Assert.IsNull(DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(-1));
+			Assert.IsNull(DateTimeFormatSettingsViewModel.GetPatternForChoiceIndex(-1, null));
 		}
 
 		[TestMethod]
@@ -53,10 +72,80 @@ namespace Files.App.UnitTests
 			Assert.IsNull(DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(0));
 			Assert.AreEqual(DateTimeFormats.Application, DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(1));
 			Assert.AreEqual(DateTimeFormats.Custom, DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(4));
+			Assert.AreEqual(DateTimeFormats.Custom, DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(8));
 
-			Assert.AreEqual(0, DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(null));
-			Assert.AreEqual(3, DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(DateTimeFormats.Universal));
-			Assert.AreEqual(4, DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(DateTimeFormats.Custom));
+			Assert.AreEqual(0, DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(null, null));
+			Assert.AreEqual(3, DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(DateTimeFormats.Universal, null));
+			Assert.AreEqual(
+				4,
+				DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(
+					DateTimeFormats.Custom,
+					DateTimeFormatSettingsViewModel.DatePresetPattern));
+			Assert.AreEqual(
+				8,
+				DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(DateTimeFormats.Custom, "yyyy"));
+		}
+
+		[TestMethod]
+		public void FixedPresets_RoundTripAsCustomPatternsAndEchoSelectedPreset()
+		{
+			var (settings, viewModel) = CreateTarget();
+
+			for (var index = 3; index <= 6; index++)
+			{
+				viewModel.SelectedGlobalFormatIndex = index;
+				var expectedPattern = DateTimeFormatSettingsViewModel.GetPatternForChoiceIndex(index, null);
+
+				Assert.AreEqual(DateTimeFormats.Custom, settings.DateTimeFormat);
+				Assert.AreEqual(expectedPattern, settings.DateTimeFormatCustomPattern);
+
+				var reloaded = new DateTimeFormatSettingsViewModel(
+					settings,
+					new DateTimeFormatterFactory(),
+					volumePathProvider: null);
+
+				Assert.AreEqual(index, reloaded.SelectedGlobalFormatIndex);
+				Assert.IsFalse(reloaded.ShowGlobalCustomPattern);
+				Assert.AreEqual(expectedPattern, reloaded.SelectedGlobalPattern);
+			}
+		}
+
+		[TestMethod]
+		public void FixedPresets_EchoForColumnAndDirectoryRules()
+		{
+			var (settings, viewModel) = CreateTarget();
+
+			Assert.AreEqual(
+				DateTimeFormatRuleValidationError.None,
+				viewModel.SaveColumnRule(
+					DateTimeColumnKind.Modified,
+					DateTimeFormats.Custom,
+					DateTimeFormatSettingsViewModel.DateAndTimeSecondsPresetPattern));
+
+			var reloaded = new DateTimeFormatSettingsViewModel(
+				settings,
+				new DateTimeFormatterFactory(),
+				volumePathProvider: null);
+			Assert.AreEqual(6, reloaded.ModifiedRule.SelectedFormatIndex);
+			Assert.IsFalse(reloaded.ModifiedRule.ShowCustomPattern);
+
+			var dialog = new DateTimeFormatRuleDialogViewModel(
+				reloaded,
+				existingRule: null,
+				initialDirectoryPath: @"C:\Work",
+				initialColumn: DateTimeColumnKind.Created)
+			{
+				SelectedFormatIndex = 6,
+			};
+
+			Assert.IsTrue(dialog.Save());
+			var storedRule = settings.DateTimeFormatDirectoryRules.Single();
+			Assert.AreEqual(DateTimeFormatSettingsViewModel.DateAndTimeMillisecondsPresetPattern, storedRule.CustomPattern);
+
+			var reopened = new DateTimeFormatRuleDialogViewModel(reloaded, storedRule);
+			Assert.AreEqual(6, reopened.SelectedFormatIndex);
+			Assert.IsFalse(reopened.ShowCustomPattern);
+			Assert.IsFalse(string.IsNullOrWhiteSpace(reopened.PreviewText));
 		}
 
 		[TestMethod]
@@ -81,7 +170,7 @@ namespace Files.App.UnitTests
 		public void SelectedGlobalFormatIndex_SavesCustomPatternWhenItBecomesValid()
 		{
 			var (settings, viewModel) = CreateTarget();
-			viewModel.SelectedGlobalFormatIndex = 3;
+			viewModel.SelectedGlobalFormatIndex = DateTimeFormatSettingsViewModel.CustomFormatChoiceIndex;
 
 			Assert.AreEqual(DateTimeFormatRuleValidationError.MissingPattern, viewModel.GlobalValidationError);
 			Assert.AreEqual(DateTimeFormats.Application, settings.DateTimeFormat);
@@ -215,7 +304,7 @@ namespace Files.App.UnitTests
 				initialDirectoryPath: @"C:\Work",
 				initialColumn: DateTimeColumnKind.Created)
 			{
-				SelectedFormatIndex = DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Custom),
+				SelectedFormatIndex = DateTimeFormatSettingsViewModel.CustomFormatChoiceIndex,
 			};
 
 			Assert.IsFalse(dialog.Save());
@@ -233,7 +322,7 @@ namespace Files.App.UnitTests
 				initialDirectoryPath: @"D:\Docs",
 				initialColumn: DateTimeColumnKind.Modified)
 			{
-				SelectedFormatIndex = DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Universal),
+				SelectedFormatIndex = DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(DateTimeFormats.Universal, null),
 				IncludeSubdirectories = true,
 			};
 
@@ -384,6 +473,9 @@ namespace Files.App.UnitTests
 			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("Home"));
 			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("Shell:RecycleBinFolder"));
 			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath("ftp://server/share"));
+			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath(@"C:relative"));
+			Assert.IsFalse(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath(@"\rootRelative"));
+			Assert.IsTrue(DateTimeFormatSettingsViewModel.IsSupportedDirectoryPath(@" C:\Work "));
 		}
 
 		[TestMethod]

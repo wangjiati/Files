@@ -52,6 +52,9 @@ namespace Files.App.ViewModels.Settings
 			get => DateTimeFormatSettings.SelectedGlobalFormatIndex;
 			set
 			{
+				if (value < 0 || value >= DateTimeFormatSettings.FormatChoices.Count)
+					return;
+
 				if (value == DateTimeFormatSettings.SelectedGlobalFormatIndex)
 					return;
 
@@ -106,7 +109,7 @@ namespace Files.App.ViewModels.Settings
 		}
 
 		public bool ShowCustomDateFormatPattern
-			=> (DateTimeFormats)SelectedDateTimeFormatIndex is DateTimeFormats.Custom;
+			=> DateTimeFormatSettings.ShowGlobalCustomPattern;
 
 		public bool HasGlobalDateFormatError
 			=> DateTimeFormatSettings.HasGlobalValidationError;
@@ -134,7 +137,6 @@ namespace Files.App.ViewModels.Settings
 				Ioc.Default.GetRequiredService<IVolumePathProvider>());
 
 			AddDateTimeOptions();
-			SelectedDateTimeFormatIndex = (int)Enum.Parse(typeof(DateTimeFormats), DateTimeFormat.ToString());
 
 			dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -192,17 +194,15 @@ namespace Files.App.ViewModels.Settings
 			DateTimeOffset sampleDate1 = DateTime.Now.AddSeconds(-5);
 			DateTimeOffset sampleDate2 = new DateTime(sampleDate1.Year - 5, 12, 31, 14, 30, 0);
 
-			var styles = new DateTimeFormats[] { DateTimeFormats.Application, DateTimeFormats.System, DateTimeFormats.Universal, DateTimeFormats.Custom };
-
-			DateFormats = styles
-				.Select(style => new DateTimeFormatItem(style, sampleDate1, sampleDate2, DateTimeFormatSettings.GlobalCustomPattern))
+			DateFormats = DateTimeFormatSettings.FormatChoices
+				.Select(choice => new DateTimeFormatItem(choice, sampleDate1, sampleDate2, DateTimeFormatSettings.GlobalCustomPattern))
 				.ToList();
 		}
 
 		private void UpdateCustomDateFormatItem()
 		{
 			DateFormats?
-				.FirstOrDefault(item => item.Format is DateTimeFormats.Custom)
+				.FirstOrDefault(item => item.Choice.IsCustom)
 				?.Update(DateTimeFormatSettings.GlobalCustomPattern);
 		}
 
@@ -437,7 +437,18 @@ namespace Files.App.ViewModels.Settings
 		}
 
 		public string DateFormatSample
-			=> string.Format(Strings.DateFormatSample.GetLocalizedResource(), DateFormats[SelectedDateTimeFormatIndex].Sample1, DateFormats[SelectedDateTimeFormatIndex].Sample2);
+		{
+			get
+			{
+				var index = SelectedDateTimeFormatIndex;
+
+				if (index < 0 || index >= DateFormats.Count)
+					return string.Empty;
+
+				var item = DateFormats[index];
+				return string.Format(Strings.DateFormatSample.GetLocalizedResource(), item.Sample1, item.Sample2);
+			}
+		}
 
 		private DispatcherQueue dispatcherQueue;
 
@@ -702,19 +713,18 @@ namespace Files.App.ViewModels.Settings
 		private readonly DateTimeOffset _sampleDate1;
 		private readonly DateTimeOffset _sampleDate2;
 
-		private string label = string.Empty;
 		private string sample1 = string.Empty;
 		private string sample2 = string.Empty;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
-		public DateTimeFormats Format { get; }
+		public DateTimeFormatChoice Choice { get; }
+
+		public DateTimeFormats Format
+			=> Choice.Format ?? DateTimeFormats.Application;
 
 		public string Label
-		{
-			get => label;
-			private set => SetProperty(ref label, value);
-		}
+			=> Choice.Label;
 
 		public string Sample1
 		{
@@ -728,9 +738,9 @@ namespace Files.App.ViewModels.Settings
 			private set => SetProperty(ref sample2, value);
 		}
 
-		public DateTimeFormatItem(DateTimeFormats style, DateTimeOffset sampleDate1, DateTimeOffset sampleDate2, string? customPattern = null)
+		public DateTimeFormatItem(DateTimeFormatChoice choice, DateTimeOffset sampleDate1, DateTimeOffset sampleDate2, string? customPattern = null)
 		{
-			Format = style;
+			Choice = choice;
 			_sampleDate1 = sampleDate1;
 			_sampleDate2 = sampleDate2;
 
@@ -740,12 +750,16 @@ namespace Files.App.ViewModels.Settings
 		public void Update(string? customPattern)
 		{
 			var factory = Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>();
-			var formatter = factory.GetDateTimeFormatter(Format, customPattern);
+			var pattern = Choice.FixedPattern ?? (Choice.IsCustom ? customPattern : null);
+			var formatter = factory.GetDateTimeFormatter(Format, pattern);
 
-			Label = formatter.Name;
 			Sample1 = formatter.ToShortLabel(_sampleDate1);
 			Sample2 = formatter.ToShortLabel(_sampleDate2);
+			OnPropertyChanged(nameof(Label));
 		}
+
+		private void OnPropertyChanged(string propertyName)
+			=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
 		private void SetProperty<T>(ref T storage, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
 		{

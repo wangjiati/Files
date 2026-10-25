@@ -34,8 +34,9 @@ namespace Files.App.ViewModels.Settings
 			_selectedScopeIndex = DateTimeFormatSettingsViewModel.GetScopeChoiceIndex(existingRule?.Column ?? initialColumn);
 
 			var format = existingRule?.Format ?? settings.SelectedGlobalFormat;
-			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(format);
-			_customPattern = existingRule?.CustomPattern ?? (format is DateTimeFormats.Custom ? settings.GlobalCustomPattern : string.Empty);
+			var customPattern = existingRule?.CustomPattern ?? settings.SelectedGlobalPattern;
+			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetFormatChoiceIndex(format, customPattern);
+			_customPattern = customPattern ?? string.Empty;
 			_includeSubdirectories = existingRule?.IncludeSubdirectories ?? false;
 		}
 
@@ -95,6 +96,7 @@ namespace Files.App.ViewModels.Settings
 					return;
 
 				OnPropertyChanged(nameof(SelectedFormat));
+				OnPropertyChanged(nameof(SelectedPattern));
 				_showValidation = true;
 				NotifyValidationAndPreview();
 			}
@@ -102,6 +104,9 @@ namespace Files.App.ViewModels.Settings
 
 		public DateTimeFormats SelectedFormat
 			=> DateTimeFormatSettingsViewModel.GetFormatForChoiceIndex(SelectedFormatIndex);
+
+		public string? SelectedPattern
+			=> DateTimeFormatSettingsViewModel.GetPatternForChoiceIndex(SelectedFormatIndex, CustomPattern);
 
 		public string CustomPattern
 		{
@@ -111,13 +116,14 @@ namespace Files.App.ViewModels.Settings
 				if (!SetProperty(ref _customPattern, value ?? string.Empty))
 					return;
 
+				OnPropertyChanged(nameof(SelectedPattern));
 				_showValidation = true;
 				NotifyValidationAndPreview();
 			}
 		}
 
 		public bool ShowCustomPattern
-			=> SelectedFormat is DateTimeFormats.Custom;
+			=> SelectedFormatIndex == DateTimeFormatSettingsViewModel.CustomFormatChoiceIndex;
 
 		public bool IncludeSubdirectories
 		{
@@ -126,10 +132,10 @@ namespace Files.App.ViewModels.Settings
 		}
 
 		public string PreviewText
-			=> _settings.GetPreview(SelectedFormat, CustomPattern);
+			=> _settings.GetPreview(SelectedFormat, SelectedPattern);
 
 		public DateTimeFormatRuleValidationError ValidationError
-			=> _settings.ValidateDirectoryRule(DirectoryPath, SelectedFormat, CustomPattern);
+			=> _settings.ValidateDirectoryRule(DirectoryPath, SelectedFormat, SelectedPattern);
 
 		public bool HasValidationError
 			=> _showValidation && ValidationError is not DateTimeFormatRuleValidationError.None;
@@ -146,7 +152,7 @@ namespace Files.App.ViewModels.Settings
 				DirectoryPath,
 				SelectedColumn,
 				SelectedFormat,
-				CustomPattern,
+				SelectedPattern,
 				IncludeSubdirectories);
 
 			NotifyValidationAndPreview();
@@ -165,6 +171,7 @@ namespace Files.App.ViewModels.Settings
 
 		private void NotifyValidationAndPreview()
 		{
+			OnPropertyChanged(nameof(SelectedPattern));
 			OnPropertyChanged(nameof(ShowCustomPattern));
 			OnPropertyChanged(nameof(PreviewText));
 			OnPropertyChanged(nameof(ValidationError));

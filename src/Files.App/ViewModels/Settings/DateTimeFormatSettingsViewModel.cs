@@ -12,19 +12,24 @@ namespace Files.App.ViewModels.Settings
 	/// </summary>
 	public sealed class DateTimeFormatChoice
 	{
-		internal DateTimeFormatChoice(DateTimeFormats? format, string resourceKey)
+		internal DateTimeFormatChoice(DateTimeFormats? format, string resourceKey, string? fixedPattern = null)
 		{
 			Format = format;
 			ResourceKey = resourceKey;
+			FixedPattern = fixedPattern;
 		}
 
 		public DateTimeFormats? Format { get; }
+
+		public string? FixedPattern { get; }
 
 		internal string ResourceKey { get; }
 
 		public string Label => ResourceKey.GetLocalizedResource();
 
-		public bool IsCustom => Format is DateTimeFormats.Custom;
+		public bool IsFixedPreset => FixedPattern is not null;
+
+		public bool IsCustom => Format is DateTimeFormats.Custom && FixedPattern is null;
 
 		public bool IsInherit => Format is null;
 	}
@@ -70,6 +75,29 @@ namespace Files.App.ViewModels.Settings
 	/// </summary>
 	public sealed partial class DateTimeFormatSettingsViewModel : ObservableObject
 	{
+		public const string DatePresetPattern = "yyyy-MM-dd";
+		public const string DateAndTimePresetPattern = "yyyy-MM-dd HH:mm";
+		public const string DateAndTimeSecondsPresetPattern = "yyyy-MM-dd HH:mm:ss";
+		public const string DateAndTimeMillisecondsPresetPattern = "yyyy-MM-dd HH:mm:ss.fff";
+		public const int InheritColumnFormatChoiceIndex = 0;
+		public const int CustomFormatChoiceIndex = 7;
+
+		private static readonly string[] PresetPatterns =
+		[
+			DatePresetPattern,
+			DateAndTimePresetPattern,
+			DateAndTimeSecondsPresetPattern,
+			DateAndTimeMillisecondsPresetPattern,
+		];
+
+		private static readonly string[] PresetResourceKeys =
+		[
+			nameof(Strings.DateTimeFormatPresetDate),
+			nameof(Strings.DateTimeFormatPresetDateAndTime),
+			nameof(Strings.DateTimeFormatPresetDateAndTimeSeconds),
+			nameof(Strings.DateTimeFormatPresetDateAndTimeMilliseconds),
+		];
+
 		private static readonly DateTimeOffset PreviewSampleDate =
 			new(new DateTime(2024, 12, 31, 14, 30, 5, 123, DateTimeKind.Local));
 
@@ -95,6 +123,10 @@ namespace Files.App.ViewModels.Settings
 				new(DateTimeFormats.Application, nameof(Strings.Application)),
 				new(DateTimeFormats.System, nameof(Strings.SystemTimeStyle)),
 				new(DateTimeFormats.Universal, nameof(Strings.Universal)),
+				new(DateTimeFormats.Custom, nameof(Strings.DateTimeFormatPresetDate), DatePresetPattern),
+				new(DateTimeFormats.Custom, nameof(Strings.DateTimeFormatPresetDateAndTime), DateAndTimePresetPattern),
+				new(DateTimeFormats.Custom, nameof(Strings.DateTimeFormatPresetDateAndTimeSeconds), DateAndTimeSecondsPresetPattern),
+				new(DateTimeFormats.Custom, nameof(Strings.DateTimeFormatPresetDateAndTimeMilliseconds), DateAndTimeMillisecondsPresetPattern),
 				new(DateTimeFormats.Custom, nameof(Strings.Custom)),
 			];
 
@@ -112,7 +144,7 @@ namespace Files.App.ViewModels.Settings
 				new(DateTimeColumnKind.Deleted, nameof(Strings.DateDeleted)),
 			];
 
-			_selectedGlobalFormatIndex = GetFormatChoiceIndex(settings.DateTimeFormat);
+			_selectedGlobalFormatIndex = GetFormatChoiceIndex(settings.DateTimeFormat, settings.DateTimeFormatCustomPattern);
 			_globalCustomPattern = settings.DateTimeFormatCustomPattern ?? string.Empty;
 			_globalValidationError = ValidateFormat(settings.DateTimeFormat, _globalCustomPattern);
 
@@ -150,14 +182,18 @@ namespace Files.App.ViewModels.Settings
 					return;
 
 				OnPropertyChanged(nameof(SelectedGlobalFormat));
+				OnPropertyChanged(nameof(SelectedGlobalPattern));
 				OnPropertyChanged(nameof(ShowGlobalCustomPattern));
 				OnPropertyChanged(nameof(GlobalPreview));
-				SaveGlobalFormat(SelectedGlobalFormat, GlobalCustomPattern);
+				SaveGlobalFormat(SelectedGlobalFormat, SelectedGlobalPattern);
 			}
 		}
 
 		public DateTimeFormats SelectedGlobalFormat
 			=> GetFormatForChoiceIndex(SelectedGlobalFormatIndex);
+
+		public string? SelectedGlobalPattern
+			=> GetPatternForChoiceIndex(SelectedGlobalFormatIndex, GlobalCustomPattern);
 
 		public string GlobalCustomPattern
 		{
@@ -167,17 +203,18 @@ namespace Files.App.ViewModels.Settings
 				if (!SetProperty(ref _globalCustomPattern, value ?? string.Empty))
 					return;
 
+				OnPropertyChanged(nameof(SelectedGlobalPattern));
 				OnPropertyChanged(nameof(GlobalPreview));
-				if (SelectedGlobalFormat is DateTimeFormats.Custom)
-					SaveGlobalFormat(SelectedGlobalFormat, GlobalCustomPattern);
+				if (ShowGlobalCustomPattern)
+					SaveGlobalFormat(SelectedGlobalFormat, SelectedGlobalPattern);
 			}
 		}
 
 		public bool ShowGlobalCustomPattern
-			=> SelectedGlobalFormat is DateTimeFormats.Custom;
+			=> SelectedGlobalFormatIndex == CustomFormatChoiceIndex;
 
 		public string GlobalPreview
-			=> GetPreview(SelectedGlobalFormat, GlobalCustomPattern);
+			=> GetPreview(SelectedGlobalFormat, SelectedGlobalPattern);
 
 		public DateTimeFormatRuleValidationError GlobalValidationError
 		{
@@ -200,40 +237,62 @@ namespace Files.App.ViewModels.Settings
 			{
 				1 => DateTimeFormats.System,
 				2 => DateTimeFormats.Universal,
-				3 => DateTimeFormats.Custom,
+				>= 3 => DateTimeFormats.Custom,
 				_ => DateTimeFormats.Application,
 			};
 
-		public static int GetFormatChoiceIndex(DateTimeFormats format)
-			=> format switch
+		public static int GetFormatChoiceIndex(DateTimeFormats format, string? customPattern)
+		{
+			if (format is DateTimeFormats.Custom)
+			{
+				var presetIndex = Array.FindIndex(
+					PresetPatterns,
+					pattern => string.Equals(pattern, customPattern, StringComparison.Ordinal));
+
+				return presetIndex >= 0 ? 3 + presetIndex : CustomFormatChoiceIndex;
+			}
+
+			return format switch
 			{
 				DateTimeFormats.System => 1,
 				DateTimeFormats.Universal => 2,
-				DateTimeFormats.Custom => 3,
 				_ => 0,
 			};
+		}
+
+		public static string? GetPatternForChoiceIndex(int index, string? customPattern)
+			=> index is >= 3 and < CustomFormatChoiceIndex
+				? PresetPatterns[index - 3]
+				: index == CustomFormatChoiceIndex
+					? customPattern
+					: null;
+
+		public static string? GetPresetResourceKey(DateTimeFormats format, string? customPattern)
+		{
+			if (format is not DateTimeFormats.Custom)
+				return null;
+
+			var presetIndex = Array.FindIndex(
+				PresetPatterns,
+				pattern => string.Equals(pattern, customPattern, StringComparison.Ordinal));
+
+			return presetIndex >= 0 ? PresetResourceKeys[presetIndex] : null;
+		}
 
 		public static DateTimeFormats? GetFormatForColumnChoiceIndex(int index)
-			=> index switch
-			{
-				0 => null,
-				1 => DateTimeFormats.Application,
-				2 => DateTimeFormats.System,
-				3 => DateTimeFormats.Universal,
-				4 => DateTimeFormats.Custom,
-				_ => null,
-			};
+			=> index <= InheritColumnFormatChoiceIndex
+				? null
+				: GetFormatForChoiceIndex(index - 1);
 
-		public static int GetColumnFormatChoiceIndex(DateTimeFormats? format)
-			=> format switch
-			{
-				null => 0,
-				DateTimeFormats.Application => 1,
-				DateTimeFormats.System => 2,
-				DateTimeFormats.Universal => 3,
-				DateTimeFormats.Custom => 4,
-				_ => 0,
-			};
+		public static int GetColumnFormatChoiceIndex(DateTimeFormats? format, string? customPattern)
+			=> format is null
+				? InheritColumnFormatChoiceIndex
+				: GetFormatChoiceIndex(format.Value, customPattern) + 1;
+
+		public static string? GetPatternForColumnChoiceIndex(int index, string? customPattern)
+			=> index <= InheritColumnFormatChoiceIndex
+				? null
+				: GetPatternForChoiceIndex(index - 1, customPattern);
 
 		public static DateTimeColumnKind? GetColumnForScopeChoiceIndex(int index)
 			=> index switch
@@ -339,9 +398,15 @@ namespace Files.App.ViewModels.Settings
 
 			try
 			{
-				return SystemIO.Path.IsPathRooted(directoryPath.Trim());
+				var trimmedPath = directoryPath.Trim();
+
+				return SystemIO.Path.IsPathFullyQualified(trimmedPath) &&
+					!string.IsNullOrWhiteSpace(SystemIO.Path.GetFullPath(trimmedPath));
 			}
-			catch (ArgumentException)
+			catch (Exception ex) when (
+				ex is ArgumentException or
+					NotSupportedException or
+					SystemIO.IOException)
 			{
 				return false;
 			}
@@ -512,7 +577,7 @@ namespace Files.App.ViewModels.Settings
 			Column = column;
 
 			var rule = settings.FindStoredColumnRule(column);
-			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(rule?.Format);
+			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(rule?.Format, rule?.CustomPattern);
 			_customPattern = rule?.CustomPattern ?? string.Empty;
 			_validationError = rule?.Validate() ?? DateTimeFormatRuleValidationError.None;
 		}
@@ -533,6 +598,9 @@ namespace Files.App.ViewModels.Settings
 		public DateTimeFormats? SelectedFormat
 			=> DateTimeFormatSettingsViewModel.GetFormatForColumnChoiceIndex(SelectedFormatIndex);
 
+		public string? SelectedPattern
+			=> DateTimeFormatSettingsViewModel.GetPatternForColumnChoiceIndex(SelectedFormatIndex, CustomPattern);
+
 		public int SelectedFormatIndex
 		{
 			get => _selectedFormatIndex;
@@ -542,10 +610,11 @@ namespace Files.App.ViewModels.Settings
 					return;
 
 				OnPropertyChanged(nameof(SelectedFormat));
+				OnPropertyChanged(nameof(SelectedPattern));
 				OnPropertyChanged(nameof(ShowCustomPattern));
 				OnPropertyChanged(nameof(PreviewText));
 
-				var error = _settings.SaveColumnRule(Column, SelectedFormat, CustomPattern);
+				var error = _settings.SaveColumnRule(Column, SelectedFormat, SelectedPattern);
 				SetValidationError(error);
 			}
 		}
@@ -558,22 +627,23 @@ namespace Files.App.ViewModels.Settings
 				if (!SetProperty(ref _customPattern, value ?? string.Empty))
 					return;
 
+				OnPropertyChanged(nameof(SelectedPattern));
 				OnPropertyChanged(nameof(PreviewText));
 
-				if (SelectedFormat is DateTimeFormats.Custom)
+				if (ShowCustomPattern)
 				{
-					var error = _settings.SaveColumnRule(Column, SelectedFormat, CustomPattern);
+					var error = _settings.SaveColumnRule(Column, SelectedFormat, SelectedPattern);
 					SetValidationError(error);
 				}
 			}
 		}
 
 		public bool ShowCustomPattern
-			=> SelectedFormat is DateTimeFormats.Custom;
+			=> SelectedFormatIndex == DateTimeFormatSettingsViewModel.CustomFormatChoiceIndex + 1;
 
 		public string PreviewText
 			=> SelectedFormat is { } format
-				? _settings.GetPreview(format, CustomPattern)
+				? _settings.GetPreview(format, SelectedPattern)
 				: _settings.GlobalPreview;
 
 		public DateTimeFormatRuleValidationError ValidationError
@@ -597,11 +667,12 @@ namespace Files.App.ViewModels.Settings
 
 		internal void ApplyStoredValue(DateTimeFormats? format, string? customPattern)
 		{
-			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(format);
+			_selectedFormatIndex = DateTimeFormatSettingsViewModel.GetColumnFormatChoiceIndex(format, customPattern);
 			_customPattern = customPattern ?? string.Empty;
 
 			OnPropertyChanged(nameof(SelectedFormatIndex));
 			OnPropertyChanged(nameof(SelectedFormat));
+			OnPropertyChanged(nameof(SelectedPattern));
 			OnPropertyChanged(nameof(CustomPattern));
 			OnPropertyChanged(nameof(ShowCustomPattern));
 			OnPropertyChanged(nameof(PreviewText));
@@ -636,14 +707,22 @@ namespace Files.App.ViewModels.Settings
 			};
 
 		public string FormatLabel
-			=> Rule.Format is DateTimeFormats.Custom
-				? string.Format(Strings.DateTimeFormatCustomValue.GetLocalizedResource(), Rule.CustomPattern)
-				: Rule.Format switch
-				{
-					DateTimeFormats.System => Strings.SystemTimeStyle.GetLocalizedResource(),
-					DateTimeFormats.Universal => Strings.Universal.GetLocalizedResource(),
-					_ => Strings.Application.GetLocalizedResource(),
-				};
+		{
+			get
+			{
+				if (DateTimeFormatSettingsViewModel.GetPresetResourceKey(Rule.Format, Rule.CustomPattern) is { } presetResourceKey)
+					return presetResourceKey.GetLocalizedResource();
+
+				return Rule.Format is DateTimeFormats.Custom
+					? string.Format(Strings.DateTimeFormatCustomValue.GetLocalizedResource(), Rule.CustomPattern)
+					: Rule.Format switch
+					{
+						DateTimeFormats.System => Strings.SystemTimeStyle.GetLocalizedResource(),
+						DateTimeFormats.Universal => Strings.Universal.GetLocalizedResource(),
+						_ => Strings.Application.GetLocalizedResource(),
+					};
+			}
+		}
 
 		public string SubdirectoryLabel
 			=> Rule.IncludeSubdirectories

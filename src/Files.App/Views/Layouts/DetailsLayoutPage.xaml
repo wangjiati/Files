@@ -272,6 +272,25 @@
 							<Grid.ContextFlyout>
 								<MenuFlyout>
 
+									<!--  Date time format for this folder  -->
+									<MenuFlyoutSubItem Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}">
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Modified"
+											Text="{helpers:ResourceString Name=DateModifiedLowerCase}" />
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Created"
+											Text="{helpers:ResourceString Name=DateCreated}" />
+										<MenuFlyoutItem
+											Click="EditCurrentDirectoryDateFormat_Click"
+											Tag="Deleted"
+											Text="{helpers:ResourceString Name=DateDeleted}" />
+									</MenuFlyoutSubItem>
+
+									<!--  (Divider)  -->
+									<MenuFlyoutSeparator />
+
 									<!--  All Columns To Fit  -->
 									<MenuFlyoutItem
 										x:Name="AllColumnsToFitMenuflyoutItem"
@@ -785,16 +804,7 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateDeleted"
 								Header="{helpers:ResourceString Name=DateDeleted}"
-								Visibility="{x:Bind ColumnsViewModel.DateDeletedColumn.Visibility, Mode=OneWay}">
-								<uc:DataGridHeader.ContextFlyout>
-									<MenuFlyout>
-										<MenuFlyoutItem
-											Click="EditCurrentDirectoryDateFormat_Click"
-											Tag="Deleted"
-											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
-									</MenuFlyout>
-								</uc:DataGridHeader.ContextFlyout>
-							</uc:DataGridHeader>
+								Visibility="{x:Bind ColumnsViewModel.DateDeletedColumn.Visibility, Mode=OneWay}" />
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
@@ -816,16 +826,7 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateModified"
 								Header="{helpers:ResourceString Name=DateModifiedLowerCase}"
-								Visibility="{x:Bind ColumnsViewModel.DateModifiedColumn.Visibility, Mode=OneWay}">
-								<uc:DataGridHeader.ContextFlyout>
-									<MenuFlyout>
-										<MenuFlyoutItem
-											Click="EditCurrentDirectoryDateFormat_Click"
-											Tag="Modified"
-											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
-									</MenuFlyout>
-								</uc:DataGridHeader.ContextFlyout>
-							</uc:DataGridHeader>
+								Visibility="{x:Bind ColumnsViewModel.DateModifiedColumn.Visibility, Mode=OneWay}" />
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
@@ -847,16 +848,7 @@
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateCreated"
 								Header="{helpers:ResourceString Name=DateCreated}"
-								Visibility="{x:Bind ColumnsViewModel.DateCreatedColumn.Visibility, Mode=OneWay}">
-								<uc:DataGridHeader.ContextFlyout>
-									<MenuFlyout>
-										<MenuFlyoutItem
-											Click="EditCurrentDirectoryDateFormat_Click"
-											Tag="Created"
-											Text="{helpers:ResourceString Name=DateTimeFormatForThisFolder}" />
-									</MenuFlyout>
-								</uc:DataGridHeader.ContextFlyout>
-							</uc:DataGridHeader>
+								Visibility="{x:Bind ColumnsViewModel.DateCreatedColumn.Visibility, Mode=OneWay}" />
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter

@@ -2147,6 +2147,18 @@
   <data name="DateTimeFormatPatternRequired" xml:space="preserve">
     <value>Enter a custom date and time format.</value>
   </data>
+  <data name="DateTimeFormatPresetDate" xml:space="preserve">
+    <value>Date (yyyy-MM-dd)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTime" xml:space="preserve">
+    <value>Date and time (yyyy-MM-dd HH:mm)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTimeMilliseconds" xml:space="preserve">
+    <value>Date and time with milliseconds (yyyy-MM-dd HH:mm:ss.fff)</value>
+  </data>
+  <data name="DateTimeFormatPresetDateAndTimeSeconds" xml:space="preserve">
+    <value>Date and time with seconds (yyyy-MM-dd HH:mm:ss)</value>
+  </data>
   <data name="DateTimeFormatPreview" xml:space="preserve">
     <value>Preview</value>
   </data>

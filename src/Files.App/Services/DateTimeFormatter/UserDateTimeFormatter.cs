@@ -1,11 +1,45 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
+
 namespace Files.App.Services.DateTimeFormatter
 {
+	internal interface IDateTimeFormatSettingsSource
+	{
+		DateTimeFormats DateTimeFormat { get; }
+
+		string? DateTimeFormatCustomPattern { get; }
+
+		event EventHandler<SettingChangedEventArgs> OnSettingChangedEvent;
+	}
+
+	internal sealed class UserSettingsDateTimeFormatSource : IDateTimeFormatSettingsSource
+	{
+		private readonly IUserSettingsService _settingsService;
+
+		public UserSettingsDateTimeFormatSource(IUserSettingsService settingsService)
+		{
+			_settingsService = settingsService;
+		}
+
+		public DateTimeFormats DateTimeFormat
+			=> _settingsService.GeneralSettingsService.DateTimeFormat;
+
+		public string? DateTimeFormatCustomPattern
+			=> _settingsService.GeneralSettingsService.DateTimeFormatCustomPattern;
+
+		public event EventHandler<SettingChangedEventArgs> OnSettingChangedEvent
+		{
+			add => _settingsService.OnSettingChangedEvent += value;
+			remove => _settingsService.OnSettingChangedEvent -= value;
+		}
+	}
+
 	internal sealed class UserDateTimeFormatter : IDateTimeFormatter
 	{
-		public IUserSettingsService UserSettingsService { get; } = Ioc.Default.GetRequiredService<IUserSettingsService>();
+		private readonly IDateTimeFormatSettingsSource _settingsSource;
+		private readonly IDateTimeFormatterFactory _formatterFactory;
 
 		private IDateTimeFormatter formatter = null!;
 
@@ -13,8 +47,19 @@ namespace Files.App.Services.DateTimeFormatter
 			=> formatter.Name;
 
 		public UserDateTimeFormatter()
+			: this(
+				new UserSettingsDateTimeFormatSource(Ioc.Default.GetRequiredService<IUserSettingsService>()),
+				Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>())
 		{
-			UserSettingsService.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
+		}
+
+		internal UserDateTimeFormatter(
+			IDateTimeFormatSettingsSource settingsSource,
+			IDateTimeFormatterFactory formatterFactory)
+		{
+			_settingsSource = settingsSource;
+			_formatterFactory = formatterFactory;
+			_settingsSource.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
 
 			Update();
 		}
@@ -30,16 +75,18 @@ namespace Files.App.Services.DateTimeFormatter
 
 		private void Update()
 		{
-			var dateTimeFormat = UserSettingsService.GeneralSettingsService.DateTimeFormat;
-			var factory = Ioc.Default.GetRequiredService<IDateTimeFormatterFactory>();
-
-			formatter = factory.GetDateTimeFormatter(dateTimeFormat);
+			formatter = _formatterFactory.GetDateTimeFormatter(
+				_settingsSource.DateTimeFormat,
+				_settingsSource.DateTimeFormatCustomPattern);
 		}
 
 		private void UserSettingsService_OnSettingChangedEvent(object? sender, SettingChangedEventArgs e)
 		{
-			if (e.SettingName is nameof(UserSettingsService.GeneralSettingsService.DateTimeFormat))
+			if (e.SettingName is nameof(IGeneralSettingsService.DateTimeFormat) or
+				nameof(IGeneralSettingsService.DateTimeFormatCustomPattern))
+			{
 				Update();
+			}
 		}
 	}
 }
