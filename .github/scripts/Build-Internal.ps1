@@ -489,7 +489,7 @@ function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirec
             $entry = $replacedFiles[$index]
             if (Test-Path -LiteralPath $entry.Backup -PathType Leaf) {
                 try {
-                    [System.IO.File]::Replace($entry.Backup, $entry.Destination, $null, $true)
+                    [System.IO.File]::Copy($entry.Backup, $entry.Destination, $true)
                 }
                 catch {
                     $rollbackErrors += "'$($entry.Destination)': $($_.Exception.Message)"
