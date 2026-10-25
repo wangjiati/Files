@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using Files.App.Data.Contracts;
 using Files.App.Data.Enums;
 using Files.App.Helpers;
+using Files.App.Services;
 using Files.App.Services.Settings;
 using Files.App.Utils.FileTags;
 using Files.App.Utils.Serialization;
@@ -247,6 +248,17 @@ namespace Files.App.UnitTests
 			var reloaded = new PortableFileTagsDatabase(path);
 			CollectionAssert.AreEqual(new[] { "old" }, reloaded.GetTags(@"D:\old.txt", null));
 			Assert.AreEqual(0, reloaded.GetTags(@"D:\new.txt", null).Length);
+		}
+
+		[TestMethod]
+		public void IntegrationAssets_MissingSourceFailsExplicitly()
+		{
+			using var directory = new TemporaryDirectory();
+			AppRuntime.Initialize(DistributionKind.Portable, directory.Path);
+			var service = new WindowsSystemIntegrationService();
+
+			Assert.ThrowsExactly<FileNotFoundException>(
+				() => service.SetDefaultFileManagerAsync(true).GetAwaiter().GetResult());
 		}
 
 		[TestMethod]
