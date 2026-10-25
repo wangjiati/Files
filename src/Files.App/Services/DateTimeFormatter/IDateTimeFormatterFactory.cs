@@ -5,6 +5,6 @@ namespace Files.App.Services.DateTimeFormatter
 {
 	public interface IDateTimeFormatterFactory
 	{
-		IDateTimeFormatter GetDateTimeFormatter(DateTimeFormats dateTimeFormat);
+		IDateTimeFormatter GetDateTimeFormatter(DateTimeFormats dateTimeFormat, string? customPattern = null);
 	}
 }
