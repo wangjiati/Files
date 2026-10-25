@@ -47,12 +47,8 @@ namespace Files.App.Services.DateTimeFormatter
 
 			foreach (var candidate in _ruleSource.DirectoryFormatRules)
 			{
-				if (candidate is null ||
-					candidate.Validate() is not DateTimeFormatRuleValidationError.None ||
-					string.IsNullOrWhiteSpace(candidate.DirectoryPath))
-				{
+				if (candidate is null || string.IsNullOrWhiteSpace(candidate.DirectoryPath))
 					continue;
-				}
 
 				if (candidate.Column is { } candidateColumn && candidateColumn != column)
 					continue;
@@ -60,6 +56,9 @@ namespace Files.App.Services.DateTimeFormatter
 				var scopeKey = PortableDirectoryKey.FromRule(candidate);
 
 				if (!scopeKey.TryGetDistance(directoryKey, candidate.IncludeSubdirectories, out var distance))
+					continue;
+
+				if (candidate.Validate() is not DateTimeFormatRuleValidationError.None)
 					continue;
 
 				if (candidate.Column is not null)
@@ -88,12 +87,14 @@ namespace Files.App.Services.DateTimeFormatter
 			foreach (var candidate in _ruleSource.ColumnFormatRules)
 			{
 				if (candidate is null ||
-					candidate.Validate() is not DateTimeFormatRuleValidationError.None ||
 					candidate.Column != column ||
 					!string.IsNullOrWhiteSpace(candidate.DirectoryPath))
 				{
 					continue;
 				}
+
+				if (candidate.Validate() is not DateTimeFormatRuleValidationError.None)
+					continue;
 
 				rule = candidate;
 			}

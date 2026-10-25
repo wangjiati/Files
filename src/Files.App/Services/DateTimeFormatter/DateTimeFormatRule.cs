@@ -13,6 +13,7 @@ namespace Files.App.Services.DateTimeFormatter
 		InvalidFormat = 2,
 		MissingPattern = 3,
 		InvalidPattern = 4,
+		MissingRelativePath = 5,
 	}
 
 	/// <summary>
@@ -48,6 +49,9 @@ namespace Files.App.Services.DateTimeFormatter
 		{
 			if (Column is { } column && !Enum.IsDefined(column))
 				return DateTimeFormatRuleValidationError.InvalidColumn;
+
+			if (!string.IsNullOrWhiteSpace(VolumeId) && string.IsNullOrWhiteSpace(RelativePath))
+				return DateTimeFormatRuleValidationError.MissingRelativePath;
 
 			if (!Enum.IsDefined(Format))
 				return DateTimeFormatRuleValidationError.InvalidFormat;

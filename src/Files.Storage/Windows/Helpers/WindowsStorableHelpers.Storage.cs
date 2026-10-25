@@ -92,9 +92,9 @@ namespace Files.Storage
 			return false;
 		}
 
-		public static bool TryGetVolumeSerialNumber(string path, out uint serialNumber)
+		public static bool TryGetVolumeName(string path, out string volumeName)
 		{
-			serialNumber = 0;
+			volumeName = string.Empty;
 
 			if (string.IsNullOrWhiteSpace(path))
 				return false;
@@ -110,8 +110,24 @@ namespace Files.Storage
 				return false;
 			}
 
-			return !string.IsNullOrEmpty(root) &&
-				PInvoke.GetVolumeInformation(root, default, out serialNumber, out _, out _, default);
+			if (string.IsNullOrEmpty(root))
+				return false;
+
+			Span<char> buffer = stackalloc char[64];
+
+			if (!PInvoke.GetVolumeNameForVolumeMountPoint(root, buffer))
+				return false;
+
+			var length = buffer.IndexOf('\0');
+
+			if (length < 0)
+				length = buffer.Length;
+
+			if (length == 0)
+				return false;
+
+			volumeName = new string(buffer[..length]);
+			return true;
 		}
 	}
 }

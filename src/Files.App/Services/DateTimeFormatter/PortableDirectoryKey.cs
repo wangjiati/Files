@@ -1,8 +1,6 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
-using System.Globalization;
-
 namespace Files.App.Services.DateTimeFormatter
 {
 	/// <summary>
@@ -25,7 +23,7 @@ namespace Files.App.Services.DateTimeFormatter
 	/// </summary>
 	public sealed record PortableDirectoryKey
 	{
-		private PortableDirectoryKey(string absolutePath, string? volumeId, string relativePath)
+		private PortableDirectoryKey(string absolutePath, string? volumeId, string? relativePath)
 		{
 			AbsolutePath = absolutePath;
 			VolumeId = string.IsNullOrEmpty(volumeId) ? null : volumeId;
@@ -45,7 +43,7 @@ namespace Files.App.Services.DateTimeFormatter
 		/// <summary>
 		/// Gets the normalized path relative to the volume root.
 		/// </summary>
-		public string RelativePath { get; }
+		public string? RelativePath { get; }
 
 		/// <summary>
 		/// Gets a value indicating whether the scope is identified by a volume and a relative path.
@@ -61,7 +59,8 @@ namespace Files.App.Services.DateTimeFormatter
 
 			if (!string.IsNullOrWhiteSpace(path) &&
 				volumePathProvider.TryGetVolumeIdentity(path, out var volumeId, out var relativePath) &&
-				!string.IsNullOrWhiteSpace(volumeId))
+				!string.IsNullOrWhiteSpace(volumeId) &&
+				!string.IsNullOrWhiteSpace(relativePath))
 			{
 				return new PortableDirectoryKey(absolutePath, volumeId, NormalizeRelativePath(relativePath));
 			}
@@ -79,7 +78,12 @@ namespace Files.App.Services.DateTimeFormatter
 			var absolutePath = NormalizePath(rule.DirectoryPath);
 
 			if (!string.IsNullOrWhiteSpace(rule.VolumeId))
-				return new PortableDirectoryKey(absolutePath, rule.VolumeId, NormalizeRelativePath(rule.RelativePath));
+			{
+				return new PortableDirectoryKey(
+					absolutePath,
+					rule.VolumeId,
+					string.IsNullOrWhiteSpace(rule.RelativePath) ? null : NormalizeRelativePath(rule.RelativePath));
+			}
 
 			return new PortableDirectoryKey(absolutePath, null, absolutePath);
 		}
@@ -112,29 +116,46 @@ namespace Files.App.Services.DateTimeFormatter
 		}
 
 		/// <summary>
-		/// Normalizes a rule's directory scope and stores volume identity when the path is on a removable volume.
-		/// Existing volume identity is retained when the volume is unavailable.
+		/// Normalizes a rule's directory scope and assigns volume identity for new directory scopes.
+		/// Existing volume identity is retained when the volume is unavailable and is never recomputed from the
+		/// current drive letter. Pass <paramref name="resetVolumeIdentity"/> when the user explicitly changed the directory.
 		/// </summary>
-		public static DateTimeFormatRule NormalizeRule(DateTimeFormatRule rule, IVolumePathProvider volumePathProvider)
+		public static DateTimeFormatRule NormalizeRule(
+			DateTimeFormatRule rule,
+			IVolumePathProvider volumePathProvider,
+			bool resetVolumeIdentity = false)
 		{
 			ArgumentNullException.ThrowIfNull(rule);
 
 			if (string.IsNullOrWhiteSpace(rule.DirectoryPath))
 				return rule;
 
-			var key = FromPath(rule.DirectoryPath, volumePathProvider);
+			var normalizedPath = NormalizePath(rule.DirectoryPath);
+
+			if (!resetVolumeIdentity && !string.IsNullOrWhiteSpace(rule.VolumeId))
+			{
+				// The stored identity is authoritative; a reused drive letter must not rebind the rule.
+				return rule with { DirectoryPath = normalizedPath };
+			}
+
+			var key = FromPath(normalizedPath, volumePathProvider);
 
 			if (key.IsVolumeScoped)
 			{
 				return rule with
 				{
-					DirectoryPath = key.AbsolutePath,
+					DirectoryPath = normalizedPath,
 					VolumeId = key.VolumeId,
 					RelativePath = key.RelativePath,
 				};
 			}
 
-			return rule with { DirectoryPath = key.AbsolutePath };
+			return rule with
+			{
+				DirectoryPath = normalizedPath,
+				VolumeId = null,
+				RelativePath = null,
+			};
 		}
 
 		/// <summary>
@@ -150,8 +171,8 @@ namespace Files.App.Services.DateTimeFormatter
 			if (IsVolumeScoped != candidate.IsVolumeScoped)
 				return false;
 
-			string scopePath;
-			string candidatePath;
+			string? scopePath;
+			string? candidatePath;
 
 			if (IsVolumeScoped)
 			{
@@ -160,6 +181,10 @@ namespace Files.App.Services.DateTimeFormatter
 
 				scopePath = RelativePath;
 				candidatePath = candidate.RelativePath;
+
+				// A volume rule without a relative path is invalid and must not silently bind to the volume root.
+				if (scopePath is null || candidatePath is null)
+					return false;
 			}
 			else
 			{
@@ -167,8 +192,8 @@ namespace Files.App.Services.DateTimeFormatter
 				candidatePath = candidate.AbsolutePath;
 			}
 
-			var scopeSegments = Split(scopePath);
-			var candidateSegments = Split(candidatePath);
+			var scopeSegments = Split(scopePath!);
+			var candidateSegments = Split(candidatePath!);
 
 			if (candidateSegments.Length < scopeSegments.Length)
 				return false;
@@ -204,7 +229,7 @@ namespace Files.App.Services.DateTimeFormatter
 	}
 
 	/// <summary>
-	/// Uses the volume serial number of removable volumes so directory rules survive drive letter changes.
+	/// Uses the volume GUID path of removable volumes so directory rules survive drive letter changes.
 	/// </summary>
 	internal sealed class WindowsVolumePathProvider : IVolumePathProvider
 	{
@@ -236,7 +261,8 @@ namespace Files.App.Services.DateTimeFormatter
 			{
 				drive = new SystemIO.DriveInfo(root);
 
-				if (!drive.IsReady || drive.DriveType is not SystemIO.DriveType.Removable)
+				// Check the drive type first; reading IsReady on a network path can block or throw.
+				if (drive.DriveType is not SystemIO.DriveType.Removable || !drive.IsReady)
 					return false;
 			}
 			catch (Exception ex) when (ex is ArgumentException or SystemIO.IOException or UnauthorizedAccessException)
@@ -244,10 +270,10 @@ namespace Files.App.Services.DateTimeFormatter
 				return false;
 			}
 
-			if (!WindowsStorableHelpers.TryGetVolumeSerialNumber(root, out var serialNumber))
+			if (!WindowsStorableHelpers.TryGetVolumeName(root, out var volumeName))
 				return false;
 
-			volumeId = serialNumber.ToString("X8", CultureInfo.InvariantCulture);
+			volumeId = PortableDirectoryKey.NormalizePath(volumeName);
 
 			var normalizedPath = PortableDirectoryKey.NormalizePath(directoryPath);
 			var normalizedRoot = PortableDirectoryKey.NormalizePath(root);

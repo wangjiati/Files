@@ -185,6 +185,7 @@ QueryDosDevice
 DeviceIoControl
 CreateFile
 GetVolumeInformation
+GetVolumeNameForVolumeMountPoint
 COMPRESSION_FORMAT
 FILE_ACCESS_RIGHTS
 FindFirstFileEx

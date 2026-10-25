@@ -125,6 +125,51 @@ namespace Files.App.UnitTests
 			Assert.AreEqual(DateTimeFormats.Custom, reloaded.DateTimeFormatDirectoryRules[1].Format);
 		}
 
+		[TestMethod]
+		public void InvalidDuplicateRuleDoesNotReplaceValidRule()
+		{
+			var writer = LoadSettings();
+
+			writer.DateTimeColumnFormatRules =
+			[
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, null, false, DateTimeFormats.System, null),
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, null, false, DateTimeFormats.Custom, null),
+			];
+			writer.DateTimeFormatDirectoryRules =
+			[
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, @"D:\Docs", false, DateTimeFormats.System, null),
+				new DateTimeFormatRule(DateTimeColumnKind.Modified, @"d:\docs\", false, DateTimeFormats.Custom, null),
+			];
+
+			var reloaded = LoadSettings();
+
+			Assert.AreEqual(DateTimeFormats.System, reloaded.DateTimeColumnFormatRules[0].Format);
+			Assert.AreEqual(DateTimeFormats.System, reloaded.DateTimeFormatDirectoryRules[0].Format);
+		}
+
+		[TestMethod]
+		public void ResavingVolumeRuleDoesNotRebindToReusedDriveLetter()
+		{
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Projects", "NEWVOLUME", @"\Projects");
+			var writer = new GeneralSettingsService(new UserSettingsService().GetSharingContext(), volumes);
+
+			writer.DateTimeFormatDirectoryRules =
+			[
+				new DateTimeFormatRule(null, @"E:\Projects", true, DateTimeFormats.Universal, null)
+				{
+					VolumeId = "OLDVOLUME",
+					RelativePath = @"\Projects",
+				},
+			];
+
+			var reloaded = LoadSettings();
+
+			Assert.AreEqual(1, reloaded.DateTimeFormatDirectoryRules.Count);
+			Assert.AreEqual("OLDVOLUME", reloaded.DateTimeFormatDirectoryRules[0].VolumeId);
+			Assert.AreEqual(@"\Projects", reloaded.DateTimeFormatDirectoryRules[0].RelativePath);
+		}
+
 		private string SettingsFilePath
 			=> Path.Combine(AppRuntime.Current.SettingsDirectory, Constants.LocalSettings.UserSettingsFileName);
 

@@ -114,6 +114,32 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void Resolve_ParentRecursiveColumnRuleBeatsChildDefaultRule()
+		{
+			var source = CreateSource();
+			source.DefaultDateTimeFormat = DateTimeFormats.Application;
+			source.DirectoryFormatRuleList.Add(Rule(DateTimeColumnKind.Modified, @"C:\Work", true, DateTimeFormats.System));
+			source.DirectoryFormatRuleList.Add(Rule(null, @"C:\Work\Sub", true, DateTimeFormats.Custom, "HH:mm"));
+
+			var resolver = CreateResolver(source);
+
+			Assert.AreEqual(DateTimeFormats.System, resolver.Resolve(@"C:\Work\Sub", DateTimeColumnKind.Modified).Format);
+			Assert.AreEqual(DateTimeFormats.Custom, resolver.Resolve(@"C:\Work\Sub", DateTimeColumnKind.Created).Format);
+		}
+
+		[TestMethod]
+		public void Resolve_SimilarPathPrefixIsNotTreatedAsDescendant()
+		{
+			var source = CreateSource();
+			source.DirectoryFormatRuleList.Add(Rule(null, @"C:\foo", true, DateTimeFormats.Universal));
+
+			var resolver = CreateResolver(source);
+
+			Assert.AreEqual(DateTimeFormats.Universal, resolver.Resolve(@"C:\foo\child", DateTimeColumnKind.Modified).Format);
+			Assert.AreEqual(DateTimeFormats.Application, resolver.Resolve(@"C:\foobar", DateTimeColumnKind.Modified).Format);
+		}
+
+		[TestMethod]
 		public void Resolve_NearestRecursiveDefaultRuleWins()
 		{
 			var source = CreateSource();
@@ -233,6 +259,79 @@ namespace Files.App.UnitTests
 		}
 
 		[TestMethod]
+		public void Resolve_SimilarVolumeRelativePathPrefixIsNotTreatedAsDescendant()
+		{
+			var source = CreateSource();
+			source.DirectoryFormatRuleList.Add(Rule(
+				null,
+				@"E:\Projects",
+				true,
+				DateTimeFormats.Universal,
+				volumeId: "AB12CD34",
+				relativePath: @"\Projects"));
+
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"F:\Projects\Sub", "AB12CD34", @"\Projects\Sub");
+			volumes.AddVolume(@"F:\Projects2", "AB12CD34", @"\Projects2");
+
+			var resolver = CreateResolver(source, volumes);
+
+			Assert.AreEqual(DateTimeFormats.Universal, resolver.Resolve(@"F:\Projects\Sub", DateTimeColumnKind.Modified).Format);
+			Assert.AreEqual(DateTimeFormats.Application, resolver.Resolve(@"F:\Projects2", DateTimeColumnKind.Modified).Format);
+		}
+
+		[TestMethod]
+		public void Resolve_VolumeRuleDoesNotRebindWhenDriveLetterIsReused()
+		{
+			var source = CreateSource();
+			source.DefaultDateTimeFormat = DateTimeFormats.System;
+			source.DirectoryFormatRuleList.Add(Rule(
+				null,
+				@"E:\Projects",
+				true,
+				DateTimeFormats.Universal,
+				volumeId: "OLDVOLUME",
+				relativePath: @"\Projects"));
+
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Projects", "NEWVOLUME", @"\Projects");
+
+			Assert.AreEqual(DateTimeFormats.System, CreateResolver(source, volumes).Resolve(@"E:\Projects", DateTimeColumnKind.Modified).Format);
+		}
+
+		[TestMethod]
+		public void Validate_RejectsVolumeRuleWithoutRelativePath()
+		{
+			var rule = Rule(
+				null,
+				@"E:\Projects",
+				false,
+				DateTimeFormats.Universal,
+				volumeId: "AB12CD34",
+				relativePath: null);
+
+			Assert.AreEqual(DateTimeFormatRuleValidationError.MissingRelativePath, rule.Validate());
+		}
+
+		[TestMethod]
+		public void Resolve_VolumeRuleWithoutRelativePathDoesNotMatchVolumeRoot()
+		{
+			var source = CreateSource();
+			source.DirectoryFormatRuleList.Add(Rule(
+				null,
+				@"E:\Projects",
+				true,
+				DateTimeFormats.Universal,
+				volumeId: "AB12CD34",
+				relativePath: null));
+
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"F:\", "AB12CD34", @"\");
+
+			Assert.AreEqual(DateTimeFormats.Application, CreateResolver(source, volumes).Resolve(@"F:\", DateTimeColumnKind.Modified).Format);
+		}
+
+		[TestMethod]
 		public void Resolve_IgnoresInvalidRules()
 		{
 			var source = CreateSource();
@@ -323,6 +422,64 @@ namespace Files.App.UnitTests
 			Assert.AreEqual(@"E:\Projects", normalized.DirectoryPath);
 			Assert.AreEqual("AB12CD34", normalized.VolumeId);
 			Assert.AreEqual(@"\Projects", normalized.RelativePath);
+		}
+
+		[TestMethod]
+		public void NormalizeRule_DoesNotRecomputeExistingVolumeIdentity()
+		{
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Projects", "NEWVOLUME", @"\Projects");
+			var rule = Rule(
+				null,
+				@"E:\Projects",
+				false,
+				DateTimeFormats.Universal,
+				volumeId: "OLDVOLUME",
+				relativePath: @"\Projects");
+
+			var normalized = PortableDirectoryKey.NormalizeRule(rule, volumes);
+
+			Assert.AreEqual("OLDVOLUME", normalized.VolumeId);
+			Assert.AreEqual(@"\Projects", normalized.RelativePath);
+			Assert.AreEqual(@"E:\Projects", normalized.DirectoryPath);
+		}
+
+		[TestMethod]
+		public void NormalizeRule_ResetVolumeIdentityClearsIdentityForFixedPath()
+		{
+			var rule = Rule(
+				null,
+				@"E:/Projects/",
+				false,
+				DateTimeFormats.Universal,
+				volumeId: "OLDVOLUME",
+				relativePath: @"\Projects");
+
+			var normalized = PortableDirectoryKey.NormalizeRule(rule, new FakeVolumePathProvider(), resetVolumeIdentity: true);
+
+			Assert.AreEqual(@"E:\Projects", normalized.DirectoryPath);
+			Assert.IsNull(normalized.VolumeId);
+			Assert.IsNull(normalized.RelativePath);
+		}
+
+		[TestMethod]
+		public void NormalizeRule_ResetVolumeIdentityMigratesToNewVolume()
+		{
+			var volumes = new FakeVolumePathProvider();
+			volumes.AddVolume(@"E:\Other", "NEWVOLUME", @"\Other");
+			var rule = Rule(
+				null,
+				@"E:\Other",
+				false,
+				DateTimeFormats.Universal,
+				volumeId: "OLDVOLUME",
+				relativePath: @"\Projects");
+
+			var normalized = PortableDirectoryKey.NormalizeRule(rule, volumes, resetVolumeIdentity: true);
+
+			Assert.AreEqual("NEWVOLUME", normalized.VolumeId);
+			Assert.AreEqual(@"\Other", normalized.RelativePath);
+			Assert.AreEqual(@"E:\Other", normalized.DirectoryPath);
 		}
 
 		private static FakeRuleSource CreateSource()

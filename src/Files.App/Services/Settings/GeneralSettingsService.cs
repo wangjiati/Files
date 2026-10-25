@@ -506,7 +506,10 @@ namespace Files.App.Services.Settings
 				var columnId = rule.Column?.ToString() ?? "*";
 
 				if (indexByColumn.TryGetValue(columnId, out var index))
-					result[index] = rule;
+				{
+					if (ShouldReplace(result[index], rule))
+						result[index] = rule;
+				}
 				else
 				{
 					indexByColumn[columnId] = result.Count;
@@ -523,7 +526,7 @@ namespace Files.App.Services.Settings
 				return [];
 
 			var result = new List<DateTimeFormatRule>();
-			var indexByScope = new Dictionary<string, int>(StringComparer.Ordinal);
+			var indexByScope = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
 			foreach (var rule in rules.OfType<DateTimeFormatRule>())
 			{
@@ -534,7 +537,10 @@ namespace Files.App.Services.Settings
 				var scopeId = GetRuleScopeId(normalized);
 
 				if (indexByScope.TryGetValue(scopeId, out var index))
-					result[index] = normalized;
+				{
+					if (ShouldReplace(result[index], normalized))
+						result[index] = normalized;
+				}
 				else
 				{
 					indexByScope[scopeId] = result.Count;
@@ -551,9 +557,13 @@ namespace Files.App.Services.Settings
 			var column = rule.Column?.ToString() ?? "*";
 
 			return key.IsVolumeScoped
-				? $"V|{key.VolumeId!.ToUpperInvariant()}|{key.RelativePath.ToUpperInvariant()}|{column}"
-				: $"A|{key.AbsolutePath.ToUpperInvariant()}|{column}";
+				? $"V|{key.VolumeId}|{key.RelativePath}|{column}"
+				: $"A|{key.AbsolutePath}|{column}";
 		}
+
+		private static bool ShouldReplace(DateTimeFormatRule existing, DateTimeFormatRule candidate)
+			=> candidate.Validate() is DateTimeFormatRuleValidationError.None ||
+				existing.Validate() is not DateTimeFormatRuleValidationError.None;
 
 		protected override void RaiseOnSettingChangedEvent(object sender, SettingChangedEventArgs e)
 		{
