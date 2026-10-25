@@ -21,8 +21,9 @@ Target machines:
   organization's normal deployment before installing the MSIX. This is a
   Microsoft runtime dependency, not a Files update source. `RELEASE-INFO.txt`
   records the exact dependency for each build.
-- The portable ZIP contains its own Windows App SDK and Native AOT runtime and
-  does not require a separate Windows App Runtime installation.
+- The portable ZIP is packaged with its own Windows App SDK and Native AOT
+  runtime and does not declare the MSIX framework dependency. Verify startup on
+  the clean target VM using the acceptance checklist.
 
 Do not commit the signing certificate or its password. Keep the PFX outside the
 repository and provide the password through `FILES_INTERNAL_CERT_PASSWORD`.
@@ -91,8 +92,9 @@ Runtime dependency recorded in `RELEASE-INFO.txt`:
 Add-AppxPackage .\Files.Internal_<version>_x64.msix
 ```
 
-The package identity is `Files.Internal`, so it can coexist with the original
-Files package. Exclusive shell integration is off by default and is only enabled
+The package identity is `Files.Internal`, isolated from the original package.
+Coexistence with the original Files package must be verified in the acceptance
+checklist. Exclusive shell integration is off by default and is only enabled
 from Advanced settings.
 
 Portable: extract the whole ZIP to a writable directory, including directories
