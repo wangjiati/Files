@@ -6,6 +6,7 @@ using Files.App.Controls;
 using Files.App.Helpers.ContextFlyouts;
 using Files.App.UserControls.Menus;
 using Files.App.ViewModels.Layouts;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -687,6 +688,7 @@ namespace Files.App.Views.Layouts
 				SelectedItemsPropertiesViewModel.CheckAllFileExtensions(selectedItems.Select(x => x.FileExtension).ToList());
 
 				var items = ContentPageContextFlyoutFactory.GetItemContextCommandsWithoutShellItems(currentInstanceViewModel: instanceViewModel, selectedItems: selectedItems, selectedItemsPropertiesViewModel: SelectedItemsPropertiesViewModel, commandsViewModel: commandsViewModel, shiftPressed: shiftPressed, itemViewModel: null);
+				App.Logger.LogInformation("Item context menu built with {Count} items.", items.Count);
 				var host = ItemContextFlyoutHost;
 				host.Build(items);
 
@@ -721,6 +723,7 @@ namespace Files.App.Views.Layouts
 
 					var shellMenuItems = await ContentPageContextFlyoutFactory.GetItemContextShellCommandsAsync(
 						shellViewModel.WorkingDirectory, selectedItems, shiftPressed, false, token);
+					App.Logger.LogInformation("Item context menu shell items loaded: {Count}.", shellMenuItems.Count);
 
 					if (token.IsCancellationRequested)
 						return;
@@ -750,7 +753,7 @@ namespace Files.App.Views.Layouts
 			}
 			catch (Exception error)
 			{
-				Debug.WriteLine(error);
+				App.Logger.LogWarning(error, "Failed to open the item context menu.");
 			}
 		}
 
@@ -1444,6 +1447,13 @@ namespace Files.App.Views.Layouts
 
 			if (sender is not SelectorItem selectorItem)
 				return;
+
+			// Select before ContextFlyout.Opening runs; RightTapped runs too late and leaves the menu empty.
+			if (e.GetCurrentPoint(selectorItem).Properties.IsRightButtonPressed && !selectorItem.IsSelected
+				&& GetItemFromElement(selectorItem) is { } rightPressedItem)
+			{
+				ItemManipulationModel.SetSelectedItem(rightPressedItem);
+			}
 
 			if (selectorItem.IsSelected)
 			{
