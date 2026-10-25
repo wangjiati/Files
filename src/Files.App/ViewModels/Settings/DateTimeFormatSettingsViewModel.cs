@@ -32,6 +32,8 @@ namespace Files.App.ViewModels.Settings
 		public bool IsCustom => Format is DateTimeFormats.Custom && FixedPattern is null;
 
 		public bool IsInherit => Format is null;
+
+		public override string ToString() => Label;
 	}
 
 	/// <summary>

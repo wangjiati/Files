@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <Page
 	x:Class="Files.App.Views.Settings.GeneralPage"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -81,26 +81,9 @@
 						x:Name="DateFormatChooser"
 						HorizontalAlignment="Stretch"
 						AutomationProperties.Name="{helpers:ResourceString Name=DateFormat}"
+
 						ItemsSource="{x:Bind ViewModel.DateFormats}"
-						SelectedIndex="{x:Bind ViewModel.SelectedDateTimeFormatIndex, Mode=TwoWay}">
-						<uc:ComboBoxEx.ItemTemplate>
-							<DataTemplate x:DataType="vm:DateTimeFormatItem">
-								<StackPanel Orientation="Vertical">
-									<TextBlock Text="{x:Bind Label, Mode=OneWay}" />
-									<TextBlock
-										FontSize="12"
-										FontWeight="Light"
-										Text="{x:Bind Sample1, Mode=OneWay}"
-										Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
-									<TextBlock
-										FontSize="12"
-										FontWeight="Light"
-										Text="{x:Bind Sample2, Mode=OneWay}"
-										Visibility="{Binding Path=IsDropDownOpen, ElementName=DateFormatChooser}" />
-								</StackPanel>
-							</DataTemplate>
-						</uc:ComboBoxEx.ItemTemplate>
-					</uc:ComboBoxEx>
+						SelectedIndex="{x:Bind ViewModel.SelectedDateTimeFormatIndex, Mode=TwoWay}" />
 
 					<TextBox
 						AutomationProperties.Name="{helpers:ResourceString Name=DateTimeFormatCustomPattern}"
@@ -132,7 +115,7 @@
 							<ComboBox
 								HorizontalAlignment="Stretch"
 								AutomationProperties.Name="{helpers:ResourceString Name=DateModifiedLowerCase}"
-								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+
 								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.FormatChoices}"
 								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.ModifiedRule.SelectedFormatIndex, Mode=TwoWay}" />
 							<TextBox
@@ -156,7 +139,7 @@
 							<ComboBox
 								HorizontalAlignment="Stretch"
 								AutomationProperties.Name="{helpers:ResourceString Name=DateCreated}"
-								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+
 								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.FormatChoices}"
 								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.CreatedRule.SelectedFormatIndex, Mode=TwoWay}" />
 							<TextBox
@@ -180,7 +163,7 @@
 							<ComboBox
 								HorizontalAlignment="Stretch"
 								AutomationProperties.Name="{helpers:ResourceString Name=DateDeleted}"
-								ItemTemplate="{StaticResource DateTimeFormatChoiceTemplate}"
+
 								ItemsSource="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.FormatChoices}"
 								SelectedIndex="{x:Bind ViewModel.DateTimeFormatSettings.DeletedRule.SelectedFormatIndex, Mode=TwoWay}" />
 							<TextBox

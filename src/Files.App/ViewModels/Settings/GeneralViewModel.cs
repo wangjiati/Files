@@ -726,6 +726,8 @@ namespace Files.App.ViewModels.Settings
 		public string Label
 			=> Choice.Label;
 
+		public override string ToString() => Label;
+
 		public string Sample1
 		{
 			get => sample1;
