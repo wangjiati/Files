@@ -6,6 +6,15 @@ using Files.App.Data.Items;
 
 namespace Files.App.Services.DateTimeFormatter
 {
+	public enum DateTimeFormatRuleValidationError
+	{
+		None = 0,
+		InvalidColumn = 1,
+		InvalidFormat = 2,
+		MissingPattern = 3,
+		InvalidPattern = 4,
+	}
+
 	/// <summary>
 	/// Represents an immutable date time format rule for a column and optional directory scope.
 	/// </summary>
@@ -24,16 +33,19 @@ namespace Files.App.Services.DateTimeFormatter
 		/// <summary>
 		/// Validates the rule without throwing, so invalid persisted settings cannot break list rendering.
 		/// </summary>
-		/// <returns>An error message when the rule is invalid; otherwise, <see langword="null"/>.</returns>
-		public string? Validate()
+		/// <returns>A localizable validation error; <see cref="DateTimeFormatRuleValidationError.None"/> when valid.</returns>
+		public DateTimeFormatRuleValidationError Validate()
 		{
+			if (Column is { } column && !Enum.IsDefined(column))
+				return DateTimeFormatRuleValidationError.InvalidColumn;
+
 			if (!Enum.IsDefined(Format))
-				return $"Unsupported date time format: {Format}.";
+				return DateTimeFormatRuleValidationError.InvalidFormat;
 
 			if (Format is not DateTimeFormats.Custom)
-				return null;
+				return DateTimeFormatRuleValidationError.None;
 
-			return CustomDateTimeFormatter.TryValidatePattern(CustomPattern, out var error) ? null : error;
+			return CustomDateTimeFormatter.ValidatePattern(CustomPattern);
 		}
 	}
 }

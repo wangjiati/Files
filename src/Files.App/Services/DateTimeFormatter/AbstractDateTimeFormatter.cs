@@ -7,7 +7,7 @@ namespace Files.App.Services.DateTimeFormatter
 {
 	internal abstract class AbstractDateTimeFormatter : IDateTimeFormatter
 	{
-		private static readonly CultureInfo cultureInfo = new(AppLanguageHelper.PreferredLanguage.Code);
+		protected static readonly CultureInfo AppCulture = new(AppLanguageHelper.PreferredLanguage.Code);
 
 		public abstract string Name { get; }
 
@@ -60,11 +60,14 @@ namespace Files.App.Services.DateTimeFormatter
 		}
 
 		protected static string ToString(DateTimeOffset offset, string format)
-			=> offset.ToLocalTime().ToString(format, cultureInfo);
+			=> ToString(offset, format, AppCulture);
+
+		protected static string ToString(DateTimeOffset offset, string format, CultureInfo culture)
+			=> offset.ToLocalTime().ToString(format, culture);
 
 		private static int GetWeekOfYear(DateTimeOffset t)
 		{
-			return cultureInfo.Calendar.GetWeekOfYear(t.DateTime, CalendarWeekRule.FirstFullWeek, cultureInfo.DateTimeFormat.FirstDayOfWeek);
+			return AppCulture.Calendar.GetWeekOfYear(t.DateTime, CalendarWeekRule.FirstFullWeek, AppCulture.DateTimeFormat.FirstDayOfWeek);
 		}
 
 		private sealed class Label : ITimeSpanLabel

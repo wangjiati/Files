@@ -1,6 +1,8 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using System.Globalization;
+
 namespace Files.App.Services.DateTimeFormatter
 {
 	/// <summary>
@@ -8,13 +10,20 @@ namespace Files.App.Services.DateTimeFormatter
 	/// </summary>
 	internal sealed class CustomDateTimeFormatter : AbstractDateTimeFormatter
 	{
-		internal const string DefaultPattern = "yyyy-MM-dd HH:mm:ss";
-
-		private readonly string _pattern;
+		private readonly string? _pattern;
+		private readonly CultureInfo _culture;
+		private readonly bool _isPatternValid;
 
 		public CustomDateTimeFormatter(string? pattern)
+			: this(pattern, null)
 		{
-			_pattern = string.IsNullOrWhiteSpace(pattern) ? DefaultPattern : pattern;
+		}
+
+		internal CustomDateTimeFormatter(string? pattern, CultureInfo? culture)
+		{
+			_pattern = pattern;
+			_culture = culture ?? AppCulture;
+			_isPatternValid = ValidatePattern(pattern, _culture) is DateTimeFormatRuleValidationError.None;
 		}
 
 		public override string Name
@@ -22,41 +31,39 @@ namespace Files.App.Services.DateTimeFormatter
 
 		public override string ToShortLabel(DateTimeOffset offset)
 		{
+			if (!_isPatternValid)
+				return " ";
+
 			// Check if the year is out of the valid range
 			if (offset.Year is <= 1601 or >= 9999)
 				return " ";
 
 			try
 			{
-				return ToString(offset, _pattern);
+				return ToString(offset, _pattern!, _culture);
 			}
-			catch (FormatException)
+			catch (Exception ex) when (ex is FormatException or ArgumentException)
 			{
-				// Invalid settings must not break list rendering.
+				// Invalid settings and calendar range errors must not break list rendering.
 				return " ";
 			}
 		}
 
-		internal static bool TryValidatePattern(string? pattern, out string? error)
+		internal static DateTimeFormatRuleValidationError ValidatePattern(string? pattern, CultureInfo? culture = null)
 		{
 			if (string.IsNullOrWhiteSpace(pattern))
-			{
-				error = "A custom date time format is required.";
-				return false;
-			}
+				return DateTimeFormatRuleValidationError.MissingPattern;
 
 			try
 			{
-				_ = ToString(DateTimeOffset.Now, pattern);
+				_ = DateTimeOffset.Now.ToString(pattern, culture ?? AppCulture);
 			}
-			catch (FormatException)
+			catch (Exception ex) when (ex is FormatException or ArgumentException)
 			{
-				error = "The custom date time format is invalid.";
-				return false;
+				return DateTimeFormatRuleValidationError.InvalidPattern;
 			}
 
-			error = null;
-			return true;
+			return DateTimeFormatRuleValidationError.None;
 		}
 	}
 }
