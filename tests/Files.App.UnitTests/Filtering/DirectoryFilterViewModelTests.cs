@@ -108,6 +108,24 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void Apply_TypeIncludeEmpty_DoesNotCreateAnEmptyTypeCondition()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Type, DirectoryFilterSpec.Empty)
+			{
+				IncludeEmpty = true,
+			};
+			viewModel.LoadChoices(
+				[new DirectoryFilterChoice("Text Document", "Text Document")],
+				[new DirectoryFilterChoice(".txt", ".txt")]);
+
+			var result = viewModel.ApplyTo(DirectoryFilterSpec.Empty);
+
+			Assert.IsFalse(result.Columns.Any(x => x.Column == DirectoryColumnKind.Type));
+			var extensionCondition = result.Columns.Single(x => x.Column == DirectoryColumnKind.Extension);
+			Assert.IsTrue(extensionCondition.IncludeEmpty);
+		}
+
+		[TestMethod]
 		public void Apply_ChoiceIncludeEmpty_SetsExplicitEmptySemantics()
 		{
 			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Tags, DirectoryFilterSpec.Empty)
@@ -186,9 +204,9 @@ namespace Files.App.UnitTests.Filtering
 
 			Assert.AreEqual("report", nameViewModel.Text);
 			Assert.AreEqual(0, nameViewModel.OperatorIndex);
-			Assert.AreEqual("4096", sizeViewModel.MinSizeText);
-			Assert.AreEqual("8192", sizeViewModel.MaxSizeText);
-			Assert.AreEqual(0, sizeViewModel.SizeUnitIndex);
+			Assert.AreEqual("4", sizeViewModel.MinSizeText);
+			Assert.AreEqual("8", sizeViewModel.MaxSizeText);
+			Assert.AreEqual(1, sizeViewModel.SizeUnitIndex);
 			Assert.IsTrue(typeViewModel.Choices.Single(x => x.Value == "Text Document").IsSelected);
 			Assert.IsFalse(typeViewModel.Choices.Single(x => x.Value == "PNG Image").IsSelected);
 		}

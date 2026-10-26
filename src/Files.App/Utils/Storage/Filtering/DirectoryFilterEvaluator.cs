@@ -56,11 +56,11 @@ namespace Files.App.Utils.Storage
 
 					if (regexFilter is not null)
 					{
-						if (!regexFilter.IsMatch(items[index]))
-							continue;
-
 						if (stopwatch!.Elapsed > RegexTotalBudget)
 							return new([], DirectoryRegexError.Timeout);
+
+						if (!regexFilter.IsMatch(items[index]))
+							continue;
 					}
 
 					if (Matches(items[index], spec))

@@ -188,6 +188,7 @@ namespace Files.App.ViewModels
 		private CancellationTokenSource? updateTagGroupCTS;
 		private CancellationTokenSource? filterDebounceCS;
 		private DirectoryFilterSpec directoryFilterSpec = DirectoryFilterSpec.Empty;
+		private DirectoryFilterSpec lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 		private DirectoryFilterExecutionContext? activeFilterContext;
 		private long filterGeneration;
 		private long filterSourceRevision;
@@ -197,6 +198,12 @@ namespace Files.App.ViewModels
 		public event EventHandler? FocusFilterHeader;
 
 		public event EventHandler? DirectoryInfoUpdated;
+
+		/// <summary>
+		/// Raised when a filter could not be evaluated (for example a regex timeout) and the previous
+		/// conditions were restored. The argument is a user-facing message.
+		/// </summary>
+		public event EventHandler<string>? DirectoryFilterFailed;
 
 		public event EventHandler? GitDirectoryUpdated;
 
@@ -242,6 +249,7 @@ namespace Files.App.ViewModels
 			{
 				FilesAndFoldersFilter = null;
 				DirectoryFilter = DirectoryFilterSpec.Empty;
+				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 			}
 
 			var isLibrary = false;
@@ -1126,12 +1134,20 @@ namespace Files.App.ViewModels
 			get => directoryFilterSpec;
 			set
 			{
-				var spec = (value ?? DirectoryFilterSpec.Empty) with { NameContains = _filesAndFoldersFilter };
+				var spec = value ?? DirectoryFilterSpec.Empty;
 
 				if (Equals(directoryFilterSpec, spec))
 					return;
 
 				directoryFilterSpec = spec;
+
+				// A column filter can write the shared Contains box; mirror it without re-entering the setter.
+				if (!string.Equals(_filesAndFoldersFilter, spec.NameContains, StringComparison.Ordinal))
+				{
+					_filesAndFoldersFilter = spec.NameContains;
+					OnPropertyChanged(nameof(FilesAndFoldersFilter));
+				}
+
 				ScheduleFilterProjection(0);
 			}
 		}
@@ -1177,6 +1193,11 @@ namespace Files.App.ViewModels
 		private void NotifyFilterSourceChanged()
 		{
 			Interlocked.Increment(ref filterSourceRevision);
+
+			// Without a filter there is nothing to recompute; folder-size updates would otherwise reset the list.
+			if (directoryFilterSpec.IsEmpty)
+				return;
+
 			ScheduleFilterProjection(150);
 		}
 
@@ -1279,8 +1300,33 @@ namespace Files.App.ViewModels
 
 						if (items is null)
 						{
-							// Keep the previous visible items instead of applying half a result.
 							App.Logger.LogWarning("Directory filter evaluation failed: {Error}.", error);
+
+							var message = error switch
+							{
+								DirectoryRegexError.InvalidPattern => Strings.FilterRegexInvalid.GetLocalizedResource(),
+								DirectoryRegexError.PatternTooLong => Strings.FilterRegexTooLong.GetLocalizedResource(),
+								_ => Strings.FilterRegexTimeout.GetLocalizedResource(),
+							};
+
+							await dispatcherQueue.EnqueueOrInvokeAsync(() =>
+							{
+								if (!context.CanCommit(WorkingDirectory ?? string.Empty, directoryFilterSpec, Interlocked.Read(ref filterSourceRevision), Interlocked.Read(ref filterGeneration)))
+									return;
+
+								// Restore the last applied conditions so the UI never claims a failed filter is active.
+								directoryFilterSpec = lastCommittedFilterSpec;
+
+								if (!string.Equals(_filesAndFoldersFilter, directoryFilterSpec.NameContains, StringComparison.Ordinal))
+								{
+									_filesAndFoldersFilter = directoryFilterSpec.NameContains;
+									OnPropertyChanged(nameof(FilesAndFoldersFilter));
+								}
+
+								OnPropertyChanged(nameof(DirectoryFilter));
+								DirectoryFilterFailed?.Invoke(this, message);
+							});
+
 							return;
 						}
 
@@ -1294,11 +1340,12 @@ namespace Files.App.ViewModels
 						try
 						{
 							if (addFilesCTS.IsCancellationRequested
-								|| !context.CanCommit(WorkingDirectory ?? string.Empty, spec, Interlocked.Read(ref filterSourceRevision), Interlocked.Read(ref filterGeneration)))
+								|| !context.CanCommit(WorkingDirectory ?? string.Empty, directoryFilterSpec, Interlocked.Read(ref filterSourceRevision), Interlocked.Read(ref filterGeneration)))
 							{
 								return;
 							}
 
+							lastCommittedFilterSpec = spec;
 							pendingSearchResults.Clear();
 
 							FilesAndFolders.BeginBulkOperation();
@@ -3709,11 +3756,22 @@ namespace Files.App.ViewModels
 						pendingSearchResults.Enqueue(item);
 
 					var spec = directoryFilterSpec;
+					DirectoryRegexFilter? regexFilter = null;
+					var hasRegex = spec.Regex is { } regexOptions
+						&& DirectoryRegexFilter.TryCreate(regexOptions, out regexFilter, out _);
 					var appendedCount = 0;
 					while (appendedCount < MaxSearchResultsAppendedPerTick && pendingSearchResults.TryDequeue(out var item))
 					{
-						if (!spec.IsEmpty && !DirectoryFilterEvaluator.Matches(CreateFilterSnapshot(item, 0), spec))
-							continue;
+						if (!spec.IsEmpty)
+						{
+							var snapshot = CreateFilterSnapshot(item, 0);
+
+							if (!DirectoryFilterEvaluator.Matches(snapshot, spec))
+								continue;
+
+							if (hasRegex && !regexFilter!.IsMatch(snapshot))
+								continue;
+						}
 
 						FilesAndFolders.Add(item);
 						appendedCount++;

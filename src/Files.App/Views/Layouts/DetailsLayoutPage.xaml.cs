@@ -254,6 +254,7 @@ namespace Files.App.Views.Layouts
 			folderSettings.SortOptionPreferenceUpdated += FolderSettings_SortOptionPreferenceUpdated;
 			shellViewModel.PageTypeUpdated += FilesystemViewModel_PageTypeUpdated;
 			shellViewModel.ItemLoadStatusChanged += ShellViewModel_ItemLoadStatusChanged;
+			shellViewModel.DirectoryFilterFailed += ShellViewModel_DirectoryFilterFailed;
 			UserSettingsService.LayoutSettingsService.PropertyChanged += LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged += FileListItems_VectorChanged;
 
@@ -285,6 +286,7 @@ namespace Files.App.Views.Layouts
 			var shellViewModel = ParentShellPageInstance.GetRequiredShellViewModel();
 			shellViewModel.PageTypeUpdated -= FilesystemViewModel_PageTypeUpdated;
 			shellViewModel.ItemLoadStatusChanged -= ShellViewModel_ItemLoadStatusChanged;
+			shellViewModel.DirectoryFilterFailed -= ShellViewModel_DirectoryFilterFailed;
 			UserSettingsService.LayoutSettingsService.PropertyChanged -= LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged -= FileListItems_VectorChanged;
 			_autoFitColumnsTimer?.Stop();
@@ -1048,6 +1050,24 @@ namespace Files.App.Views.Layouts
 			shellViewModel.DirectoryFilter = DirectoryFilterSpec.Empty;
 			columnFilterFlyout.Hide();
 			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
+		}
+
+		private async void ShellViewModel_DirectoryFilterFailed(object? sender, string message)
+		{
+			UpdateFilterIndicators();
+
+			if (XamlRoot is null)
+				return;
+
+			var dialog = new ContentDialog
+			{
+				Title = Strings.Filter.GetLocalizedResource(),
+				Content = message,
+				CloseButtonText = Strings.Close.GetLocalizedResource(),
+				XamlRoot = XamlRoot,
+			};
+
+			await dialog.ShowAsync();
 		}
 
 		private void UpdateFilterIndicators(DirectoryFilterSpec? spec = null)

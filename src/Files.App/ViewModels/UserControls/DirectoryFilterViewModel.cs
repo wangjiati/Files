@@ -211,10 +211,10 @@ namespace Files.App.ViewModels.UserControls
 					{
 						columns.RemoveAll(filter => filter.Column is DirectoryColumnKind.Type or DirectoryColumnKind.Extension);
 
-						if (BuildChoiceCondition(DirectoryColumnKind.Type, Choices) is { } typeCondition)
+						if (BuildChoiceCondition(DirectoryColumnKind.Type, Choices, includeEmpty: false) is { } typeCondition)
 							columns.Add(typeCondition);
 
-						if (BuildChoiceCondition(DirectoryColumnKind.Extension, ExtensionChoices) is { } extensionCondition)
+						if (BuildChoiceCondition(DirectoryColumnKind.Extension, ExtensionChoices, IncludeEmpty) is { } extensionCondition)
 							columns.Add(extensionCondition);
 
 						return spec with { Columns = columns };
@@ -224,7 +224,7 @@ namespace Files.App.ViewModels.UserControls
 					{
 						columns.RemoveAll(filter => filter.Column == DirectoryColumnKind.Tags);
 
-						if (BuildChoiceCondition(DirectoryColumnKind.Tags, Choices) is { } tagCondition)
+						if (BuildChoiceCondition(DirectoryColumnKind.Tags, Choices, IncludeEmpty) is { } tagCondition)
 							columns.Add(tagCondition);
 
 						return spec with { Columns = columns };
@@ -326,18 +326,18 @@ namespace Files.App.ViewModels.UserControls
 			};
 		}
 
-		private DirectoryColumnFilter? BuildChoiceCondition(DirectoryColumnKind kind, IReadOnlyList<DirectoryFilterValueOption> options)
+		private DirectoryColumnFilter? BuildChoiceCondition(DirectoryColumnKind kind, IReadOnlyList<DirectoryFilterValueOption> options, bool includeEmpty)
 		{
 			var values = options.Where(option => option.IsSelected).Select(option => option.Value).ToList();
 
-			if (values.Count == 0 && !IncludeEmpty)
+			if (values.Count == 0 && !includeEmpty)
 				return null;
 
 			return new DirectoryColumnFilter
 			{
 				Column = kind,
 				Values = values,
-				IncludeEmpty = IncludeEmpty,
+				IncludeEmpty = includeEmpty,
 			};
 		}
 
@@ -402,11 +402,7 @@ namespace Files.App.ViewModels.UserControls
 
 				case DirectoryColumnKind.Size:
 					if (spec.Columns.FirstOrDefault(filter => filter.Column == DirectoryColumnKind.Size) is { } sizeFilter)
-					{
-						MinSizeText = sizeFilter.MinSize?.ToString(System.Globalization.CultureInfo.CurrentCulture);
-						MaxSizeText = sizeFilter.MaxSize?.ToString(System.Globalization.CultureInfo.CurrentCulture);
-						SizeUnitIndex = 0;
-					}
+						SeedSize(sizeFilter.MinSize, sizeFilter.MaxSize);
 					break;
 
 				case DirectoryColumnKind.ModifiedDate:
@@ -418,6 +414,33 @@ namespace Files.App.ViewModels.UserControls
 					}
 					break;
 			}
+		}
+
+		private void SeedSize(long? min, long? max)
+		{
+			// Prefer the largest unit that represents both bounds exactly, so "1.5 MB" reopens as 1.5 MB.
+			var unitIndex = 0;
+			for (var index = SizeUnitMultipliers.Length - 1; index > 0; index--)
+			{
+				var multiplier = SizeUnitMultipliers[index];
+
+				if ((min is null || min % multiplier == 0) && (max is null || max % multiplier == 0))
+				{
+					unitIndex = index;
+					break;
+				}
+			}
+
+			SizeUnitIndex = unitIndex;
+			var divisor = SizeUnitMultipliers[unitIndex];
+
+			MinSizeText = min is { } minValue
+				? ((double)minValue / divisor).ToString(System.Globalization.CultureInfo.CurrentCulture)
+				: null;
+
+			MaxSizeText = max is { } maxValue
+				? ((double)maxValue / divisor).ToString(System.Globalization.CultureInfo.CurrentCulture)
+				: null;
 		}
 
 		private void SeedValues(DirectoryFilterSpec spec, DirectoryColumnKind column, List<string> target)
