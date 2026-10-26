@@ -113,7 +113,7 @@ namespace Files.App
 					else if (launchArgs.Arguments is not null && launchArguments.Length > 0 &&
 						(launchArguments[0].EndsWith($"{AppProcessLauncher.ProtocolScheme}.exe", StringComparison.OrdinalIgnoreCase)
 						|| launchArguments[0].EndsWith(AppProcessLauncher.ProtocolScheme, StringComparison.OrdinalIgnoreCase)
-						|| launchArguments[0].Equals(Path.Join(AppRuntime.Current.InstallDirectory, "Files.exe"), StringComparison.OrdinalIgnoreCase)))
+						|| launchArguments[0].Equals(Environment.ProcessPath, StringComparison.OrdinalIgnoreCase)))
 					{
 						// WINUI3: When launching from commandline the argument is not ICommandLineActivatedEventArgs (#10370)
 						var ppm = CommandLineParser.ParseUntrustedCommands(launchArgs.Arguments);

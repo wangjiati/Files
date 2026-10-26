@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <algorithm>
+#include <cwctype>
+#include <string>
 #include <dwmapi.h>
 #include <exdisp.h>
 #include <iostream>
@@ -68,6 +70,61 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	LocalFree(szArglist);
+
+	// Portable layout: this launcher sits at the root and the application binaries live in lib\.
+	WCHAR modulePath[MAX_PATH] = {};
+	if (GetModuleFileNameW(nullptr, modulePath, _countof(modulePath)) > 0)
+	{
+		if (WCHAR* lastSeparator = wcsrchr(modulePath, L'\\'))
+		{
+			*lastSeparator = L'\0';
+
+			WCHAR appPath[MAX_PATH] = {};
+			swprintf(appPath, _countof(appPath) - 1, L"%s\\lib\\Files.exe", modulePath);
+
+			if (_waccess(appPath, 0) == 0)
+			{
+				SetEnvironmentVariableW(L"FILES_PORTABLE_ROOT", modulePath);
+
+				// Keep every argument the shell passed, including quoted paths.
+				std::wstring originalCommandLine = GetCommandLineW();
+				const wchar_t* forwardedArguments = originalCommandLine.c_str();
+				if (*forwardedArguments == L'"')
+				{
+					forwardedArguments++;
+					while (*forwardedArguments && *forwardedArguments != L'"')
+						forwardedArguments++;
+					if (*forwardedArguments)
+						forwardedArguments++;
+				}
+				else
+				{
+					while (*forwardedArguments && !iswspace(*forwardedArguments))
+						forwardedArguments++;
+				}
+
+				std::wstring childCommandLine = L"\"" + std::wstring(appPath) + L"\"" + forwardedArguments;
+
+				STARTUPINFOW startupInfo = { sizeof(startupInfo) };
+				PROCESS_INFORMATION processInfo = {};
+				if (CreateProcessW(appPath, childCommandLine.data(), nullptr, nullptr, FALSE, 0, nullptr, modulePath, &startupInfo, &processInfo))
+				{
+					CloseHandle(processInfo.hThread);
+					CloseHandle(processInfo.hProcess);
+					return 0;
+				}
+
+				MessageBoxW(
+					nullptr,
+					L"Files could not be started. Re-extract the portable package and try again.",
+					L"Files - Internal",
+					MB_OK | MB_ICONERROR
+				);
+
+				return 1;
+			}
+		}
+	}
 
 	WCHAR szBuf[MAX_PATH];
 	ExpandEnvironmentStringsW(L"%LOCALAPPDATA%\\Microsoft\\WindowsApps\\files-internal.exe", szBuf, MAX_PATH - 1);

@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\Microsoft.Windows.CppWinRT.3.0.260818.1\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('..\..\packages\Microsoft.Windows.CppWinRT.3.0.260818.1\build\native\Microsoft.Windows.CppWinRT.props')" />
   <ItemGroup Label="ProjectConfigurations">
@@ -127,6 +127,7 @@
     <ClCompile Include="FilesLauncher.cpp" />
     <ClCompile Include="OpenInFolder.cpp" />
     <ClInclude Include="OpenInFolder.h" />
+    <ResourceCompile Include="Files.App.Launcher.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

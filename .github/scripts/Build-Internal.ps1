@@ -114,10 +114,10 @@ $integrationAssetNames = @(
     "Files.App.SaveDialog64.dll"
 )
 $requiredPortableAssets = @(
-    "Assets/AppTiles/Dev/Logo.ico"
-    "Assets/Sidebar/EmptySidebar_48_ThemeLight.svg"
-    "Assets/WSL/alpinepng.png"
-    "Assets/error.png"
+    "lib/Assets/AppTiles/Dev/Logo.ico"
+    "lib/Assets/Sidebar/EmptySidebar_48_ThemeLight.svg"
+    "lib/Assets/WSL/alpinepng.png"
+    "lib/Assets/error.png"
 )
 $portablePublishProfile = "win-x64-portable"
 
@@ -1005,9 +1005,21 @@ try {
         "-clp:ErrorsOnly"
     )
 
-    $portableExe = Join-Path $portableStaging "Files.exe"
+    $portableLib = Join-Path $portableStaging "lib"
+    New-Item -ItemType Directory -Path $portableLib -Force | Out-Null
+    Get-ChildItem -LiteralPath $portableStaging -Force |
+        Where-Object { $_.FullName -ne $portableLib } |
+        Move-Item -Destination $portableLib -Force
+
+    $portableLauncher = Join-Path $integrationAssetsDirectory "Files.App.Launcher.exe"
+    if (-not (Test-Path -LiteralPath $portableLauncher -PathType Leaf)) {
+        Fail "The portable launcher was not produced at '$portableLauncher'."
+    }
+    Copy-Item -LiteralPath $portableLauncher -Destination (Join-Path $portableStaging "Files.exe") -Force
+
+    $portableExe = Join-Path $portableLib "Files.exe"
     if (-not (Test-Path -LiteralPath $portableExe)) {
-        Fail "Portable publish did not produce Files.exe in '$portableStaging'."
+        Fail "Portable publish did not produce Files.exe in '$portableLib'."
     }
 
     $portableVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($portableExe).FileVersion
@@ -1017,19 +1029,19 @@ try {
 
     Assert-PortableRequiredAssets $portableStaging "The portable publish output"
     foreach ($requiredPortableFile in @("Microsoft.WindowsAppRuntime.Bootstrap.dll", "Microsoft.WindowsAppRuntime.dll", "Microsoft.ui.xaml.dll", "Files.pri")) {
-        if (-not (Test-Path -LiteralPath (Join-Path $portableStaging $requiredPortableFile))) {
+        if (-not (Test-Path -LiteralPath (Join-Path $portableLib $requiredPortableFile))) {
             Fail "Portable publish is missing '$requiredPortableFile'. The Windows App SDK must be self-contained."
         }
     }
     foreach ($frameworkFile in @("hostfxr.dll", "coreclr.dll")) {
-        if (Test-Path -LiteralPath (Join-Path $portableStaging $frameworkFile)) {
+        if (Test-Path -LiteralPath (Join-Path $portableLib $frameworkFile)) {
             Fail "Portable publish contains '$frameworkFile'. The release must be native AOT and must not require a system .NET runtime."
         }
     }
-    if (Test-Path -LiteralPath (Join-Path $portableStaging "Files.App.Server\Files.App.Server.exe")) {
+    if (Test-Path -LiteralPath (Join-Path $portableLib "Files.App.Server\Files.App.Server.exe")) {
         Fail "Portable publish contains the out-of-process COM server host."
     }
-    if (Test-Path -LiteralPath (Join-Path $portableStaging "Data")) {
+    if ((Test-Path -LiteralPath (Join-Path $portableStaging "Data")) -or (Test-Path -LiteralPath (Join-Path $portableLib "Data"))) {
         Fail "Portable publish contains a Data directory. User data must not be bundled into the release ZIP."
     }
 

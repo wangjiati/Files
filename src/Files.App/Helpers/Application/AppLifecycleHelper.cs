@@ -94,7 +94,7 @@ namespace Files.App.Helpers
 		public static string AppIconPath => _appIconPath.Value;
 
 		private static readonly Lazy<string> _appIconPath = new(() =>
-			SystemIO.Path.Combine(AppRuntime.Current.InstallDirectory, AppEnvironment switch
+			SystemIO.Path.Combine(AppContext.BaseDirectory, AppEnvironment switch
 			{
 				AppEnvironment.Dev => Constants.AssetPaths.DevLogo,
 				AppEnvironment.SideloadPreview or AppEnvironment.StorePreview => Constants.AssetPaths.PreviewLogo,

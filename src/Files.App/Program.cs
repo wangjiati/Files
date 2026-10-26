@@ -54,7 +54,7 @@ namespace Files.App
 		private static void Main()
 		{
 #if DISTRIBUTION_PORTABLE
-			AppRuntime.Initialize(DistributionKind.Portable);
+			AppRuntime.Initialize(DistributionKind.Portable, ResolvePortableRoot());
 #else
 			AppRuntime.Initialize(DistributionKind.Msix);
 #endif
@@ -185,6 +185,12 @@ namespace Files.App
 			});
 		}
 
+		private static string? ResolvePortableRoot()
+		{
+			var root = Environment.GetEnvironmentVariable("FILES_PORTABLE_ROOT");
+			return string.IsNullOrWhiteSpace(root) ? null : root;
+		}
+
 		internal static PortableDataLease PreparePortableData()
 		{
 			var environment = AppRuntime.Current;
@@ -290,7 +296,7 @@ namespace Files.App
 				CommandLineParser.SplitArguments(launchArgs.Arguments, true).FirstOrDefault() is string arg0 &&
 				(arg0.EndsWith($"{AppProcessLauncher.ProtocolScheme}.exe", StringComparison.OrdinalIgnoreCase) ||
 				arg0.EndsWith(AppProcessLauncher.ProtocolScheme, StringComparison.OrdinalIgnoreCase) ||
-				arg0.Equals(Path.Join(AppRuntime.Current.InstallDirectory, "Files.exe"), StringComparison.OrdinalIgnoreCase)) ? launchArgs.Arguments : null;
+				arg0.Equals(Environment.ProcessPath, StringComparison.OrdinalIgnoreCase)) ? launchArgs.Arguments : null;
 			var cmdProtocolArgs = activatedArgs.Data is IProtocolActivatedEventArgs protocolArgs &&
 				protocolArgs.Uri.Query.TrimStart('?').Split('=') is string[] parsedArgs &&
 				parsedArgs.Length == 2 && parsedArgs[0] == "cmd" ? Uri.UnescapeDataString(parsedArgs[1]) : null;
