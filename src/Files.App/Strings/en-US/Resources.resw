@@ -1871,6 +1871,12 @@
   <data name="FilterRegexToggle" xml:space="preserve">
     <value>Use regular expression</value>
   </data>
+  <data name="FilterModeText" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="FilterModeRegex" xml:space="preserve">
+    <value>Regex</value>
+  </data>
   <data name="FilterRegexTarget" xml:space="preserve">
     <value>Match against</value>
   </data>

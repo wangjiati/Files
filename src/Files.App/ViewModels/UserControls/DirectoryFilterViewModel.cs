@@ -189,22 +189,27 @@ namespace Files.App.ViewModels.UserControls
 			{
 				case DirectoryColumnKind.Name:
 					{
-						var condition = BuildNameCondition();
 						columns.RemoveAll(filter => filter.Column == DirectoryColumnKind.Name);
 
-						var regex = UseRegex && !string.IsNullOrWhiteSpace(RegexPattern)
-							? BuildRegexOptions()
-							: null;
+						// Text and regex are alternative modes; the hidden mode must never leak into the spec.
+						if (UseRegex)
+						{
+							var regex = !string.IsNullOrWhiteSpace(RegexPattern) ? BuildRegexOptions() : null;
+
+							return spec with { NameContains = null, Columns = columns, Regex = regex };
+						}
+
+						var condition = BuildNameCondition();
 
 						if (condition is null)
-							return spec with { NameContains = null, Columns = columns, Regex = regex };
+							return spec with { NameContains = null, Columns = columns, Regex = null };
 
 						// Keep a single source of truth: a plain Contains lives in the shared name box.
 						if (condition.Operator is DirectoryTextOperator.Contains)
-							return spec with { NameContains = condition.Text, Columns = columns, Regex = regex };
+							return spec with { NameContains = condition.Text, Columns = columns, Regex = null };
 
 						columns.Add(condition);
-						return spec with { NameContains = null, Columns = columns, Regex = regex };
+						return spec with { NameContains = null, Columns = columns, Regex = null };
 					}
 
 				case DirectoryColumnKind.Type:

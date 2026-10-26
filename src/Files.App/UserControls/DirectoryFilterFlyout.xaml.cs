@@ -42,7 +42,10 @@ namespace Files.App.UserControls
 			OperatorCombo.SelectedIndex = viewModel.OperatorIndex;
 			FilterTextBox.Text = viewModel.Text ?? string.Empty;
 
-			UseRegexCheck.IsChecked = viewModel.UseRegex;
+			TextModeItem.Text = Strings.FilterModeText.GetLocalizedResource();
+			RegexModeItem.Text = Strings.FilterModeRegex.GetLocalizedResource();
+			MatchModeSelector.SelectedItem = viewModel.UseRegex ? RegexModeItem : TextModeItem;
+			TextMatchPanel.Visibility = ToVisibility(!viewModel.UseRegex);
 			RegexOptionsPanel.Visibility = ToVisibility(viewModel.UseRegex);
 			RegexTargetCombo.ItemsSource = viewModel.RegexTargetChoices.ToArray();
 			RegexTargetCombo.SelectedIndex = viewModel.RegexTargetIndex;
@@ -87,8 +90,18 @@ namespace Files.App.UserControls
 			MaxDatePicker.Date = ViewModel.MaxDate;
 		}
 
-		private void UseRegex_Click(object sender, RoutedEventArgs e)
-			=> RegexOptionsPanel.Visibility = ToVisibility(UseRegexCheck.IsChecked == true);
+		private void MatchMode_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+		{
+			// Ignore the programmatic selection applied while the flyout is being populated.
+			if (!isInitialized)
+				return;
+
+			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem;
+			ViewModel.UseRegex = useRegex;
+			TextMatchPanel.Visibility = ToVisibility(!useRegex);
+			RegexOptionsPanel.Visibility = ToVisibility(useRegex);
+			RegexErrorText.Visibility = Visibility.Collapsed;
+		}
 
 		private void Apply_Click(object sender, RoutedEventArgs e)
 			=> ApplyFilter();
@@ -112,7 +125,7 @@ namespace Files.App.UserControls
 			ViewModel.MaxSizeText = MaxSizeBox.Text;
 			ViewModel.MinDate = MinDatePicker.Date;
 			ViewModel.MaxDate = MaxDatePicker.Date;
-			ViewModel.UseRegex = UseRegexCheck.IsChecked == true;
+			ViewModel.UseRegex = MatchModeSelector.SelectedItem == RegexModeItem;
 			ViewModel.RegexTargetIndex = Math.Max(RegexTargetCombo.SelectedIndex, 0);
 			ViewModel.RegexIgnoreCase = RegexIgnoreCaseCheck.IsChecked != true;
 			ViewModel.RegexPattern = RegexPatternBox.Text;

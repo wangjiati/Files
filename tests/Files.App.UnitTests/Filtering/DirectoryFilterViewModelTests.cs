@@ -212,6 +212,62 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void Apply_RegexMode_IgnoresTextAndClearsNameBox()
+		{
+			var initial = new DirectoryFilterSpec { NameContains = "old" };
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, initial)
+			{
+				UseRegex = true,
+				Text = "abc",
+				RegexPattern = @"\.md$",
+				RegexTargetIndex = 0,
+				RegexIgnoreCase = true,
+			};
+
+			var result = viewModel.ApplyTo(initial);
+
+			Assert.IsNull(result.NameContains);
+			Assert.IsFalse(result.Columns.Any(x => x.Column == DirectoryColumnKind.Name));
+			Assert.IsNotNull(result.Regex);
+			Assert.AreEqual(@"\.md$", result.Regex!.Pattern);
+		}
+
+		[TestMethod]
+		public void Apply_TextMode_ClearsExistingRegex()
+		{
+			var initial = new DirectoryFilterSpec
+			{
+				Regex = new DirectoryRegexOptions(@"_old$", DirectoryRegexTarget.RawName, true),
+			};
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, initial)
+			{
+				UseRegex = false,
+				Text = "report",
+			};
+
+			var result = viewModel.ApplyTo(initial);
+
+			Assert.IsNull(result.Regex);
+			Assert.AreEqual("report", result.NameContains);
+		}
+
+		[TestMethod]
+		public void Constructor_SeedsRegexMode()
+		{
+			var initial = new DirectoryFilterSpec
+			{
+				Regex = new DirectoryRegexOptions(@"\.md$", DirectoryRegexTarget.FullPath, IgnoreCase: false),
+			};
+
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, initial);
+
+			Assert.IsTrue(viewModel.UseRegex);
+			Assert.AreEqual(@"\.md$", viewModel.RegexPattern);
+			Assert.AreEqual((int)DirectoryRegexTarget.FullPath, viewModel.RegexTargetIndex);
+			Assert.IsFalse(viewModel.RegexIgnoreCase);
+		}
+
+		[TestMethod]
 		public void IsColumnActive_ReportsSharedNameBoxAndGroupedTypeConditions()
 		{
 			var spec = new DirectoryFilterSpec

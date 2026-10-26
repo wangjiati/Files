@@ -17,22 +17,26 @@
 			x:Name="TitleText"
 			FontWeight="SemiBold" />
 
-		<!--  Text columns  -->
+		<!--  Name column: text and regex are alternative modes  -->
 		<StackPanel
 			x:Name="TextPanel"
 			Spacing="6"
 			Visibility="Collapsed">
-			<ComboBox
-				x:Name="OperatorCombo"
-				HorizontalAlignment="Stretch" />
-			<TextBox
-				x:Name="FilterTextBox"
-				KeyDown="TextInput_KeyDown"
-				PlaceholderText="{helpers:ResourceString Name=Filter}" />
-			<CheckBox
-				x:Name="UseRegexCheck"
-				Click="UseRegex_Click"
-				Content="{helpers:ResourceString Name=FilterRegexToggle}" />
+			<SelectorBar x:Name="MatchModeSelector" SelectionChanged="MatchMode_SelectionChanged">
+				<SelectorBarItem x:Name="TextModeItem" />
+				<SelectorBarItem x:Name="RegexModeItem" />
+			</SelectorBar>
+			<StackPanel
+				x:Name="TextMatchPanel"
+				Spacing="6">
+				<ComboBox
+					x:Name="OperatorCombo"
+					HorizontalAlignment="Stretch" />
+				<TextBox
+					x:Name="FilterTextBox"
+					KeyDown="TextInput_KeyDown"
+					PlaceholderText="{helpers:ResourceString Name=Filter}" />
+			</StackPanel>
 			<StackPanel
 				x:Name="RegexOptionsPanel"
 				Spacing="6"
