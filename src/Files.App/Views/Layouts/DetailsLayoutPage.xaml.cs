@@ -7,6 +7,7 @@ using Files.App.Dialogs;
 using Files.App.Services.DateTimeFormatter;
 using Files.App.UserControls.Selection;
 using Files.App.ViewModels.Settings;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -63,6 +64,11 @@ namespace Files.App.Views.Layouts
 
 		private RelayCommand<string>? UpdateSortOptionsCommand { get; set; }
 
+		private RelayCommand<object>? ColumnFilterCommand { get; set; }
+
+		private readonly Flyout columnFilterFlyout = new() { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft };
+		private readonly DirectoryFilterFlyout columnFilterContent = new();
+
 		public ScrollViewer? ContentScroller { get; private set; }
 
 		private double maxWidthForRenameTextbox;
@@ -92,8 +98,17 @@ namespace Files.App.Views.Layouts
 
 		public DetailsLayoutPage() : base()
 		{
+			// Must exist before InitializeComponent so the header x:Bind sees the command.
+			ColumnFilterCommand = new RelayCommand<object>(OpenColumnFilter);
+
 			InitializeComponent();
 			DataContext = this;
+
+			columnFilterFlyout.Content = columnFilterContent;
+			columnFilterContent.ApplyRequested += ColumnFilter_ApplyRequested;
+			columnFilterContent.ClearRequested += ColumnFilter_ClearRequested;
+			columnFilterContent.ClearAllRequested += ColumnFilter_ClearAllRequested;
+
 			var selectionRectangle = RectangleSelection.Create(FileList, SelectionRectangle, FileList_SelectionChanged);
 			selectionRectangle.SelectionStarted += SelectionRectangle_SelectionStarted;
 			selectionRectangle.SelectionEnded += SelectionRectangle_SelectionEnded;
@@ -938,7 +953,116 @@ namespace Files.App.Views.Layouts
 		private void ShellViewModel_ItemLoadStatusChanged(object? sender, ItemLoadStatusChangedEventArgs e)
 		{
 			if (e.Status == ItemLoadStatusChangedEventArgs.ItemLoadStatus.Complete)
+			{
 				AutoFitColumnsIfEnabled();
+				UpdateFilterIndicators();
+			}
+		}
+
+		private void OpenColumnFilter(object? parameter)
+		{
+			try
+			{
+				if (parameter is not string name || !Enum.TryParse<DirectoryColumnKind>(name, out var column))
+				{
+					App.Logger.LogWarning("Column filter parameter was not recognized: {Parameter}.", parameter?.ToString() ?? "<null>");
+					return;
+				}
+
+				if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+				{
+					App.Logger.LogWarning("Column filter could not resolve the shell view model.");
+					return;
+				}
+
+				var viewModel = new DirectoryFilterViewModel(column, shellViewModel.DirectoryFilter);
+
+				switch (column)
+				{
+					case DirectoryColumnKind.Type:
+						viewModel.LoadChoices(
+							shellViewModel.GetFilterChoices(DirectoryColumnKind.Type),
+							shellViewModel.GetFilterChoices(DirectoryColumnKind.Extension));
+						break;
+
+					case DirectoryColumnKind.Tags:
+						viewModel.LoadChoices(shellViewModel.GetFilterChoices(DirectoryColumnKind.Tags));
+						break;
+				}
+
+				columnFilterContent.Initialize(viewModel);
+
+				if (GetFilterAnchor(column) is not { } anchor)
+				{
+					App.Logger.LogWarning("Column filter anchor was not found for {Column}.", column);
+					return;
+				}
+
+				columnFilterFlyout.ShowAt(anchor);
+				App.Logger.LogInformation("Column filter opened for {Column}.", column);
+			}
+			catch (Exception ex)
+			{
+				App.Logger.LogWarning(ex, "Failed to open the column filter.");
+			}
+		}
+
+		private DataGridHeader? GetFilterAnchor(DirectoryColumnKind column)
+			=> column switch
+			{
+				DirectoryColumnKind.Name => NameHeader,
+				DirectoryColumnKind.Type => FileTypeHeader,
+				DirectoryColumnKind.Tags => TagHeader,
+				DirectoryColumnKind.Size => ItemSizeHeader,
+				DirectoryColumnKind.ModifiedDate => DateModifiedHeader,
+				DirectoryColumnKind.CreatedDate => DateCreatedHeader,
+				_ => null,
+			};
+
+		private void ColumnFilter_ApplyRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+				return;
+
+			shellViewModel.DirectoryFilter = columnFilterContent.ViewModel.ApplyTo(shellViewModel.DirectoryFilter);
+			columnFilterFlyout.Hide();
+			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
+		}
+
+		private void ColumnFilter_ClearRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+				return;
+
+			shellViewModel.DirectoryFilter = columnFilterContent.ViewModel.ClearFrom(shellViewModel.DirectoryFilter);
+			columnFilterFlyout.Hide();
+			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
+		}
+
+		private void ColumnFilter_ClearAllRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+				return;
+
+			shellViewModel.FilesAndFoldersFilter = null;
+			shellViewModel.DirectoryFilter = DirectoryFilterSpec.Empty;
+			columnFilterFlyout.Hide();
+			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
+		}
+
+		private void UpdateFilterIndicators(DirectoryFilterSpec? spec = null)
+		{
+			spec ??= ParentShellPageInstance?.ShellViewModel?.DirectoryFilter;
+
+			if (spec is null)
+				return;
+
+			NameHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.Name);
+			FileTypeHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.Type);
+			TagHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.Tags);
+			ItemSizeHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.Size);
+			DateModifiedHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.ModifiedDate);
+			DateCreatedHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.CreatedDate);
 		}
 
 		private void FileListItems_VectorChanged(IObservableVector<object> sender, IVectorChangedEventArgs e)

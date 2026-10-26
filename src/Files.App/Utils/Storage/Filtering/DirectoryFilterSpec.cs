@@ -67,6 +67,39 @@ namespace Files.App.Utils.Storage
 	}
 
 	/// <summary>
+	/// A selectable filter value with a stable value and a user-facing label.
+	/// </summary>
+	public sealed record DirectoryFilterChoice(string Value, string Label);
+
+	/// <summary>
+	/// Text a regular expression is matched against.
+	/// </summary>
+	public enum DirectoryRegexTarget
+	{
+		RawName,
+		DisplayName,
+		FullPath,
+	}
+
+	/// <summary>
+	/// Immutable regular expression filter. The evaluator builds the <see cref="System.Text.RegularExpressions.Regex"/> once per projection.
+	/// </summary>
+	public sealed record DirectoryRegexOptions(string Pattern, DirectoryRegexTarget Target, bool IgnoreCase);
+
+	public enum DirectoryRegexError
+	{
+		None,
+		InvalidPattern,
+		PatternTooLong,
+		Timeout,
+	}
+
+	public sealed record DirectoryFilterEvaluationResult(IReadOnlyList<long> ItemIds, DirectoryRegexError Error)
+	{
+		public bool IsSuccess => Error is DirectoryRegexError.None;
+	}
+
+	/// <summary>
 	/// The complete immutable set of temporary filters applied to the loaded directory items.
 	/// </summary>
 	public sealed record DirectoryFilterSpec
@@ -80,7 +113,12 @@ namespace Files.App.Utils.Storage
 
 		public IReadOnlyList<DirectoryColumnFilter> Columns { get; init; } = [];
 
+		public DirectoryRegexOptions? Regex { get; init; }
+
 		public bool IsEmpty
-			=> string.IsNullOrEmpty(NameContains) && Columns.Count == 0;
+			=> string.IsNullOrEmpty(NameContains) && Columns.Count == 0 && Regex is null;
+
+		public bool HasColumnFilter(DirectoryColumnKind column)
+			=> Columns.Any(filter => filter.Column == column);
 	}
 }

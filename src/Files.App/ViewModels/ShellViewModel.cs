@@ -239,7 +239,10 @@ namespace Files.App.ViewModels
 				return;
 			
 			if (value != WorkingDirectory)
+			{
 				FilesAndFoldersFilter = null;
+				DirectoryFilter = DirectoryFilterSpec.Empty;
+			}
 
 			var isLibrary = false;
 			string? name = null;
@@ -1134,6 +1137,41 @@ namespace Files.App.ViewModels
 		}
 
 		/// <summary>
+		/// Gets the selectable values for a column filter flyout from the currently loaded items.
+		/// </summary>
+		public IReadOnlyList<DirectoryFilterChoice> GetFilterChoices(DirectoryColumnKind column)
+		{
+			var items = filesAndFolders?.ToList() ?? [];
+
+			return column switch
+			{
+				DirectoryColumnKind.Type => items
+					.Select(item => item.ItemType)
+					.Where(type => !string.IsNullOrWhiteSpace(type))
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.OrderBy(type => type, StringComparer.CurrentCultureIgnoreCase)
+					.Select(type => new DirectoryFilterChoice(type!, type!))
+					.ToList(),
+
+				DirectoryColumnKind.Extension => items
+					.Select(item => item.FileExtension)
+					.Where(extension => !string.IsNullOrWhiteSpace(extension))
+					.Select(extension => extension!.StartsWith('.') ? extension.ToLowerInvariant() : $".{extension.ToLowerInvariant()}")
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.OrderBy(extension => extension, StringComparer.OrdinalIgnoreCase)
+					.Select(extension => new DirectoryFilterChoice(extension, extension))
+					.ToList(),
+
+				DirectoryColumnKind.Tags => fileTagsSettingsService.FileTagList
+					.Select(tag => new DirectoryFilterChoice(tag.Uid, tag.Name))
+					.OrderBy(choice => choice.Label, StringComparer.CurrentCultureIgnoreCase)
+					.ToList(),
+
+				_ => [],
+			};
+		}
+
+		/// <summary>
 		/// Marks filter-visible item data as changed and coalesces the resulting re-projection.
 		/// </summary>
 		private void NotifyFilterSourceChanged()
@@ -1164,7 +1202,7 @@ namespace Files.App.ViewModels
 				.Unwrap();
 		}
 
-		private static List<ListedItem> FilterItems(List<ListedItem> items, DirectoryFilterSpec spec, CancellationToken token)
+		private static (List<ListedItem>? Items, DirectoryRegexError Error) FilterItems(List<ListedItem> items, DirectoryFilterSpec spec, CancellationToken token)
 		{
 			var snapshots = new List<DirectoryItemFilterSnapshot>(items.Count);
 			for (var index = 0; index < items.Count; index++)
@@ -1172,13 +1210,16 @@ namespace Files.App.ViewModels
 
 			token.ThrowIfCancellationRequested();
 
-			var matchingIds = DirectoryFilterEvaluator.Evaluate(snapshots, spec);
-			var results = new List<ListedItem>(matchingIds.Count);
+			var evaluation = DirectoryFilterEvaluator.EvaluateDetailed(snapshots, spec, token);
+			if (!evaluation.IsSuccess)
+				return (null, evaluation.Error);
 
-			foreach (var id in matchingIds)
+			var results = new List<ListedItem>(evaluation.ItemIds.Count);
+
+			foreach (var id in evaluation.ItemIds)
 				results.Add(items[(int)id]);
 
-			return results;
+			return (results, DirectoryRegexError.None);
 		}
 
 		private static DirectoryItemFilterSnapshot CreateFilterSnapshot(ListedItem item, long itemId)
@@ -1230,9 +1271,21 @@ namespace Files.App.ViewModels
 					// concurrent watcher removals (e.g. emptying the Recycle Bin) otherwise leave the last item painted.
 					var filesAndFoldersLocal = filesAndFolders?.ToList() ?? new List<ListedItem>();
 
-					var displayedFilesAndFolders = spec.IsEmpty
-						? filesAndFoldersLocal
-						: await Task.Run(() => FilterItems(filesAndFoldersLocal, spec, context.Token), context.Token);
+					var displayedFilesAndFolders = filesAndFoldersLocal;
+
+					if (!spec.IsEmpty)
+					{
+						var (items, error) = await Task.Run(() => FilterItems(filesAndFoldersLocal, spec, context.Token), context.Token);
+
+						if (items is null)
+						{
+							// Keep the previous visible items instead of applying half a result.
+							App.Logger.LogWarning("Directory filter evaluation failed: {Error}.", error);
+							return;
+						}
+
+						displayedFilesAndFolders = items;
+					}
 
 					var displayedFoldersCount = displayedFilesAndFolders.Count(x => x.PrimaryItemAttribute == StorageItemTypes.Folder && !x.IsArchive);
 

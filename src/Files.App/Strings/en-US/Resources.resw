@@ -1811,6 +1811,96 @@
   <data name="NoMatchingItems" xml:space="preserve">
     <value>No items match the current filters</value>
   </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="FilterContains" xml:space="preserve">
+    <value>Contains</value>
+  </data>
+  <data name="FilterNotContains" xml:space="preserve">
+    <value>Does not contain</value>
+  </data>
+  <data name="FilterStartsWith" xml:space="preserve">
+    <value>Starts with</value>
+  </data>
+  <data name="FilterEndsWith" xml:space="preserve">
+    <value>Ends with</value>
+  </data>
+  <data name="FilterEquals" xml:space="preserve">
+    <value>Equals</value>
+  </data>
+  <data name="FilterAllDates" xml:space="preserve">
+    <value>All dates</value>
+  </data>
+  <data name="FilterLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="FilterLast30Days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="FilterThisYear" xml:space="preserve">
+    <value>This year</value>
+  </data>
+  <data name="FilterIncludeEmpty" xml:space="preserve">
+    <value>Include items without a value</value>
+  </data>
+  <data name="FilterMinSize" xml:space="preserve">
+    <value>Minimum size</value>
+  </data>
+  <data name="FilterMaxSize" xml:space="preserve">
+    <value>Maximum size</value>
+  </data>
+  <data name="FilterFrom" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="FilterTo" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="FilterClearAll" xml:space="preserve">
+    <value>Clear all filters</value>
+  </data>
+  <data name="FilterApply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="FilterTypeSection" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="FilterExtensionSection" xml:space="preserve">
+    <value>Extension</value>
+  </data>
+  <data name="FilterRegexToggle" xml:space="preserve">
+    <value>Use regular expression</value>
+  </data>
+  <data name="FilterRegexTarget" xml:space="preserve">
+    <value>Match against</value>
+  </data>
+  <data name="FilterRegexPattern" xml:space="preserve">
+    <value>Regular expression</value>
+  </data>
+  <data name="FilterRegexIgnoreCase" xml:space="preserve">
+    <value>Match case</value>
+  </data>
+  <data name="FilterTargetRawName" xml:space="preserve">
+    <value>Full file name (includes extension)</value>
+  </data>
+  <data name="FilterTargetDisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="FilterTargetFullPath" xml:space="preserve">
+    <value>Full path</value>
+  </data>
+  <data name="FilterRegexInvalid" xml:space="preserve">
+    <value>The regular expression is not valid.</value>
+  </data>
+  <data name="FilterRegexTooLong" xml:space="preserve">
+    <value>The regular expression is too long.</value>
+  </data>
+  <data name="FilterRegexEmpty" xml:space="preserve">
+    <value>Enter a regular expression.</value>
+  </data>
+  <data name="FilterRegexTimeout" xml:space="preserve">
+    <value>The regular expression took too long and was cancelled.</value>
+  </data>
   <data name="OpenLogLocation" xml:space="preserve">
     <value>Open log location</value>
   </data>

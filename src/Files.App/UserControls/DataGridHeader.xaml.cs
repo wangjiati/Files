@@ -19,8 +19,29 @@ namespace Files.App.UserControls
 		[GeneratedDependencyProperty]
 		public partial SortDirection? ColumnSortOption { get; set; }
 
+		[GeneratedDependencyProperty]
+		public partial bool CanBeFiltered { get; set; }
+
+		[GeneratedDependencyProperty]
+		public partial bool IsFilterActive { get; set; }
+
 		public ICommand? Command { get; set; }
 		public object? CommandParameter { get; set; }
+
+		public ICommand? FilterCommand { get; set; }
+		public object? FilterCommandParameter { get; set; }
+
+		partial void OnCanBeFilteredChanged(bool newValue)
+		{
+			if (FilterButton is not null)
+				FilterButton.Visibility = newValue ? Visibility.Visible : Visibility.Collapsed;
+		}
+
+		partial void OnIsFilterActiveChanged(bool newValue)
+		{
+			if (FilterActiveDot is not null)
+				FilterActiveDot.Visibility = newValue ? Visibility.Visible : Visibility.Collapsed;
+		}
 
 		partial void OnColumnSortOptionChanged(SortDirection? newValue)
 		{

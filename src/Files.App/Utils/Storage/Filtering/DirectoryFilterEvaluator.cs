@@ -3,6 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Files.App.Utils.Storage
 {
@@ -12,7 +15,19 @@ namespace Files.App.Utils.Storage
 	/// </summary>
 	public static class DirectoryFilterEvaluator
 	{
+		/// <summary>
+		/// Overall budget for regex matching across one projection. A catastrophic expression
+		/// is abandoned instead of freezing the directory.
+		/// </summary>
+		private static readonly TimeSpan RegexTotalBudget = TimeSpan.FromSeconds(2);
+
 		public static IReadOnlyList<long> Evaluate(IReadOnlyList<DirectoryItemFilterSnapshot> items, DirectoryFilterSpec spec)
+			=> EvaluateDetailed(items, spec).ItemIds;
+
+		public static DirectoryFilterEvaluationResult EvaluateDetailed(
+			IReadOnlyList<DirectoryItemFilterSnapshot> items,
+			DirectoryFilterSpec spec,
+			CancellationToken cancellationToken = default)
 		{
 			var results = new List<long>(items.Count);
 
@@ -21,16 +36,44 @@ namespace Files.App.Utils.Storage
 				for (var index = 0; index < items.Count; index++)
 					results.Add(items[index].ItemId);
 
-				return results;
+				return new(results, DirectoryRegexError.None);
 			}
 
-			for (var index = 0; index < items.Count; index++)
+			DirectoryRegexFilter? regexFilter = null;
+			if (spec.Regex is { } regexOptions
+				&& !DirectoryRegexFilter.TryCreate(regexOptions, out regexFilter, out var createError))
 			{
-				if (Matches(items[index], spec))
-					results.Add(items[index].ItemId);
+				return new([], createError);
 			}
 
-			return results;
+			var stopwatch = regexFilter is null ? null : Stopwatch.StartNew();
+
+			try
+			{
+				for (var index = 0; index < items.Count; index++)
+				{
+					cancellationToken.ThrowIfCancellationRequested();
+
+					if (regexFilter is not null)
+					{
+						if (!regexFilter.IsMatch(items[index]))
+							continue;
+
+						if (stopwatch!.Elapsed > RegexTotalBudget)
+							return new([], DirectoryRegexError.Timeout);
+					}
+
+					if (Matches(items[index], spec))
+						results.Add(items[index].ItemId);
+				}
+			}
+			catch (RegexMatchTimeoutException)
+			{
+				// Never commit a partial result for a regex that ran away.
+				return new([], DirectoryRegexError.Timeout);
+			}
+
+			return new(results, DirectoryRegexError.None);
 		}
 
 		public static bool Matches(in DirectoryItemFilterSnapshot item, DirectoryFilterSpec spec)
