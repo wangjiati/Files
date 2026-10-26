@@ -16,6 +16,7 @@ namespace Files.App.UserControls
 	public sealed partial class DirectoryFilterFlyout : UserControl
 	{
 		private bool isInitialized;
+		private bool isSyncingMode;
 
 		public DirectoryFilterFlyout()
 		{
@@ -44,9 +45,7 @@ namespace Files.App.UserControls
 
 			TextModeItem.Text = Strings.FilterModeText.GetLocalizedResource();
 			RegexModeItem.Text = Strings.FilterModeRegex.GetLocalizedResource();
-			MatchModeSelector.SelectedItem = viewModel.UseRegex ? RegexModeItem : TextModeItem;
-			TextMatchPanel.Visibility = ToVisibility(!viewModel.UseRegex);
-			RegexOptionsPanel.Visibility = ToVisibility(viewModel.UseRegex);
+			SyncMode();
 			RegexTargetCombo.ItemsSource = viewModel.RegexTargetChoices.ToArray();
 			RegexTargetCombo.SelectedIndex = viewModel.RegexTargetIndex;
 			RegexIgnoreCaseCheck.IsChecked = !viewModel.RegexIgnoreCase;
@@ -90,13 +89,44 @@ namespace Files.App.UserControls
 			MaxDatePicker.Date = ViewModel.MaxDate;
 		}
 
+		/// <summary>
+		/// Re-applies the tab selection and the visible editor. SelectorBar ignores a programmatic
+		/// selection while its flyout is closed, so a fresh content instance is created for each open.
+		/// </summary>
+		private void SyncMode()
+		{
+			var useRegex = ViewModel.UseRegex;
+
+			isSyncingMode = true;
+			try
+			{
+				if (useRegex)
+				{
+					TextModeItem.IsSelected = false;
+					RegexModeItem.IsSelected = true;
+				}
+				else
+				{
+					RegexModeItem.IsSelected = false;
+					TextModeItem.IsSelected = true;
+				}
+
+				TextMatchPanel.Visibility = ToVisibility(!useRegex);
+				RegexOptionsPanel.Visibility = ToVisibility(useRegex);
+			}
+			finally
+			{
+				isSyncingMode = false;
+			}
+		}
+
 		private void MatchMode_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
 		{
 			// Ignore the programmatic selection applied while the flyout is being populated.
-			if (!isInitialized)
+			if (!isInitialized || isSyncingMode)
 				return;
 
-			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem;
+			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem || RegexModeItem.IsSelected;
 			ViewModel.UseRegex = useRegex;
 			TextMatchPanel.Visibility = ToVisibility(!useRegex);
 			RegexOptionsPanel.Visibility = ToVisibility(useRegex);

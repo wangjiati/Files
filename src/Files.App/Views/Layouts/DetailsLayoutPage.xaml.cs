@@ -67,7 +67,7 @@ namespace Files.App.Views.Layouts
 		private RelayCommand<object>? ColumnFilterCommand { get; set; }
 
 		private readonly Flyout columnFilterFlyout = new() { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft };
-		private readonly DirectoryFilterFlyout columnFilterContent = new();
+		private DirectoryFilterFlyout? columnFilterContent;
 
 		public ScrollViewer? ContentScroller { get; private set; }
 
@@ -103,11 +103,6 @@ namespace Files.App.Views.Layouts
 
 			InitializeComponent();
 			DataContext = this;
-
-			columnFilterFlyout.Content = columnFilterContent;
-			columnFilterContent.ApplyRequested += ColumnFilter_ApplyRequested;
-			columnFilterContent.ClearRequested += ColumnFilter_ClearRequested;
-			columnFilterContent.ClearAllRequested += ColumnFilter_ClearAllRequested;
 
 			var selectionRectangle = RectangleSelection.Create(FileList, SelectionRectangle, FileList_SelectionChanged);
 			selectionRectangle.SelectionStarted += SelectionRectangle_SelectionStarted;
@@ -992,6 +987,10 @@ namespace Files.App.Views.Layouts
 						break;
 				}
 
+				columnFilterContent = new DirectoryFilterFlyout();
+				columnFilterContent.ApplyRequested += ColumnFilter_ApplyRequested;
+				columnFilterContent.ClearRequested += ColumnFilter_ClearRequested;
+				columnFilterContent.ClearAllRequested += ColumnFilter_ClearAllRequested;
 				columnFilterContent.Initialize(viewModel);
 
 				if (GetFilterAnchor(column) is not { } anchor)
@@ -1000,6 +999,7 @@ namespace Files.App.Views.Layouts
 					return;
 				}
 
+				columnFilterFlyout.Content = columnFilterContent;
 				columnFilterFlyout.ShowAt(anchor);
 				App.Logger.LogInformation("Column filter opened for {Column}.", column);
 			}
@@ -1023,20 +1023,20 @@ namespace Files.App.Views.Layouts
 
 		private void ColumnFilter_ApplyRequested(object? sender, EventArgs e)
 		{
-			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel || columnFilterContent is not { } content)
 				return;
 
-			shellViewModel.DirectoryFilter = columnFilterContent.ViewModel.ApplyTo(shellViewModel.DirectoryFilter);
+			shellViewModel.DirectoryFilter = content.ViewModel.ApplyTo(shellViewModel.DirectoryFilter);
 			columnFilterFlyout.Hide();
 			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
 		}
 
 		private void ColumnFilter_ClearRequested(object? sender, EventArgs e)
 		{
-			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel || columnFilterContent is not { } content)
 				return;
 
-			shellViewModel.DirectoryFilter = columnFilterContent.ViewModel.ClearFrom(shellViewModel.DirectoryFilter);
+			shellViewModel.DirectoryFilter = content.ViewModel.ClearFrom(shellViewModel.DirectoryFilter);
 			columnFilterFlyout.Hide();
 			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
 		}
