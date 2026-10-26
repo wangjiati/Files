@@ -1067,7 +1067,14 @@ namespace Files.App.Views.Layouts
 				XamlRoot = XamlRoot,
 			};
 
-			await dialog.ShowAsync();
+			try
+			{
+				await dialog.ShowAsync();
+			}
+			catch (Exception ex)
+			{
+				App.Logger.LogWarning(ex, "Failed to show the filter error dialog.");
+			}
 		}
 
 		private void UpdateFilterIndicators(DirectoryFilterSpec? spec = null)
