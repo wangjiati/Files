@@ -16,7 +16,13 @@ namespace Files.App.ViewModels.UserControls
 		public override string ToString() => Name;
 	}
 
-	public sealed record QueryTableRow(IReadOnlyList<string> Cells);
+	public sealed class QueryTableRow
+	{
+		public QueryTableRow(string[] cells)
+			=> Cells = cells;
+
+		public string[] Cells { get; }
+	}
 
 	/// <summary>
 	/// Runs read-only SQL against a snapshot of the current directory and projects mapped file results
@@ -252,7 +258,7 @@ namespace Files.App.ViewModels.UserControls
 		private static List<QueryTableRow> BuildTableRows(DirectoryQueryResult result)
 			=> result.Rows
 				.Take(MaxDisplayedRows)
-				.Select(row => new QueryTableRow(row.Values.Select(FormatValue).ToList()))
+				.Select(row => new QueryTableRow(row.Values.Select(FormatValue).ToArray()))
 				.ToList();
 
 		private static string BuildRowsStatus(int totalRows, int displayedRows)
