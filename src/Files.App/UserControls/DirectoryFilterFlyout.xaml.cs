@@ -100,6 +100,8 @@ namespace Files.App.UserControls
 			isSyncingMode = true;
 			try
 			{
+				MatchModeSelector.SelectedItem = useRegex ? RegexModeItem : TextModeItem;
+
 				if (useRegex)
 				{
 					TextModeItem.IsSelected = false;
@@ -126,7 +128,7 @@ namespace Files.App.UserControls
 			if (!isInitialized || isSyncingMode)
 				return;
 
-			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem || RegexModeItem.IsSelected;
+			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem;
 			ViewModel.UseRegex = useRegex;
 			TextMatchPanel.Visibility = ToVisibility(!useRegex);
 			RegexOptionsPanel.Visibility = ToVisibility(useRegex);

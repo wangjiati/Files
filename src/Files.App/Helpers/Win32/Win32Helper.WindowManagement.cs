@@ -68,5 +68,11 @@ namespace Files.App.Helpers
 			var exStyle = PInvoke.GetWindowLongPtr(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
 			PInvoke.SetWindowLongPtr(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, exStyle | (nint)WINDOW_EX_STYLE.WS_EX_LAYOUTRTL);
 		}
+
+		/// <summary>
+		/// Makes one window owned by another so it stays above the owner in the z-order.
+		/// </summary>
+		public static unsafe void SetWindowOwner(Windows.Win32.Foundation.HWND hWnd, Windows.Win32.Foundation.HWND owner)
+			=> PInvoke.SetWindowLongPtr(hWnd, WINDOW_LONG_PTR_INDEX.GWLP_HWNDPARENT, (nint)owner.Value);
 	}
 }

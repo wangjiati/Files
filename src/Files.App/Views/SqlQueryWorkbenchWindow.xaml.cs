@@ -24,6 +24,14 @@ namespace Files.App.Views
 
 			InitializeComponent();
 
+			if (Files.App.MainWindow.Instance is { } ownerWindow)
+			{
+				// An owned window stays above the main window instead of being pushed behind it.
+				Win32Helper.SetWindowOwner(
+					new Windows.Win32.Foundation.HWND(Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id)),
+					new Windows.Win32.Foundation.HWND(ownerWindow.WindowHandle));
+			}
+
 			Title = Strings.SqlWorkbenchTitle.GetLocalizedResource();
 			AppWindow.Resize(new SizeInt32(1100, 800));
 
