@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using CommunityToolkit.WinUI;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -29,6 +30,7 @@ namespace Files.App.UserControls
 		private OpenWithMenu? openWithMenu;
 		private int openWithFlyoutRequestId;
 		private readonly List<Action> toggleButtonDetachActions = new();
+		private SqlQueryWorkbenchWindow? sqlQueryWorkbenchWindow;
 
 		[GeneratedDependencyProperty]
 		public partial NavigationToolbarViewModel? ViewModel { get; set; }
@@ -42,6 +44,41 @@ namespace Files.App.UserControls
 			InitializeComponent();
 			Loaded += Toolbar_Loaded;
 			Unloaded += Toolbar_Unloaded;
+		}
+
+		private void SqlQueryButton_Click(object sender, RoutedEventArgs e)
+		{
+			try
+			{
+				if (PageContext.ShellPage?.ShellViewModel is not { } shellViewModel)
+				{
+					App.Logger.LogWarning("SQL workbench could not resolve the shell view model.");
+					return;
+				}
+
+				if (sqlQueryWorkbenchWindow is not null)
+				{
+					sqlQueryWorkbenchWindow.Activate();
+					return;
+				}
+
+				sqlQueryWorkbenchWindow = new SqlQueryWorkbenchWindow(shellViewModel);
+				sqlQueryWorkbenchWindow.Closed += SqlQueryWorkbenchWindow_Closed;
+				sqlQueryWorkbenchWindow.Activate();
+			}
+			catch (Exception ex)
+			{
+				App.Logger.LogWarning(ex, "Failed to open the SQL workbench.");
+			}
+		}
+
+		private void SqlQueryWorkbenchWindow_Closed(object sender, WindowEventArgs args)
+		{
+			if (sqlQueryWorkbenchWindow is { } window)
+			{
+				window.Closed -= SqlQueryWorkbenchWindow_Closed;
+				sqlQueryWorkbenchWindow = null;
+			}
 		}
 
 		private void Toolbar_Loaded(object sender, RoutedEventArgs e)

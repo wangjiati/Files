@@ -189,6 +189,8 @@ namespace Files.App.ViewModels
 		private CancellationTokenSource? filterDebounceCS;
 		private DirectoryFilterSpec directoryFilterSpec = DirectoryFilterSpec.Empty;
 		private DirectoryFilterSpec lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
+		private IReadOnlyList<ListedItem>? queryViewItems;
+		private string? queryViewDirectory;
 		private DirectoryFilterExecutionContext? activeFilterContext;
 		private long filterGeneration;
 		private long filterSourceRevision;
@@ -250,6 +252,7 @@ namespace Files.App.ViewModels
 				FilesAndFoldersFilter = null;
 				DirectoryFilter = DirectoryFilterSpec.Empty;
 				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
+				ResetQueryView();
 			}
 
 			var isLibrary = false;
@@ -967,6 +970,7 @@ namespace Files.App.ViewModels
 			filesAndFolders.Clear();
 			FilesAndFolders.Clear();
 			FoldersCount = 0;
+			ResetQueryView();
 			CancelSearch();
 		}
 
@@ -1121,6 +1125,7 @@ namespace Files.App.ViewModels
 				if (SetProperty(ref _filesAndFoldersFilter, value))
 				{
 					directoryFilterSpec = directoryFilterSpec with { NameContains = value };
+					ResetQueryView();
 					ScheduleFilterProjection(250);
 				}
 			}
@@ -1148,6 +1153,7 @@ namespace Files.App.ViewModels
 					OnPropertyChanged(nameof(FilesAndFoldersFilter));
 				}
 
+				ResetQueryView();
 				ScheduleFilterProjection(0);
 			}
 		}
@@ -1185,6 +1191,81 @@ namespace Files.App.ViewModels
 
 				_ => [],
 			};
+		}
+
+		public string CurrentDirectoryKey => WorkingDirectory ?? string.Empty;
+
+		public long CurrentSourceRevision => Interlocked.Read(ref filterSourceRevision);
+
+		public IReadOnlyList<ListedItem> GetLoadedItemsSnapshot()
+			=> filesAndFolders?.ToList() ?? [];
+
+		/// <summary>
+		/// Builds the scalar snapshot one SQL execution runs against. File IDs are indexes into
+		/// <paramref name="items"/>, which the caller keeps to map <c>file_id</c> back to live items.
+		/// </summary>
+		public DirectoryQuerySnapshot CreateQuerySnapshot(IReadOnlyList<ListedItem> items)
+		{
+			var files = new List<DirectoryQueryFileSnapshot>(items.Count);
+			var fileTags = new List<DirectoryQueryFileTagSnapshot>();
+
+			for (var index = 0; index < items.Count; index++)
+			{
+				var item = items[index];
+
+				files.Add(new DirectoryQueryFileSnapshot(
+					index,
+					item.ItemNameRaw,
+					item.Name,
+					item.FileExtension,
+					item.ItemPath,
+					item.ItemType,
+					string.IsNullOrEmpty(item.FileSize) ? null : item.FileSizeBytes,
+					ToKnownDate(item.ItemDateModifiedReal),
+					ToKnownDate(item.ItemDateCreatedReal),
+					item.PrimaryItemAttribute == StorageItemTypes.Folder));
+
+				if (item.FileTags is { Length: > 0 } tags)
+				{
+					foreach (var tagId in tags)
+						fileTags.Add(new DirectoryQueryFileTagSnapshot(index, tagId));
+				}
+			}
+
+			var tagDefinitions = fileTagsSettingsService.FileTagList
+				.Select(tag => new DirectoryQueryTagSnapshot(tag.Uid, tag.Name, tag.Color))
+				.ToList();
+
+			return new DirectoryQuerySnapshot(CurrentDirectoryKey, CurrentSourceRevision, files, tagDefinitions, fileTags);
+		}
+
+		/// <summary>
+		/// Projects a SQL file result into the visible list. The view keeps snapshot references until
+		/// the user runs another query, changes filters, or navigates to another directory.
+		/// </summary>
+		public void ApplyQueryView(IReadOnlyList<ListedItem> items, string directoryKey)
+		{
+			if (!string.Equals(directoryKey, CurrentDirectoryKey, StringComparison.OrdinalIgnoreCase))
+				return;
+
+			queryViewItems = items;
+			queryViewDirectory = directoryKey;
+			_ = ApplyFilesAndFoldersChangesAsync();
+		}
+
+		public void ClearQueryView()
+		{
+			if (queryViewItems is null && queryViewDirectory is null)
+				return;
+
+			ResetQueryView();
+			_ = ApplyFilesAndFoldersChangesAsync();
+		}
+
+		private void ResetQueryView()
+		{
+			queryViewItems = null;
+			queryViewDirectory = null;
 		}
 
 		/// <summary>
@@ -1292,9 +1373,15 @@ namespace Files.App.ViewModels
 					// concurrent watcher removals (e.g. emptying the Recycle Bin) otherwise leave the last item painted.
 					var filesAndFoldersLocal = filesAndFolders?.ToList() ?? new List<ListedItem>();
 
-					var displayedFilesAndFolders = filesAndFoldersLocal;
+					// A SQL result view stays on the snapshot items until the user clears it or changes context.
+					var isQueryView = queryViewItems is not null
+						&& string.Equals(queryViewDirectory, WorkingDirectory ?? string.Empty, StringComparison.OrdinalIgnoreCase);
 
-					if (!spec.IsEmpty)
+					var displayedFilesAndFolders = isQueryView
+						? queryViewItems!.ToList()
+						: filesAndFoldersLocal;
+
+					if (!isQueryView && !spec.IsEmpty)
 					{
 						var (items, error) = await Task.Run(() => FilterItems(filesAndFoldersLocal, spec, context.Token), context.Token);
 

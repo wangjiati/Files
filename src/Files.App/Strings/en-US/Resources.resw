@@ -1907,6 +1907,78 @@
   <data name="FilterRegexTimeout" xml:space="preserve">
     <value>The regular expression took too long and was cancelled.</value>
   </data>
+  <data name="SqlWorkbenchTitle" xml:space="preserve">
+    <value>SQL Query</value>
+  </data>
+  <data name="SqlOpen" xml:space="preserve">
+    <value>SQL</value>
+  </data>
+  <data name="SqlExecute" xml:space="preserve">
+    <value>Execute</value>
+  </data>
+  <data name="SqlCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SqlClearResult" xml:space="preserve">
+    <value>Clear results</value>
+  </data>
+  <data name="SqlEditorHeader" xml:space="preserve">
+    <value>Query</value>
+  </data>
+  <data name="SqlExamples" xml:space="preserve">
+    <value>Examples</value>
+  </data>
+  <data name="SqlRunning" xml:space="preserve">
+    <value>Running query...</value>
+  </data>
+  <data name="SqlCancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="SqlElapsedFormat" xml:space="preserve">
+    <value>Elapsed {0:0} ms</value>
+  </data>
+  <data name="SqlTruncated" xml:space="preserve">
+    <value>Results were truncated; narrow the query.</value>
+  </data>
+  <data name="SqlFilesShownFormat" xml:space="preserve">
+    <value>Showing {0} files in the file list.</value>
+  </data>
+  <data name="SqlRowsFormat" xml:space="preserve">
+    <value>{0} rows in the table.</value>
+  </data>
+  <data name="SqlSnapshotStale" xml:space="preserve">
+    <value>The source changed; these are snapshot results.</value>
+  </data>
+  <data name="SqlDirectoryChanged" xml:space="preserve">
+    <value>The directory changed. Run the query again.</value>
+  </data>
+  <data name="SqlErrorInvalid" xml:space="preserve">
+    <value>The SQL is not valid.</value>
+  </data>
+  <data name="SqlErrorMultipleStatements" xml:space="preserve">
+    <value>Only one SELECT statement is allowed.</value>
+  </data>
+  <data name="SqlErrorNotSelect" xml:space="preserve">
+    <value>Only read-only SELECT queries are allowed.</value>
+  </data>
+  <data name="SqlErrorForbidden" xml:space="preserve">
+    <value>The query contains a forbidden operation or function.</value>
+  </data>
+  <data name="SqlErrorTimeout" xml:space="preserve">
+    <value>The query timed out.</value>
+  </data>
+  <data name="SqlErrorCancelled" xml:space="preserve">
+    <value>The query was cancelled.</value>
+  </data>
+  <data name="SqlErrorSqlite" xml:space="preserve">
+    <value>SQLite error.</value>
+  </data>
+  <data name="SqlSchemaHelp" xml:space="preserve">
+    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | Times are UTC Unix seconds; unknown values are NULL.</value>
+  </data>
+  <data name="SqlWorkbenchHint" xml:space="preserve">
+    <value>Ctrl+Enter executes the query.</value>
+  </data>
   <data name="OpenLogLocation" xml:space="preserve">
     <value>Open log location</value>
   </data>

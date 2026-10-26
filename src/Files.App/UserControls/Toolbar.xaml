@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <UserControl
 	x:Class="Files.App.UserControls.Toolbar"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -105,6 +105,20 @@
 				ToolTipService.ToolTip="{x:Bind Commands.ToggleFilterHeader.LabelWithHotKey, Mode=OneWay}">
 				<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.Filter}" />
 			</AppBarToggleButton>
+
+			<!--  SQL query workbench  -->
+			<AppBarButton
+				x:Name="SqlQueryButton"
+				Width="Auto"
+				MinWidth="46"
+				x:Load="{x:Bind ViewModel.InstanceViewModel.IsPageTypeNotHome, Mode=OneWay}"
+				AutomationProperties.Name="{helpers:ResourceString Name=SqlWorkbenchTitle}"
+				Click="SqlQueryButton_Click"
+				Label="{helpers:ResourceString Name=SqlOpen}"
+				LabelPosition="Collapsed"
+				ToolTipService.ToolTip="{helpers:ResourceString Name=SqlWorkbenchTitle}">
+				<FontIcon FontSize="16" Glyph="&#xE943;" />
+			</AppBarButton>
 
 			<!--  Selection Commands  -->
 			<AppBarButton

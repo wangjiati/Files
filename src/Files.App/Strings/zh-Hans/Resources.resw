@@ -1898,6 +1898,78 @@
   <data name="FilterRegexTimeout" xml:space="preserve">
     <value>正则表达式匹配超时，已取消。</value>
   </data>
+  <data name="SqlWorkbenchTitle" xml:space="preserve">
+    <value>SQL 查询</value>
+  </data>
+  <data name="SqlOpen" xml:space="preserve">
+    <value>SQL</value>
+  </data>
+  <data name="SqlExecute" xml:space="preserve">
+    <value>执行</value>
+  </data>
+  <data name="SqlCancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="SqlClearResult" xml:space="preserve">
+    <value>清除结果</value>
+  </data>
+  <data name="SqlEditorHeader" xml:space="preserve">
+    <value>查询</value>
+  </data>
+  <data name="SqlExamples" xml:space="preserve">
+    <value>示例</value>
+  </data>
+  <data name="SqlRunning" xml:space="preserve">
+    <value>正在查询…</value>
+  </data>
+  <data name="SqlCancelled" xml:space="preserve">
+    <value>已取消</value>
+  </data>
+  <data name="SqlElapsedFormat" xml:space="preserve">
+    <value>耗时 {0:0} ms</value>
+  </data>
+  <data name="SqlTruncated" xml:space="preserve">
+    <value>结果已截断，请缩小查询范围。</value>
+  </data>
+  <data name="SqlFilesShownFormat" xml:space="preserve">
+    <value>已在文件列表显示 {0} 个文件。</value>
+  </data>
+  <data name="SqlRowsFormat" xml:space="preserve">
+    <value>表格结果：{0} 行。</value>
+  </data>
+  <data name="SqlSnapshotStale" xml:space="preserve">
+    <value>源目录已变化，当前显示的是快照结果。</value>
+  </data>
+  <data name="SqlDirectoryChanged" xml:space="preserve">
+    <value>目录已切换，请重新执行查询。</value>
+  </data>
+  <data name="SqlErrorInvalid" xml:space="preserve">
+    <value>SQL 语法无效。</value>
+  </data>
+  <data name="SqlErrorMultipleStatements" xml:space="preserve">
+    <value>只允许一条 SELECT 语句。</value>
+  </data>
+  <data name="SqlErrorNotSelect" xml:space="preserve">
+    <value>只允许只读 SELECT 查询。</value>
+  </data>
+  <data name="SqlErrorForbidden" xml:space="preserve">
+    <value>查询包含被禁止的操作或函数。</value>
+  </data>
+  <data name="SqlErrorTimeout" xml:space="preserve">
+    <value>查询超时。</value>
+  </data>
+  <data name="SqlErrorCancelled" xml:space="preserve">
+    <value>查询已取消。</value>
+  </data>
+  <data name="SqlErrorSqlite" xml:space="preserve">
+    <value>SQLite 错误。</value>
+  </data>
+  <data name="SqlSchemaHelp" xml:space="preserve">
+    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | 时间字段为 UTC Unix 秒；未知值为 NULL。</value>
+  </data>
+  <data name="SqlWorkbenchHint" xml:space="preserve">
+    <value>Ctrl+Enter 执行查询。</value>
+  </data>
   <data name="NoSearchResultsFound" xml:space="preserve">
     <value>没有与搜索条件匹配的项</value>
   </data>
