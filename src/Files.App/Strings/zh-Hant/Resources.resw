@@ -1919,6 +1919,24 @@
   <data name="SqlExamples" xml:space="preserve">
     <value>範例</value>
   </data>
+  <data name="SqlResults" xml:space="preserve">
+    <value>結果</value>
+  </data>
+  <data name="SqlEmptyResults" xml:space="preserve">
+    <value>執行查詢後在這裡查看結果。</value>
+  </data>
+  <data name="SqlSchemaTitle" xml:space="preserve">
+    <value>資料結構</value>
+  </data>
+  <data name="SqlFormat" xml:space="preserve">
+    <value>美化</value>
+  </data>
+  <data name="SqlFormatFailed" xml:space="preserve">
+    <value>無法美化查詢，請檢查 SQL 後重試。</value>
+  </data>
+  <data name="SqlDirectoryFormat" xml:space="preserve">
+    <value>目錄：{0}</value>
+  </data>
   <data name="SqlRunning" xml:space="preserve">
     <value>正在查詢…</value>
   </data>
@@ -1966,6 +1984,9 @@
   </data>
   <data name="SqlErrorSqlite" xml:space="preserve">
     <value>SQLite 錯誤。</value>
+  </data>
+  <data name="SqlErrorTitle" xml:space="preserve">
+    <value>查詢失敗</value>
   </data>
   <data name="SqlSchemaHelp" xml:space="preserve">
     <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | 時間欄位為 UTC Unix 秒；未知值為 NULL。file_id 是本次快照的列索引，僅對該次執行有效。</value>

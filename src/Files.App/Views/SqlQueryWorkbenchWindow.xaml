@@ -3,164 +3,397 @@
 	x:Class="Files.App.Views.SqlQueryWorkbenchWindow"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:behaviors="using:Files.App.Data.Behaviors"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:helpers="using:Files.App.Helpers"
+	xmlns:i="using:Microsoft.Xaml.Interactivity"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	xmlns:vm="using:Files.App.ViewModels.UserControls"
 	mc:Ignorable="d">
 
 	<Grid
-		Padding="12"
-		RowSpacing="8">
+		x:Name="RootGrid"
+		Padding="16"
+		Background="Transparent"
+		RowSpacing="12">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
+			<RowDefinition Height="1*" MinHeight="240" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="*" />
+			<RowDefinition Height="1.15*" MinHeight="180" />
 		</Grid.RowDefinitions>
 
-		<StackPanel Orientation="Horizontal" Spacing="8">
-			<Button
-				x:Name="ExecuteButton"
-				Click="Execute_Click"
-				Content="{helpers:ResourceString Name=SqlExecute}"
-				Style="{StaticResource AccentButtonStyle}" />
-			<Button
-				x:Name="CancelButton"
-				Click="Cancel_Click"
-				Content="{helpers:ResourceString Name=SqlCancel}"
-				IsEnabled="False" />
-			<Button Click="Clear_Click" Content="{helpers:ResourceString Name=SqlClearResult}" />
-			<ComboBox
-				x:Name="ExampleCombo"
-				Width="220"
-				Header="{helpers:ResourceString Name=SqlExamples}"
-				SelectionChanged="ExampleCombo_SelectionChanged" />
-			<ProgressRing
-				x:Name="BusyRing"
-				Width="20"
-				Height="20"
-				VerticalAlignment="Bottom"
-				IsActive="False" />
-			<TextBlock
-				x:Name="ElapsedText"
-				Margin="8,0,0,0"
-				VerticalAlignment="Bottom"
-				Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-		</StackPanel>
+		<!--  Header  -->
+		<Grid ColumnSpacing="12">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
 
-		<TextBox
-			x:Name="SqlEditor"
-			Grid.Row="1"
-			Height="170"
-			AcceptsReturn="True"
-			FontFamily="Consolas"
-			FontSize="13"
-			PlaceholderText="{helpers:ResourceString Name=SqlEditorHeader}"
-			ScrollViewer.HorizontalScrollBarVisibility="Auto"
-			ScrollViewer.VerticalScrollBarVisibility="Auto"
-			TextWrapping="NoWrap">
-			<TextBox.KeyboardAccelerators>
-				<KeyboardAccelerator
-					Key="Enter"
-					Modifiers="Control"
-					Invoked="ExecuteAccelerator_Invoked" />
-			</TextBox.KeyboardAccelerators>
-		</TextBox>
+			<StackPanel Spacing="2">
+				<TextBlock
+					Style="{StaticResource App.Theme.SubtitleTextBlockStyle}"
+					Text="{helpers:ResourceString Name=SqlWorkbenchTitle}" />
+				<TextBlock
+					x:Name="DirectoryText"
+					Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+					Style="{StaticResource App.Theme.CaptionTextBlockStyle}"
+					TextTrimming="CharacterEllipsis"
+					TextWrapping="NoWrap" />
+			</StackPanel>
 
-		<StackPanel Grid.Row="2" Spacing="2">
-			<TextBlock
-				FontSize="12"
-				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-				Text="{helpers:ResourceString Name=SqlWorkbenchHint}" />
-			<TextBlock
-				FontSize="12"
-				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-				Text="{helpers:ResourceString Name=SqlSchemaHelp}"
-				TextWrapping="Wrap" />
-		</StackPanel>
-
-		<StackPanel Grid.Row="3" Spacing="2">
-			<TextBlock
-				x:Name="StatusText"
-				TextWrapping="Wrap" />
-			<TextBlock
-				x:Name="ErrorText"
-				Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-				TextWrapping="Wrap"
-				Visibility="Collapsed" />
-			<TextBlock
-				x:Name="StaleText"
-				FontSize="12"
-				Foreground="{ThemeResource SystemFillColorCautionBrush}"
-				Visibility="Collapsed" />
-			<TextBlock
-				x:Name="TruncatedText"
-				FontSize="12"
-				Foreground="{ThemeResource SystemFillColorCautionBrush}"
-				Visibility="Collapsed" />
-		</StackPanel>
-
-		<Grid Grid.Row="4" RowSpacing="4">
-			<Grid.RowDefinitions>
-				<RowDefinition Height="Auto" />
-				<RowDefinition Height="*" />
-			</Grid.RowDefinitions>
-
-			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-				<ItemsControl x:Name="TableHeaderItems">
-					<ItemsControl.ItemsPanel>
-						<ItemsPanelTemplate>
-							<StackPanel Orientation="Horizontal" />
-						</ItemsPanelTemplate>
-					</ItemsControl.ItemsPanel>
-					<ItemsControl.ItemTemplate>
-						<DataTemplate>
-							<Border
-								Width="160"
-								Padding="6,4"
-								Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-								<TextBlock
-									FontWeight="SemiBold"
-									Text="{Binding}"
-									TextTrimming="CharacterEllipsis" />
-							</Border>
-						</DataTemplate>
-					</ItemsControl.ItemTemplate>
-				</ItemsControl>
-			</ScrollViewer>
-
-			<ListView
-				x:Name="TableRowsItems"
-				Grid.Row="1"
-				Padding="0"
-				ScrollViewer.HorizontalScrollBarVisibility="Auto"
-				ScrollViewer.HorizontalScrollMode="Enabled"
-				SelectionMode="None">
-				<ListView.ItemTemplate>
-					<DataTemplate x:DataType="vm:QueryTableRow">
-						<ItemsControl ItemsSource="{x:Bind Cells}">
-							<ItemsControl.ItemsPanel>
-								<ItemsPanelTemplate>
-									<StackPanel Orientation="Horizontal" />
-								</ItemsPanelTemplate>
-							</ItemsControl.ItemsPanel>
-							<ItemsControl.ItemTemplate>
-								<DataTemplate>
-									<Border
-										Width="160"
-										Padding="6,3"
-										BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-										BorderThickness="0,0,1,1">
-										<TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
-									</Border>
-								</DataTemplate>
-							</ItemsControl.ItemTemplate>
-						</ItemsControl>
-					</DataTemplate>
-				</ListView.ItemTemplate>
-			</ListView>
+			<StackPanel
+				Grid.Column="1"
+				VerticalAlignment="Center"
+				Orientation="Horizontal"
+				Spacing="10">
+				<ProgressRing
+					x:Name="BusyRing"
+					Width="20"
+					Height="20"
+					IsActive="False" />
+				<TextBlock
+					x:Name="ElapsedText"
+					VerticalAlignment="Center"
+					Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+			</StackPanel>
 		</Grid>
+
+		<!--  Editor and examples  -->
+		<Grid Grid.Row="1" ColumnSpacing="12">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="300" />
+			</Grid.ColumnDefinitions>
+
+			<Border
+				Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+				BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+				BorderThickness="1"
+				CornerRadius="8">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<Grid
+						Padding="12,8"
+						BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+						BorderThickness="0,0,0,1"
+						ColumnSpacing="8">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<TextBlock
+							VerticalAlignment="Center"
+							Style="{StaticResource App.Theme.BodyStrongTextBlockStyle}"
+							Text="{helpers:ResourceString Name=SqlEditorHeader}" />
+
+						<StackPanel
+							Grid.Column="1"
+							HorizontalAlignment="Right"
+							Orientation="Horizontal"
+							Spacing="8">
+							<Button
+								x:Name="ExecuteButton"
+								Click="Execute_Click"
+								Style="{StaticResource AccentButtonStyle}">
+								<StackPanel Orientation="Horizontal" Spacing="8">
+									<FontIcon FontSize="14" Glyph="&#xE768;" />
+									<TextBlock Text="{helpers:ResourceString Name=SqlExecute}" />
+								</StackPanel>
+							</Button>
+							<Button x:Name="CancelButton" Click="Cancel_Click">
+								<StackPanel Orientation="Horizontal" Spacing="8">
+									<FontIcon FontSize="14" Glyph="&#xE711;" />
+									<TextBlock Text="{helpers:ResourceString Name=SqlCancel}" />
+								</StackPanel>
+							</Button>
+							<Button x:Name="BeautifyButton" Click="Beautify_Click">
+								<StackPanel Orientation="Horizontal" Spacing="8">
+									<FontIcon FontSize="14" Glyph="&#xE790;" />
+									<TextBlock Text="{helpers:ResourceString Name=SqlFormat}" />
+								</StackPanel>
+							</Button>
+						</StackPanel>
+					</Grid>
+
+					<RichEditBox
+						x:Name="SqlEditor"
+						Grid.Row="1"
+						MinHeight="160"
+						Padding="12,8"
+						AcceptsReturn="True"
+						Background="Transparent"
+						BorderThickness="0"
+						FocusVisualPrimaryBrush="Transparent"
+						FocusVisualPrimaryThickness="0"
+						FocusVisualSecondaryBrush="Transparent"
+						FocusVisualSecondaryThickness="0"
+						FontFamily="Consolas"
+						FontSize="13"
+						IsSpellCheckEnabled="False"
+						IsTextPredictionEnabled="False"
+						PreviewKeyDown="SqlEditor_PreviewKeyDown"
+						ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+						ScrollViewer.VerticalScrollBarVisibility="Auto"
+						TextChanged="SqlEditor_TextChanged"
+						TextWrapping="Wrap"
+						UseSystemFocusVisuals="False"
+						VerticalContentAlignment="Top" />
+
+					<Border
+						Grid.Row="1"
+						Height="3"
+						VerticalAlignment="Bottom"
+						Background="{ThemeResource TextControlBackground}"
+						IsHitTestVisible="False" />
+
+					<StackPanel
+						Grid.Row="2"
+						Padding="12,6"
+						BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+						BorderThickness="0,1,0,0"
+						Spacing="2">
+						<TextBlock
+							FontSize="12"
+							Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+							Text="{helpers:ResourceString Name=SqlWorkbenchHint}" />
+						<TextBlock
+							x:Name="FormatErrorText"
+							FontSize="12"
+							Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+							TextWrapping="Wrap"
+							Visibility="Collapsed" />
+					</StackPanel>
+				</Grid>
+			</Border>
+
+			<Border
+				Grid.Column="1"
+				Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+				BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+				BorderThickness="1"
+				CornerRadius="8">
+				<Grid Padding="12" RowSpacing="8">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+
+					<Grid ColumnSpacing="8">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+
+						<TextBlock
+							VerticalAlignment="Center"
+							Style="{StaticResource App.Theme.BodyStrongTextBlockStyle}"
+							Text="{helpers:ResourceString Name=SqlExamples}" />
+
+						<Button
+							Grid.Column="1"
+							Padding="4,0"
+							Background="Transparent"
+							BorderThickness="0"
+							Content="{helpers:ResourceString Name=SqlSchemaTitle}"
+							FontSize="12"
+							Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}">
+							<Button.Flyout>
+								<Flyout>
+									<TextBlock
+										MaxWidth="460"
+										FontSize="12"
+										Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+										Text="{helpers:ResourceString Name=SqlSchemaHelp}"
+										TextWrapping="Wrap" />
+								</Flyout>
+							</Button.Flyout>
+						</Button>
+					</Grid>
+
+					<ListView
+						x:Name="ExampleList"
+						Grid.Row="1"
+						IsItemClickEnabled="True"
+						ItemClick="ExampleList_ItemClick"
+						SelectionMode="Single">
+						<ListView.ItemContainerStyle>
+							<Style TargetType="ListViewItem">
+								<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+								<Setter Property="Margin" Value="0" />
+								<Setter Property="MinHeight" Value="0" />
+								<Setter Property="Padding" Value="0" />
+							</Style>
+						</ListView.ItemContainerStyle>
+						<ListView.ItemTemplate>
+							<DataTemplate x:DataType="vm:QueryExample">
+								<StackPanel Padding="10,4" Spacing="1">
+									<TextBlock
+										Style="{StaticResource App.Theme.BodyStrongTextBlockStyle}"
+										Text="{x:Bind Name}" />
+									<TextBlock
+										FontSize="11"
+										Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+										Text="{x:Bind Preview}"
+										TextTrimming="CharacterEllipsis" />
+								</StackPanel>
+							</DataTemplate>
+						</ListView.ItemTemplate>
+					</ListView>
+				</Grid>
+			</Border>
+		</Grid>
+
+		<!--  Query messages  -->
+		<StackPanel
+			Grid.Row="2"
+			Spacing="6">
+			<InfoBar
+				x:Name="ErrorBar"
+				IsClosable="False"
+				IsOpen="False"
+				Severity="Error"
+				Title="{helpers:ResourceString Name=SqlErrorTitle}" />
+			<InfoBar
+				x:Name="NoticeBar"
+				IsClosable="False"
+				IsOpen="False"
+				Severity="Warning" />
+		</StackPanel>
+
+		<!--  Results  -->
+		<Border
+			Grid.Row="3"
+			Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+			BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+			BorderThickness="1"
+			CornerRadius="8">
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+
+				<Grid
+					Padding="12,8"
+					BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+					BorderThickness="0,0,0,1"
+					ColumnSpacing="8">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+
+					<TextBlock
+						VerticalAlignment="Center"
+						Style="{StaticResource App.Theme.BodyStrongTextBlockStyle}"
+						Text="{helpers:ResourceString Name=SqlResults}" />
+
+					<TextBlock
+						x:Name="StatusText"
+						Grid.Column="1"
+						VerticalAlignment="Center"
+						Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+						TextTrimming="CharacterEllipsis" />
+
+					<Button
+						x:Name="ClearButton"
+						Grid.Column="2"
+						Click="Clear_Click">
+						<StackPanel Orientation="Horizontal" Spacing="8">
+							<FontIcon FontSize="14" Glyph="&#xE74D;" />
+							<TextBlock Text="{helpers:ResourceString Name=SqlClearResult}" />
+						</StackPanel>
+					</Button>
+				</Grid>
+
+				<Grid Grid.Row="1">
+					<ListView
+						x:Name="TableRowsItems"
+						Padding="0"
+						ScrollViewer.HorizontalScrollBarVisibility="Auto"
+						ScrollViewer.HorizontalScrollMode="Enabled"
+						SelectionMode="None">
+						<i:Interaction.Behaviors>
+							<behaviors:StickyHeaderBehavior />
+						</i:Interaction.Behaviors>
+						<ListView.ItemContainerStyle>
+							<Style TargetType="ListViewItem">
+								<Setter Property="HorizontalContentAlignment" Value="Left" />
+								<Setter Property="MinHeight" Value="0" />
+								<Setter Property="Padding" Value="0" />
+							</Style>
+						</ListView.ItemContainerStyle>
+						<ListView.Header>
+							<ItemsControl x:Name="TableHeaderItems">
+								<ItemsControl.ItemsPanel>
+									<ItemsPanelTemplate>
+										<StackPanel Orientation="Horizontal" />
+									</ItemsPanelTemplate>
+								</ItemsControl.ItemsPanel>
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Border
+											Width="160"
+											Padding="12,6"
+											Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+											BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+											BorderThickness="0,0,1,1">
+											<TextBlock
+												FontSize="12"
+												FontWeight="SemiBold"
+												Text="{Binding}"
+												TextTrimming="CharacterEllipsis" />
+										</Border>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</ListView.Header>
+						<ListView.ItemTemplate>
+							<DataTemplate x:DataType="vm:QueryTableRow">
+								<ItemsControl ItemsSource="{x:Bind Cells}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<StackPanel Orientation="Horizontal" />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate>
+											<Border
+												Width="160"
+												Padding="12,5"
+												BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+												BorderThickness="0,0,1,1">
+												<TextBlock
+													FontSize="12"
+													Text="{Binding}"
+													TextTrimming="CharacterEllipsis" />
+											</Border>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</DataTemplate>
+						</ListView.ItemTemplate>
+					</ListView>
+
+					<TextBlock
+						x:Name="EmptyResultsText"
+						MaxWidth="320"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+						Text="{helpers:ResourceString Name=SqlEmptyResults}"
+						TextAlignment="Center"
+						TextWrapping="Wrap" />
+				</Grid>
+			</Grid>
+		</Border>
 	</Grid>
 </Window>

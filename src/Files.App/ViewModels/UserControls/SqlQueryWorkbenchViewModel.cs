@@ -13,6 +13,8 @@ namespace Files.App.ViewModels.UserControls
 {
 	public sealed record QueryExample(string Name, string Sql)
 	{
+		public string Preview => Sql.Replace("\r\n", "\n").Split('\n', 2)[0];
+
 		public override string ToString() => Name;
 	}
 
@@ -91,6 +93,8 @@ namespace Files.App.ViewModels.UserControls
 		}
 
 		public QueryExample[] Examples { get; }
+
+		public string? DirectoryPath => shellViewModel.WorkingDirectory;
 
 		public ObservableCollection<string> Columns { get; } = [];
 

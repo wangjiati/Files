@@ -126,6 +126,7 @@
         <PackageReference Include="CommunityToolkit.WinUI.Triggers" />
         <PackageReference Include="DiscUtils.Udf" />
         <PackageReference Include="FluentFTP" />
+        <PackageReference Include="Hogimn.Sql.Formatter" />
         <PackageReference Include="LibGit2Sharp" />
         <PackageReference Include="MessageFormat" />
         <PackageReference Include="Microsoft.Data.Sqlite.Core" />
