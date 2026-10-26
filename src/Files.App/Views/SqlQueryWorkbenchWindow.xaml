@@ -133,8 +133,11 @@
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>
 
-					<ItemsControl x:Name="TableRowsItems">
-						<ItemsControl.ItemTemplate>
+					<ListView
+						x:Name="TableRowsItems"
+						Padding="0"
+						SelectionMode="None">
+						<ListView.ItemTemplate>
 							<DataTemplate x:DataType="vm:QueryTableRow">
 								<ItemsControl ItemsSource="{x:Bind Cells}">
 									<ItemsControl.ItemsPanel>
@@ -155,8 +158,8 @@
 									</ItemsControl.ItemTemplate>
 								</ItemsControl>
 							</DataTemplate>
-						</ItemsControl.ItemTemplate>
-					</ItemsControl>
+						</ListView.ItemTemplate>
+					</ListView>
 				</StackPanel>
 			</ScrollViewer>
 		</Border>

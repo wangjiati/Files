@@ -40,6 +40,9 @@ namespace Files.App.Views
 			Activated += SqlQueryWorkbenchWindow_Activated;
 			Closed += SqlQueryWorkbenchWindow_Closed;
 
+			if (Files.App.MainWindow.Instance is { } mainWindow)
+				mainWindow.Closed += MainWindow_Closed;
+
 			isInitializing = false;
 			UpdateUi();
 		}
@@ -54,7 +57,15 @@ namespace Files.App.Views
 		}
 
 		private void SqlQueryWorkbenchWindow_Closed(object sender, WindowEventArgs args)
-			=> viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+		{
+			viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+
+			if (Files.App.MainWindow.Instance is { } mainWindow)
+				mainWindow.Closed -= MainWindow_Closed;
+		}
+
+		private void MainWindow_Closed(object sender, WindowEventArgs args)
+			=> Close();
 
 		private async void Execute_Click(object sender, RoutedEventArgs e)
 			=> await ExecuteAsync();

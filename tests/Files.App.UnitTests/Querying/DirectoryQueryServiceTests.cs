@@ -210,6 +210,40 @@ namespace Files.App.UnitTests.Querying
 			Assert.IsNull(DirectoryQueryResultClassifier.Classify(mixed, snapshot).FileResult);
 		}
 
+		[TestMethod]
+		public async Task LargeSnapshot_BuildsAndQueriesWithoutPathologicalDelay()
+		{
+			var files = Enumerable.Range(0, 100_000)
+				.Select(index => new DirectoryQueryFileSnapshot(
+					index,
+					$"file{index}.txt",
+					$"file{index}",
+					".txt",
+					@$"C:\Data\file{index}.txt",
+					"Text Document",
+					index,
+					Modified,
+					Created,
+					false))
+				.ToList();
+
+			var snapshot = new DirectoryQuerySnapshot(@"C:\Data", 1, files, [], []);
+			var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+			var result = await new SqliteDirectoryQueryService().ExecuteAsync(
+				snapshot,
+				"SELECT COUNT(*) AS count, SUM(size_bytes) AS total FROM files;",
+				new DirectoryQueryExecutionOptions(TimeSpan.FromSeconds(30), MaxRows: 10, ProgressInterval: 1_000));
+
+			stopwatch.Stop();
+
+			Assert.IsTrue(result.IsSuccess, result.ErrorMessage);
+			Assert.AreEqual(100_000L, result.Rows[0].Values[0]);
+			Assert.IsTrue(stopwatch.Elapsed < TimeSpan.FromSeconds(30), $"100k snapshot took {stopwatch.Elapsed}.");
+
+			Console.WriteLine($"100k snapshot build+query: {stopwatch.ElapsedMilliseconds} ms");
+		}
+
 		private static Task<DirectoryQueryResult> ExecuteAsync(
 			string sql,
 			DirectoryQueryExecutionOptions? options = null,
