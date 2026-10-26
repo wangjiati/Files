@@ -24,12 +24,15 @@ namespace Files.App.ViewModels.UserControls
 	/// </summary>
 	public sealed partial class SqlQueryWorkbenchViewModel : ObservableObject
 	{
+		private const int MaxDisplayedRows = 2_000;
+
 		private readonly ShellViewModel shellViewModel;
 		private readonly SqliteDirectoryQueryService queryService = new();
 
 		private CancellationTokenSource? executionCancellation;
 		private IReadOnlyList<ListedItem>? snapshotItems;
 		private DirectoryQuerySnapshot? activeSnapshot;
+		private bool isClosed;
 
 		[ObservableProperty]
 		private string sql = string.Empty;
@@ -99,16 +102,31 @@ namespace Files.App.ViewModels.UserControls
 			IsBusy = true;
 			ErrorMessage = null;
 			IsTruncated = false;
+			HasFileResult = false;
+			IsSnapshotStale = false;
 			StatusMessage = Strings.SqlRunning.GetLocalizedResource();
 
 			try
 			{
+				// Returning to the full directory first means a failed query never leaves an older query view.
+				shellViewModel.ClearQueryView();
+
 				var items = shellViewModel.GetLoadedItemsSnapshot();
 				snapshotItems = items;
-				activeSnapshot = shellViewModel.CreateQuerySnapshot(items);
 
-				var result = await queryService.ExecuteAsync(activeSnapshot, Sql, null, token);
-				ApplyResult(result);
+				// Snapshot construction is allocation-heavy; keep it off the dispatcher.
+				var snapshot = await Task.Run(() => shellViewModel.CreateQuerySnapshot(items), token);
+				activeSnapshot = snapshot;
+
+				var result = await queryService.ExecuteAsync(snapshot, Sql, null, token);
+				if (isClosed)
+					return;
+
+				var tableRows = await Task.Run(() => BuildTableRows(result), token);
+				if (isClosed)
+					return;
+
+				ApplyResult(result, tableRows);
 			}
 			catch (Exception ex)
 			{
@@ -123,6 +141,16 @@ namespace Files.App.ViewModels.UserControls
 
 		public void Cancel()
 			=> executionCancellation?.Cancel();
+
+		/// <summary>
+		/// Stops the running query and restores the normal file list before the window goes away.
+		/// </summary>
+		public void Close()
+		{
+			isClosed = true;
+			Cancel();
+			ClearResult();
+		}
 
 		public void ClearResult()
 		{
@@ -146,8 +174,11 @@ namespace Files.App.ViewModels.UserControls
 			=> IsSnapshotStale = activeSnapshot is not null
 				&& activeSnapshot.SourceRevision != shellViewModel.CurrentSourceRevision;
 
-		private void ApplyResult(DirectoryQueryResult result)
+		private void ApplyResult(DirectoryQueryResult result, IReadOnlyList<QueryTableRow> tableRows)
 		{
+			if (isClosed)
+				return;
+
 			ElapsedText = string.Format(
 				CultureInfo.CurrentCulture,
 				Strings.SqlElapsedFormat.GetLocalizedResource(),
@@ -158,6 +189,7 @@ namespace Files.App.ViewModels.UserControls
 
 			if (!result.IsSuccess)
 			{
+				HasFileResult = false;
 				ErrorMessage = MapError(result);
 				StatusMessage = null;
 				return;
@@ -166,10 +198,22 @@ namespace Files.App.ViewModels.UserControls
 			foreach (var column in result.Columns)
 				Columns.Add(column.Name);
 
-			foreach (var row in result.Rows)
-				Rows.Add(new QueryTableRow(row.Values.Select(FormatValue).ToList()));
+			foreach (var row in tableRows)
+				Rows.Add(row);
 
-			IsTruncated = result.IsTruncated;
+			IsTruncated = result.IsTruncated || result.Rows.Count > tableRows.Count;
+
+			if (result.IsTruncated)
+			{
+				// A service-truncated result must not narrow the file list to an incomplete set.
+				HasFileResult = false;
+				IsSnapshotStale = false;
+				StatusMessage = string.Format(
+					CultureInfo.CurrentCulture,
+					Strings.SqlRowsFormat.GetLocalizedResource(),
+					result.Rows.Count);
+				return;
+			}
 
 			var classified = DirectoryQueryResultClassifier.Classify(result, activeSnapshot!);
 
@@ -177,10 +221,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				HasFileResult = false;
 				IsSnapshotStale = false;
-				StatusMessage = string.Format(
-					CultureInfo.CurrentCulture,
-					Strings.SqlRowsFormat.GetLocalizedResource(),
-					result.Rows.Count);
+				StatusMessage = BuildRowsStatus(result.Rows.Count, tableRows.Count);
 				return;
 			}
 
@@ -207,6 +248,24 @@ namespace Files.App.ViewModels.UserControls
 				Strings.SqlFilesShownFormat.GetLocalizedResource(),
 				fileItems.Count);
 		}
+
+		private static List<QueryTableRow> BuildTableRows(DirectoryQueryResult result)
+			=> result.Rows
+				.Take(MaxDisplayedRows)
+				.Select(row => new QueryTableRow(row.Values.Select(FormatValue).ToList()))
+				.ToList();
+
+		private static string BuildRowsStatus(int totalRows, int displayedRows)
+			=> displayedRows < totalRows
+				? string.Format(
+					CultureInfo.CurrentCulture,
+					Strings.SqlRowsLimitedFormat.GetLocalizedResource(),
+					displayedRows,
+					totalRows)
+				: string.Format(
+					CultureInfo.CurrentCulture,
+					Strings.SqlRowsFormat.GetLocalizedResource(),
+					totalRows);
 
 		private static string MapError(DirectoryQueryResult result)
 			=> result.Error switch

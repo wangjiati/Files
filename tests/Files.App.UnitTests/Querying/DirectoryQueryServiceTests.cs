@@ -138,6 +138,47 @@ namespace Files.App.UnitTests.Querying
 		}
 
 		[TestMethod]
+		public async Task CommentHiddenSecondStatement_IsRejected()
+		{
+			foreach (var sql in new[]
+			{
+				"SELECT 1 /* x */; ATTACH DATABASE ':memory:' AS other;",
+				"SELECT 1; /* x */ ATTACH DATABASE ':memory:' AS other;",
+				"SELECT 1; -- x\nATTACH DATABASE ':memory:' AS other;",
+			})
+			{
+				var result = await ExecuteAsync(sql);
+				Assert.AreEqual(DirectoryQueryError.MultipleStatements, result.Error, sql);
+			}
+		}
+
+		[TestMethod]
+		public async Task SchemaIntrospection_IsRejectedByTheAuthorizer()
+		{
+			var master = await ExecuteAsync("SELECT name FROM sqlite_master;");
+			Assert.AreEqual(DirectoryQueryError.ForbiddenOperation, master.Error);
+
+			var pragma = await ExecuteAsync("SELECT * FROM pragma_table_info('files');");
+			Assert.AreEqual(DirectoryQueryError.ForbiddenOperation, pragma.Error);
+
+			var cte = await ExecuteAsync("WITH c(x) AS (SELECT 1) SELECT * FROM c;");
+			Assert.IsTrue(cte.IsSuccess, cte.ErrorMessage);
+		}
+
+		[TestMethod]
+		public void AuthorizerPolicy_DeniesWritesPragmasAndSchemaTables()
+		{
+			var state = new object();
+
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_OK, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_SELECT, string.Empty, string.Empty, "main", string.Empty));
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_OK, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_READ, "files", "name", "main", string.Empty));
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_DENY, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_INSERT, "files", string.Empty, "main", string.Empty));
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_DENY, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_PRAGMA, "table_info", string.Empty, "main", string.Empty));
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_DENY, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_READ, "sqlite_master", "name", "main", string.Empty));
+			Assert.AreEqual(SQLitePCL.raw.SQLITE_DENY, DirectoryQuerySecurity.Authorize(state, SQLitePCL.raw.SQLITE_FUNCTION, "load_extension", string.Empty, string.Empty, string.Empty));
+		}
+
+		[TestMethod]
 		public async Task MaxRows_MarksTruncatedInsteadOfSilentlyCutting()
 		{
 			var result = await ExecuteAsync(

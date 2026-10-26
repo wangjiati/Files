@@ -967,6 +967,7 @@ namespace Files.App.ViewModels
 			}
 			if (filesAndFolders.Count >= 100)
 				AppMemoryHelper.RequestTrim();
+			Interlocked.Increment(ref filterSourceRevision);
 			filesAndFolders.Clear();
 			FilesAndFolders.Clear();
 			FoldersCount = 0;

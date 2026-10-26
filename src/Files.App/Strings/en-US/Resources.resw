@@ -1946,6 +1946,9 @@
   <data name="SqlRowsFormat" xml:space="preserve">
     <value>{0} rows in the table.</value>
   </data>
+  <data name="SqlRowsLimitedFormat" xml:space="preserve">
+    <value>{0} of {1} rows are shown; narrow the query to see the rest.</value>
+  </data>
   <data name="SqlSnapshotStale" xml:space="preserve">
     <value>The source changed; these are snapshot results.</value>
   </data>
@@ -1974,7 +1977,7 @@
     <value>SQLite error.</value>
   </data>
   <data name="SqlSchemaHelp" xml:space="preserve">
-    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | Times are UTC Unix seconds; unknown values are NULL.</value>
+    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | Times are UTC Unix seconds; unknown values are NULL. file_id is the snapshot row index and is only valid for that execution.</value>
   </data>
   <data name="SqlWorkbenchHint" xml:space="preserve">
     <value>Ctrl+Enter executes the query.</value>

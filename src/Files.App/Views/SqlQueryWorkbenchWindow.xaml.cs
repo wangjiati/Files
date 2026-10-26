@@ -59,6 +59,7 @@ namespace Files.App.Views
 		private void SqlQueryWorkbenchWindow_Closed(object sender, WindowEventArgs args)
 		{
 			viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+			viewModel.Close();
 
 			if (Files.App.MainWindow.Instance is { } mainWindow)
 				mainWindow.Closed -= MainWindow_Closed;

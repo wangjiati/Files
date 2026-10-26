@@ -54,6 +54,19 @@ namespace Files.App.Utils.Storage
 		public static bool IsDangerousFunction(string? functionName)
 			=> !string.IsNullOrEmpty(functionName) && DangerousFunctions.Contains(functionName);
 
+		/// <summary>
+		/// Allows normal tables and CTE names while denying schema introspection through
+		/// <c>sqlite_*</c> tables and table-valued <c>pragma_*</c> functions.
+		/// </summary>
+		public static bool IsAllowedReadSource(string? tableName)
+		{
+			if (string.IsNullOrEmpty(tableName))
+				return true;
+
+			return !tableName.StartsWith("sqlite_", StringComparison.OrdinalIgnoreCase)
+				&& !tableName.StartsWith("pragma_", StringComparison.OrdinalIgnoreCase);
+		}
+
 		public static int Authorize(
 			object userData,
 			int actionCode,
@@ -64,7 +77,8 @@ namespace Files.App.Utils.Storage
 		{
 			return actionCode switch
 			{
-				raw.SQLITE_SELECT or raw.SQLITE_READ or raw.SQLITE_RECURSIVE => raw.SQLITE_OK,
+				raw.SQLITE_SELECT or raw.SQLITE_RECURSIVE => raw.SQLITE_OK,
+				raw.SQLITE_READ => IsAllowedReadSource(parameter0) ? raw.SQLITE_OK : raw.SQLITE_DENY,
 				raw.SQLITE_FUNCTION => IsDangerousFunction(parameter0) ? raw.SQLITE_DENY : raw.SQLITE_OK,
 				_ => raw.SQLITE_DENY,
 			};

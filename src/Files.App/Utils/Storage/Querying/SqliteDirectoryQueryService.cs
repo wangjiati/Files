@@ -38,13 +38,13 @@ namespace Files.App.Utils.Storage
 			DirectoryQueryExecutionOptions options,
 			CancellationToken cancellationToken)
 		{
-			var stopwatch = Stopwatch.StartNew();
+			var totalStopwatch = Stopwatch.StartNew();
 
 			if (string.IsNullOrWhiteSpace(sql))
-				return Failure(snapshot, stopwatch, DirectoryQueryError.InvalidSql, null);
+				return Failure(snapshot, totalStopwatch, DirectoryQueryError.InvalidSql, null);
 
 			if (!DirectoryQuerySecurity.IsSelectLike(sql))
-				return Failure(snapshot, stopwatch, DirectoryQueryError.NotSelect, null);
+				return Failure(snapshot, totalStopwatch, DirectoryQueryError.NotSelect, null);
 
 			EnsureInitialized();
 
@@ -52,11 +52,12 @@ namespace Files.App.Utils.Storage
 
 			try
 			{
-				using var connection = new SqliteConnection("Data Source=:memory:;Cache=Private");
+				using var connection = new SqliteConnection("Data Source=:memory:;Cache=Private;Pooling=False");
 				connection.Open();
 
 				CreateSchema(connection);
 				InsertSnapshot(connection, snapshot, cancellationToken);
+				var queryWatchdog = Stopwatch.StartNew();
 
 				using (var queryOnly = connection.CreateCommand())
 				{
@@ -71,14 +72,14 @@ namespace Files.App.Utils.Storage
 
 				var statementError = ValidateStatement(handle, sql);
 				if (statementError != DirectoryQueryError.None)
-					return Failure(snapshot, stopwatch, statementError, null);
+					return Failure(snapshot, totalStopwatch, statementError, null);
 
 				delegate_progress progress = _ =>
 				{
 					if (cancellationToken.IsCancellationRequested)
 						return 1;
 
-					if (stopwatch.Elapsed > options.Timeout)
+					if (queryWatchdog.Elapsed > options.Timeout)
 					{
 						timedOut = true;
 						return 1;
@@ -105,7 +106,7 @@ namespace Files.App.Utils.Storage
 					}
 				});
 
-				var result = ReadResult(connection, snapshot, sql, options, stopwatch, cancellationToken);
+				var result = ReadResult(connection, snapshot, sql, options, totalStopwatch, cancellationToken);
 				GC.KeepAlive(progress);
 
 				return result;
@@ -123,15 +124,15 @@ namespace Files.App.Utils.Storage
 					_ => DirectoryQueryError.SqliteError,
 				};
 
-				return Failure(snapshot, stopwatch, error, error is DirectoryQueryError.SqliteError ? ex.Message : null);
+				return Failure(snapshot, totalStopwatch, error, error is DirectoryQueryError.SqliteError ? ex.Message : null);
 			}
 			catch (OperationCanceledException)
 			{
-				return Failure(snapshot, stopwatch, DirectoryQueryError.Cancelled, null);
+				return Failure(snapshot, totalStopwatch, DirectoryQueryError.Cancelled, null);
 			}
 			catch (Exception ex)
 			{
-				return Failure(snapshot, stopwatch, DirectoryQueryError.SqliteError, ex.Message);
+				return Failure(snapshot, totalStopwatch, DirectoryQueryError.SqliteError, ex.Message);
 			}
 		}
 

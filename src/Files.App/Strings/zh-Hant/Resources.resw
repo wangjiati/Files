@@ -1937,6 +1937,9 @@
   <data name="SqlRowsFormat" xml:space="preserve">
     <value>表格結果：{0} 列。</value>
   </data>
+  <data name="SqlRowsLimitedFormat" xml:space="preserve">
+    <value>僅顯示前 {0} 列（共 {1} 列），請縮小查詢範圍。</value>
+  </data>
   <data name="SqlSnapshotStale" xml:space="preserve">
     <value>來源目錄已變更，目前顯示的是快照結果。</value>
   </data>
@@ -1965,7 +1968,7 @@
     <value>SQLite 錯誤。</value>
   </data>
   <data name="SqlSchemaHelp" xml:space="preserve">
-    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | 時間欄位為 UTC Unix 秒；未知值為 NULL。</value>
+    <value>files(file_id, name, display_name, extension, full_path, item_type, size_bytes, modified_utc, created_utc, is_folder) | tags(tag_id, name, color) | file_tags(file_id, tag_id) | 時間欄位為 UTC Unix 秒；未知值為 NULL。file_id 是本次快照的列索引，僅對該次執行有效。</value>
   </data>
   <data name="SqlWorkbenchHint" xml:space="preserve">
     <value>Ctrl+Enter 執行查詢。</value>

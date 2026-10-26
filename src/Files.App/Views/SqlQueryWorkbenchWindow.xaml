@@ -102,66 +102,65 @@
 				Visibility="Collapsed" />
 		</StackPanel>
 
-		<Border
-			Grid.Row="4"
-			BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-			BorderThickness="1"
-			CornerRadius="4">
-			<ScrollViewer
-				Padding="4"
-				HorizontalScrollBarVisibility="Auto"
-				VerticalScrollBarVisibility="Auto">
-				<StackPanel>
-					<ItemsControl x:Name="TableHeaderItems">
-						<ItemsControl.ItemsPanel>
-							<ItemsPanelTemplate>
-								<StackPanel Orientation="Horizontal" />
-							</ItemsPanelTemplate>
-						</ItemsControl.ItemsPanel>
-						<ItemsControl.ItemTemplate>
-							<DataTemplate>
-								<Border
-									Width="160"
-									Padding="6,4"
-									Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-									<TextBlock
-										FontWeight="SemiBold"
-										Text="{Binding}"
-										TextTrimming="CharacterEllipsis" />
-								</Border>
-							</DataTemplate>
-						</ItemsControl.ItemTemplate>
-					</ItemsControl>
+		<Grid Grid.Row="4" RowSpacing="4">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="*" />
+			</Grid.RowDefinitions>
 
-					<ListView
-						x:Name="TableRowsItems"
-						Padding="0"
-						SelectionMode="None">
-						<ListView.ItemTemplate>
-							<DataTemplate x:DataType="vm:QueryTableRow">
-								<ItemsControl ItemsSource="{x:Bind Cells}">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<StackPanel Orientation="Horizontal" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate>
-											<Border
-												Width="160"
-												Padding="6,3"
-												BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-												BorderThickness="0,0,1,1">
-												<TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
-											</Border>
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
-							</DataTemplate>
-						</ListView.ItemTemplate>
-					</ListView>
-				</StackPanel>
+			<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+				<ItemsControl x:Name="TableHeaderItems">
+					<ItemsControl.ItemsPanel>
+						<ItemsPanelTemplate>
+							<StackPanel Orientation="Horizontal" />
+						</ItemsPanelTemplate>
+					</ItemsControl.ItemsPanel>
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<Border
+								Width="160"
+								Padding="6,4"
+								Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+								<TextBlock
+									FontWeight="SemiBold"
+									Text="{Binding}"
+									TextTrimming="CharacterEllipsis" />
+							</Border>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
 			</ScrollViewer>
-		</Border>
+
+			<ListView
+				x:Name="TableRowsItems"
+				Grid.Row="1"
+				Padding="0"
+				ScrollViewer.HorizontalScrollBarVisibility="Auto"
+				ScrollViewer.HorizontalScrollMode="Enabled"
+				SelectionMode="None">
+				<ListView.ItemTemplate>
+					<DataTemplate x:DataType="vm:QueryTableRow">
+						<ItemsControl ItemsSource="{x:Bind Cells}">
+							<ItemsControl.ItemsPanel>
+								<ItemsPanelTemplate>
+									<StackPanel Orientation="Horizontal" />
+								</ItemsPanelTemplate>
+							</ItemsControl.ItemsPanel>
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<Border
+										Width="160"
+										Padding="6,3"
+										BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+										BorderThickness="0,0,1,1">
+										<TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+									</Border>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+					</DataTemplate>
+				</ListView.ItemTemplate>
+			</ListView>
+		</Grid>
 	</Grid>
 </Window>
