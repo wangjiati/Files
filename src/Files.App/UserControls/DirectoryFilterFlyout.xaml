@@ -27,6 +27,7 @@
 				HorizontalAlignment="Stretch" />
 			<TextBox
 				x:Name="FilterTextBox"
+				KeyDown="TextInput_KeyDown"
 				PlaceholderText="{helpers:ResourceString Name=Filter}" />
 			<CheckBox
 				x:Name="UseRegexCheck"
@@ -45,6 +46,7 @@
 					Content="{helpers:ResourceString Name=FilterRegexIgnoreCase}" />
 				<TextBox
 					x:Name="RegexPatternBox"
+					KeyDown="TextInput_KeyDown"
 					PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}" />
 				<TextBlock
 					x:Name="RegexErrorText"
@@ -114,7 +116,7 @@
 
 			<StackPanel Grid.Column="0" Spacing="4">
 				<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMinSize}" />
-				<TextBox x:Name="MinSizeBox" />
+				<TextBox x:Name="MinSizeBox" KeyDown="TextInput_KeyDown" />
 			</StackPanel>
 
 			<ComboBox
@@ -125,7 +127,7 @@
 
 			<StackPanel Grid.Column="2" Spacing="4">
 				<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMaxSize}" />
-				<TextBox x:Name="MaxSizeBox" />
+				<TextBox x:Name="MaxSizeBox" KeyDown="TextInput_KeyDown" />
 			</StackPanel>
 		</Grid>
 

@@ -4,6 +4,8 @@
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System;
 
 namespace Files.App.UserControls
 {
@@ -89,6 +91,18 @@ namespace Files.App.UserControls
 			=> RegexOptionsPanel.Visibility = ToVisibility(UseRegexCheck.IsChecked == true);
 
 		private void Apply_Click(object sender, RoutedEventArgs e)
+			=> ApplyFilter();
+
+		private void TextInput_KeyDown(object sender, KeyRoutedEventArgs e)
+		{
+			if (e.Key is not VirtualKey.Enter)
+				return;
+
+			e.Handled = true;
+			ApplyFilter();
+		}
+
+		private void ApplyFilter()
 		{
 			ViewModel.OperatorIndex = Math.Max(OperatorCombo.SelectedIndex, 0);
 			ViewModel.Text = FilterTextBox.Text;

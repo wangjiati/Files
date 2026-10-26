@@ -1799,6 +1799,99 @@
   <data name="CredentialDialogUserName.PlaceholderText" xml:space="preserve">
     <value>用户名</value>
   </data>
+  <data name="NoMatchingItems" xml:space="preserve">
+    <value>没有匹配当前筛选的项目</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>筛选</value>
+  </data>
+  <data name="FilterContains" xml:space="preserve">
+    <value>包含</value>
+  </data>
+  <data name="FilterNotContains" xml:space="preserve">
+    <value>不包含</value>
+  </data>
+  <data name="FilterStartsWith" xml:space="preserve">
+    <value>开头是</value>
+  </data>
+  <data name="FilterEndsWith" xml:space="preserve">
+    <value>结尾是</value>
+  </data>
+  <data name="FilterEquals" xml:space="preserve">
+    <value>等于</value>
+  </data>
+  <data name="FilterAllDates" xml:space="preserve">
+    <value>所有日期</value>
+  </data>
+  <data name="FilterLast7Days" xml:space="preserve">
+    <value>最近 7 天</value>
+  </data>
+  <data name="FilterLast30Days" xml:space="preserve">
+    <value>最近 30 天</value>
+  </data>
+  <data name="FilterThisYear" xml:space="preserve">
+    <value>今年</value>
+  </data>
+  <data name="FilterIncludeEmpty" xml:space="preserve">
+    <value>包含没有值的项目</value>
+  </data>
+  <data name="FilterMinSize" xml:space="preserve">
+    <value>最小大小</value>
+  </data>
+  <data name="FilterMaxSize" xml:space="preserve">
+    <value>最大大小</value>
+  </data>
+  <data name="FilterClearAll" xml:space="preserve">
+    <value>清除所有筛选</value>
+  </data>
+  <data name="FilterApply" xml:space="preserve">
+    <value>应用</value>
+  </data>
+  <data name="FilterTypeSection" xml:space="preserve">
+    <value>类型</value>
+  </data>
+  <data name="FilterExtensionSection" xml:space="preserve">
+    <value>扩展名</value>
+  </data>
+  <data name="FilterFrom" xml:space="preserve">
+    <value>从</value>
+  </data>
+  <data name="FilterTo" xml:space="preserve">
+    <value>至</value>
+  </data>
+  <data name="FilterRegexToggle" xml:space="preserve">
+    <value>使用正则表达式</value>
+  </data>
+  <data name="FilterRegexTarget" xml:space="preserve">
+    <value>匹配目标</value>
+  </data>
+  <data name="FilterRegexPattern" xml:space="preserve">
+    <value>正则表达式</value>
+  </data>
+  <data name="FilterRegexIgnoreCase" xml:space="preserve">
+    <value>区分大小写</value>
+  </data>
+  <data name="FilterTargetRawName" xml:space="preserve">
+    <value>完整文件名（含扩展名）</value>
+  </data>
+  <data name="FilterTargetDisplayName" xml:space="preserve">
+    <value>显示名称</value>
+  </data>
+  <data name="FilterTargetFullPath" xml:space="preserve">
+    <value>完整路径</value>
+  </data>
+  <data name="FilterRegexInvalid" xml:space="preserve">
+    <value>正则表达式无效。</value>
+  </data>
+  <data name="FilterRegexTooLong" xml:space="preserve">
+    <value>正则表达式过长。</value>
+  </data>
+  <data name="FilterRegexEmpty" xml:space="preserve">
+    <value>请输入正则表达式。</value>
+  </data>
+  <data name="FilterRegexTimeout" xml:space="preserve">
+    <value>正则表达式匹配超时，已取消。</value>
+  </data>
   <data name="NoSearchResultsFound" xml:space="preserve">
     <value>没有与搜索条件匹配的项</value>
   </data>
