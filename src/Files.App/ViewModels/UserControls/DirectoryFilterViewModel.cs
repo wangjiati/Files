@@ -115,7 +115,7 @@ namespace Files.App.ViewModels.UserControls
 
 		public bool IsDateColumn => column is DirectoryColumnKind.ModifiedDate or DirectoryColumnKind.CreatedDate;
 
-		public IReadOnlyList<string> OperatorChoices =>
+		public string[] OperatorChoices =>
 		[
 			localize(Strings.FilterContains),
 			localize(Strings.FilterNotContains),
@@ -124,9 +124,9 @@ namespace Files.App.ViewModels.UserControls
 			localize(Strings.FilterEquals),
 		];
 
-		public IReadOnlyList<string> SizeUnitChoices { get; } = ["B", "KB", "MB", "GB"];
+		public string[] SizeUnitChoices { get; } = ["B", "KB", "MB", "GB"];
 
-		public IReadOnlyList<string> DatePresetChoices =>
+		public string[] DatePresetChoices =>
 		[
 			localize(Strings.FilterAllDates),
 			localize(Strings.Today),
@@ -135,7 +135,7 @@ namespace Files.App.ViewModels.UserControls
 			localize(Strings.FilterThisYear),
 		];
 
-		public IReadOnlyList<string> RegexTargetChoices =>
+		public string[] RegexTargetChoices =>
 		[
 			localize(Strings.FilterTargetRawName),
 			localize(Strings.FilterTargetDisplayName),

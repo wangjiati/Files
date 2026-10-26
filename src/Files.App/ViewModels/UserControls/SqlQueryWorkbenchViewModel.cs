@@ -35,28 +35,28 @@ namespace Files.App.ViewModels.UserControls
 		private bool isClosed;
 
 		[ObservableProperty]
-		private string sql = string.Empty;
+		public partial string Sql { get; set; }
 
 		[ObservableProperty]
-		private bool isBusy;
+		public partial bool IsBusy { get; set; }
 
 		[ObservableProperty]
-		private string? errorMessage;
+		public partial string? ErrorMessage { get; set; }
 
 		[ObservableProperty]
-		private string? statusMessage;
+		public partial string? StatusMessage { get; set; }
 
 		[ObservableProperty]
-		private string? elapsedText;
+		public partial string? ElapsedText { get; set; }
 
 		[ObservableProperty]
-		private bool isTruncated;
+		public partial bool IsTruncated { get; set; }
 
 		[ObservableProperty]
-		private bool hasFileResult;
+		public partial bool HasFileResult { get; set; }
 
 		[ObservableProperty]
-		private bool isSnapshotStale;
+		public partial bool IsSnapshotStale { get; set; }
 
 		public SqlQueryWorkbenchViewModel(ShellViewModel shellViewModel)
 		{
@@ -84,7 +84,7 @@ namespace Files.App.ViewModels.UserControls
 			Sql = Examples[0].Sql;
 		}
 
-		public IReadOnlyList<QueryExample> Examples { get; }
+		public QueryExample[] Examples { get; }
 
 		public ObservableCollection<string> Columns { get; } = [];
 
