@@ -187,6 +187,10 @@ namespace Files.App.ViewModels
 		private CancellationTokenSource? searchCTS;
 		private CancellationTokenSource? updateTagGroupCTS;
 		private CancellationTokenSource? filterDebounceCS;
+		private DirectoryFilterSpec directoryFilterSpec = DirectoryFilterSpec.Empty;
+		private DirectoryFilterExecutionContext? activeFilterContext;
+		private long filterGeneration;
+		private long filterSourceRevision;
 		private CancellationTokenSource? networkAvailabilityCTS;
 		private bool isDisposed;
 
@@ -861,6 +865,7 @@ namespace Files.App.ViewModels
 						}
 
 						DirectoryInfoUpdated?.Invoke(this, EventArgs.Empty);
+						NotifyFilterSourceChanged();
 					},
 					Microsoft.UI.Dispatching.DispatcherQueuePriority.Low);
 				}
@@ -1026,7 +1031,14 @@ namespace Files.App.ViewModels
 		{
 			var isFolderEmpty = FilesAndFolders.Count == 0 && !IsLocationUnavailable;
 
-			EmptyTextType = isFolderEmpty ? (IsSearchResults ? EmptyTextType.NoSearchResultsFound : EmptyTextType.FolderEmpty) : EmptyTextType.None;
+			// A filter that hides every item is not an empty folder; keep that distinction visible.
+			EmptyTextType = isFolderEmpty
+				? IsSearchResults
+					? EmptyTextType.NoSearchResultsFound
+					: filesAndFolders.Count > 0
+						? EmptyTextType.NoMatchingItems
+						: EmptyTextType.FolderEmpty
+				: EmptyTextType.None;
 		}
 
 		public void UpdateNetworkAvailabilityInfoBar()
@@ -1097,13 +1109,44 @@ namespace Files.App.ViewModels
 			{
 				if (SetProperty(ref _filesAndFoldersFilter, value))
 				{
-					FilesAndFolderFilterUpdated();
+					directoryFilterSpec = directoryFilterSpec with { NameContains = value };
+					ScheduleFilterProjection(250);
 				}
 			}
 		}
 
-		private void FilesAndFolderFilterUpdated()
+		/// <summary>
+		/// Temporary column and regex conditions. Combined with the name box into one immutable spec.
+		/// </summary>
+		public DirectoryFilterSpec DirectoryFilter
 		{
+			get => directoryFilterSpec;
+			set
+			{
+				var spec = (value ?? DirectoryFilterSpec.Empty) with { NameContains = _filesAndFoldersFilter };
+
+				if (Equals(directoryFilterSpec, spec))
+					return;
+
+				directoryFilterSpec = spec;
+				ScheduleFilterProjection(0);
+			}
+		}
+
+		/// <summary>
+		/// Marks filter-visible item data as changed and coalesces the resulting re-projection.
+		/// </summary>
+		private void NotifyFilterSourceChanged()
+		{
+			Interlocked.Increment(ref filterSourceRevision);
+			ScheduleFilterProjection(150);
+		}
+
+		private void ScheduleFilterProjection(int debounceMilliseconds)
+		{
+			if (isDisposed)
+				return;
+
 			if (filterDebounceCS is not null)
 			{
 				filterDebounceCS.Cancel();
@@ -1114,20 +1157,51 @@ namespace Files.App.ViewModels
 			var token = filterDebounceCS.Token;
 
 			// filterDebounceCS is disposed on the next update, so the continuation must not register on its token.
-			_ = Task.Delay(250, token)
+			_ = Task.Delay(debounceMilliseconds, token)
 				.ContinueWith(_ => ApplyFilesAndFoldersChangesAsync(), CancellationToken.None,
 					TaskContinuationOptions.OnlyOnRanToCompletion,
 					TaskScheduler.Default)
 				.Unwrap();
 		}
 
+		private static List<ListedItem> FilterItems(List<ListedItem> items, DirectoryFilterSpec spec, CancellationToken token)
+		{
+			var snapshots = new List<DirectoryItemFilterSnapshot>(items.Count);
+			for (var index = 0; index < items.Count; index++)
+				snapshots.Add(CreateFilterSnapshot(items[index], index));
 
-		private static bool MatchesFilter(ListedItem item, string? filter)
-			=> string.IsNullOrEmpty(filter) || item.Name?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true;
+			token.ThrowIfCancellationRequested();
+
+			var matchingIds = DirectoryFilterEvaluator.Evaluate(snapshots, spec);
+			var results = new List<ListedItem>(matchingIds.Count);
+
+			foreach (var id in matchingIds)
+				results.Add(items[(int)id]);
+
+			return results;
+		}
+
+		private static DirectoryItemFilterSnapshot CreateFilterSnapshot(ListedItem item, long itemId)
+			=> new(
+				itemId,
+				item.ItemNameRaw ?? item.Name ?? string.Empty,
+				item.Name ?? item.ItemNameRaw ?? string.Empty,
+				item.ItemPath ?? string.Empty,
+				item.FileExtension,
+				item.ItemType,
+				item.FileTags ?? [],
+				string.IsNullOrEmpty(item.FileSize) ? null : item.FileSizeBytes,
+				ToKnownDate(item.ItemDateModifiedReal),
+				ToKnownDate(item.ItemDateCreatedReal),
+				item.PrimaryItemAttribute == StorageItemTypes.Folder);
+
+		private static DateTimeOffset? ToKnownDate(DateTimeOffset value)
+			=> value == default ? null : value;
 
 		// Apply changes immediately after manipulating on filesAndFolders completed
 		public async Task ApplyFilesAndFoldersChangesAsync()
 		{
+			DirectoryFilterExecutionContext? projectionContext = null;
 			try
 			{
 				// CollectionChanged will cause UI update, which may cause significant performance degradation,
@@ -1138,17 +1212,27 @@ namespace Files.App.ViewModels
 				// in the end to fire a CollectionChanged event with NotifyCollectionChangedAction.Reset
 				await bulkOperationSemaphore.WaitAsync(addFilesCTS.Token);
 
-				var filter = FilesAndFoldersFilter;
 				var isSemaphoreReleased = false;
 				try
 				{
+					// Capture the projection inputs so a result computed for an older directory, spec or
+					// source revision can never replace newer visible items.
+					var spec = directoryFilterSpec;
+					var directoryKey = WorkingDirectory ?? string.Empty;
+					var sourceRevision = Interlocked.Read(ref filterSourceRevision);
+					var generation = Interlocked.Increment(ref filterGeneration);
+
+					projectionContext = new DirectoryFilterExecutionContext(directoryKey, spec, sourceRevision, generation);
+					var context = projectionContext;
+					Interlocked.Exchange(ref activeFilterContext, context)?.Cancel();
+
 					// Snapshot under the semaphore so a late apply reflects the current list, not a stale pre-lock copy;
 					// concurrent watcher removals (e.g. emptying the Recycle Bin) otherwise leave the last item painted.
 					var filesAndFoldersLocal = filesAndFolders?.ToList() ?? new List<ListedItem>();
 
-					var displayedFilesAndFolders = string.IsNullOrEmpty(filter)
+					var displayedFilesAndFolders = spec.IsEmpty
 						? filesAndFoldersLocal
-						: await Task.Run(() => filesAndFoldersLocal.Where(x => MatchesFilter(x, filter)).ToList(), addFilesCTS.Token);
+						: await Task.Run(() => FilterItems(filesAndFoldersLocal, spec, context.Token), context.Token);
 
 					var displayedFoldersCount = displayedFilesAndFolders.Count(x => x.PrimaryItemAttribute == StorageItemTypes.Folder && !x.IsArchive);
 
@@ -1156,8 +1240,11 @@ namespace Files.App.ViewModels
 					{
 						try
 						{
-							if (addFilesCTS.IsCancellationRequested || FilesAndFoldersFilter != filter)
+							if (addFilesCTS.IsCancellationRequested
+								|| !context.CanCommit(WorkingDirectory ?? string.Empty, spec, Interlocked.Read(ref filterSourceRevision), Interlocked.Read(ref filterGeneration)))
+							{
 								return;
+							}
 
 							pendingSearchResults.Clear();
 
@@ -1203,6 +1290,10 @@ namespace Files.App.ViewModels
 				// A newer load cancelled this one or disposed its token source, which is not worth reporting
 				if (ex is not (OperationCanceledException or ObjectDisposedException))
 					App.Logger.LogWarning(ex, ex.Message);
+			}
+			finally
+			{
+				projectionContext?.Dispose();
 			}
 		}
 
@@ -3142,6 +3233,9 @@ namespace Files.App.ViewModels
 												renamed.ItemNameRaw = Path.GetFileName(newPath);
 												if (renamed.PrimaryItemAttribute == StorageItemTypes.File)
 													renamed.FileExtension = Path.GetExtension(newPath);
+
+												// A rename can start or stop matching name, extension and regex conditions.
+												NotifyFilterSourceChanged();
 											});
 										}
 										else
@@ -3372,6 +3466,7 @@ namespace Files.App.ViewModels
 				await dispatcherQueue.EnqueueOrInvokeAsync(() =>
 				{
 					var itemsRegrouped = false;
+					var updatedFilters = false;
 
 					foreach (var result in results)
 					{
@@ -3394,8 +3489,12 @@ namespace Files.App.ViewModels
 							// its group key, e.g. when the date modified is restored after
 							// extracting an archive, see #14461
 							itemsRegrouped |= FilesAndFolders.UpdateItemGroup(item);
+							updatedFilters = true;
 						}
 					}
+
+					if (updatedFilters)
+						NotifyFilterSourceChanged();
 
 					// Sort the changed groups and their position among the other groups
 					if (itemsRegrouped)
@@ -3556,11 +3655,11 @@ namespace Files.App.ViewModels
 					foreach (var item in newItems)
 						pendingSearchResults.Enqueue(item);
 
-					var filter = FilesAndFoldersFilter;
+					var spec = directoryFilterSpec;
 					var appendedCount = 0;
 					while (appendedCount < MaxSearchResultsAppendedPerTick && pendingSearchResults.TryDequeue(out var item))
 					{
-						if (!MatchesFilter(item, filter))
+						if (!spec.IsEmpty && !DirectoryFilterEvaluator.Matches(CreateFilterSnapshot(item, 0), spec))
 							continue;
 
 						FilesAndFolders.Add(item);
@@ -3646,6 +3745,9 @@ namespace Files.App.ViewModels
 			StopWatchingForLocationRestoration();
 			filterDebounceCS?.Cancel();
 			filterDebounceCS?.Dispose();
+			activeFilterContext?.Cancel();
+			activeFilterContext?.Dispose();
+			activeFilterContext = null;
 			networkAvailabilityCTS?.Dispose();
 			semaphoreCTS.Cancel();
 			searchCTS?.Cancel();

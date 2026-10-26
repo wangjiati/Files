@@ -1808,6 +1808,9 @@
   <data name="NoSearchResultsFound" xml:space="preserve">
     <value>No items found</value>
   </data>
+  <data name="NoMatchingItems" xml:space="preserve">
+    <value>No items match the current filters</value>
+  </data>
   <data name="OpenLogLocation" xml:space="preserve">
     <value>Open log location</value>
   </data>
