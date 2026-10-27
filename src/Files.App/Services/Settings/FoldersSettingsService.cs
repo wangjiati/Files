@@ -162,6 +162,20 @@ namespace Files.App.Services.Settings
 			set => Set(value);
 		}
 
+		/// <inheritdoc/>
+		public List<string> NewFolderNameComponents
+		{
+			get => Get(new List<string> { nameof(NewFolderNameComponent.Name) });
+			set => Set(value);
+		}
+
+		/// <inheritdoc/>
+		public string NewFolderNameSeparator
+		{
+			get => Get("_");
+			set => Set(value);
+		}
+
 		protected override void RaiseOnSettingChangedEvent(object sender, SettingChangedEventArgs e)
 		{
 			base.RaiseOnSettingChangedEvent(sender, e);
