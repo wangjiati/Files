@@ -3,6 +3,7 @@
 
 using OpenQA.Selenium;
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Files.InteractionTests.Tests
@@ -33,6 +34,42 @@ namespace Files.InteractionTests.Tests
 			CopyPasteFolderTest(renamedFolderName);
 
 			DeleteFolderTest(renamedFolderName);
+		}
+
+		[TestMethod]
+		public void CreateFolderNamingSchemeTest()
+		{
+			NavigationTest();
+			TestHelper.InvokeButtonById("InnerNavigationToolbarNewButton");
+			TestHelper.InvokeButtonById("InnerNavigationToolbarNewFolderButton");
+			try
+			{
+				TestHelper.InvokeButtonById("CreateItemDialogNamingSchemeComboBox");
+				TestHelper.InvokeButtonById("CreateItemDialogNamingSchemeNameDateTime");
+				TestHelper.InvokeButtonById("CreateItemDialogNamingSeparatorComboBox");
+				TestHelper.InvokeButtonById("CreateItemDialogNamingSeparatorUnderscore");
+
+				var nameBox = TestHelper.GetElementById("CreateItemDialogNameTextBox");
+				var initialName = nameBox.Text;
+				var initialMatch = Regex.Match(initialName, @"^(?<name>.+)_(?<date>\d{4}-\d{2}-\d{2})_(?<time>\d{2}-\d{2}-\d{2})$");
+				Assert.IsTrue(initialMatch.Success, $"Unexpected generated folder name: '{initialName}'.");
+
+				TestHelper.InvokeButtonById("CreateItemDialogMoveDateUpButton");
+				var reorderedName = nameBox.Text;
+				Assert.AreEqual($"{initialMatch.Groups["date"].Value}_{initialMatch.Groups["name"].Value}_{initialMatch.Groups["time"].Value}", reorderedName);
+
+				var focusedElement = SessionManager.Session.SwitchTo().ActiveElement();
+				Assert.AreEqual("CreateItemDialogMoveDateDownButton", focusedElement.GetAttribute("AutomationId"));
+				focusedElement.SendKeys(Keys.Space);
+				Assert.AreEqual(initialName, nameBox.Text);
+
+				AxeHelper.AssertNoAccessibilityErrors();
+			}
+			finally
+			{
+				TestHelper.SendEscKey();
+				TestHelper.WaitUntilElementGoneById("CreateItemDialogNameTextBox");
+			}
 		}
 
 		/// <summary>

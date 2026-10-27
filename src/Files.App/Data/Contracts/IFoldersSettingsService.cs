@@ -94,5 +94,15 @@ namespace Files.App.Data.Contracts
 		/// Gets or sets a value indicating which format to use when displaying item sizes.
 		/// </summary>
 		SizeUnitTypes SizeUnitFormat { get; set; }
+
+		/// <summary>
+		/// Gets or sets the ordered components used to generate new folder names.
+		/// </summary>
+		List<string> NewFolderNameComponents { get; set; }
+
+		/// <summary>
+		/// Gets or sets the separator used between new folder name components.
+		/// </summary>
+		string NewFolderNameSeparator { get; set; }
 	}
 }

@@ -357,6 +357,51 @@
   <data name="NewFolder" xml:space="preserve">
     <value>New folder</value>
   </data>
+  <data name="NewFolderNamingScheme" xml:space="preserve">
+    <value>Naming scheme</value>
+  </data>
+  <data name="NewFolderNamingComponents" xml:space="preserve">
+    <value>Naming components</value>
+  </data>
+  <data name="NewFolderNamingComponentName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="NewFolderNamingComponentDate" xml:space="preserve">
+    <value>Date (year-month-day)</value>
+  </data>
+  <data name="NewFolderNamingComponentTime" xml:space="preserve">
+    <value>Time (hour-minute-second)</value>
+  </data>
+  <data name="NewFolderNamingComponentYearMonth" xml:space="preserve">
+    <value>Year and month</value>
+  </data>
+  <data name="NewFolderNamingCustom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="NewFolderNamingSeparator" xml:space="preserve">
+    <value>Separator</value>
+  </data>
+  <data name="NewFolderNamingSeparatorUnderscore" xml:space="preserve">
+    <value>Underscore (_)</value>
+  </data>
+  <data name="NewFolderNamingSeparatorHyphen" xml:space="preserve">
+    <value>Hyphen (-)</value>
+  </data>
+  <data name="NewFolderNamingSeparatorSpace" xml:space="preserve">
+    <value>Space</value>
+  </data>
+  <data name="NewFolderNamingSeparatorNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="NewFolderNamingSelectComponent" xml:space="preserve">
+    <value>Select at least one naming component.</value>
+  </data>
+  <data name="NewFolderNamingMoveUp" xml:space="preserve">
+    <value>Move {0} up</value>
+  </data>
+  <data name="NewFolderNamingMoveDown" xml:space="preserve">
+    <value>Move {0} down</value>
+  </data>
   <data name="NewFile" xml:space="preserve">
     <value>New file</value>
   </data>

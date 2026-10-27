@@ -55,9 +55,11 @@ namespace Files.App.Helpers
 			return dialog;
 		}
 
-		public static DynamicDialog GetFor_CreateItemDialog(string itemType, string? itemName)
+		public static DynamicDialog GetFor_CreateItemDialog(AddItemDialogItemType itemType, string? itemName)
 		{
+			var itemTypeDisplayName = itemType.ToString().GetLocalizedResource().ToLower();
 			DynamicDialog? dialog = null;
+			NewFolderNamingOptions? namingOptions = null;
 			TextBox inputText = new()
 			{
 				PlaceholderText = Strings.EnterAnItemName.GetLocalizedResource()
@@ -100,18 +102,27 @@ namespace Files.App.Helpers
 
 			inputText.TextChanged += (textBox, args) => UpdateDialogState();
 
+			StackPanel displayControl = new()
+			{
+				MinWidth = 360d,
+				Spacing = 12d,
+			};
+			displayControl.Children.Add(inputText);
+			if (itemType == AddItemDialogItemType.Folder)
+			{
+				namingOptions = new(
+					inputText,
+					Ioc.Default.GetRequiredService<IUserSettingsService>().FoldersSettingsService,
+					DateTimeOffset.Now,
+					Strings.NewFolder.GetLocalizedResource());
+				displayControl.Children.Add(namingOptions.CreateView());
+			}
+
 			dialog = new DynamicDialog(new DynamicDialogViewModel()
 			{
-				TitleText = string.Format(Strings.CreateNewItemTitle.GetLocalizedResource(), itemType),
+				TitleText = string.Format(Strings.CreateNewItemTitle.GetLocalizedResource(), itemTypeDisplayName),
 				SubtitleText = Strings.EnterAnItemName.GetLocalizedResource(),
-				DisplayControl = new Grid()
-				{
-					MinWidth = 300d,
-					Children =
-					{
-						inputText
-					}
-				},
+				DisplayControl = displayControl,
 				DisplayControlOnLoaded = async (vm, e) =>
 				{
 					UpdateDialogState();
@@ -131,6 +142,7 @@ namespace Files.App.Helpers
 				},
 				PrimaryButtonAction = (vm, e) =>
 				{
+					namingOptions?.Save();
 					vm.Hide(); // Rename successful
 				},
 				PrimaryButtonText = Strings.Create.GetLocalizedResource(),
@@ -140,8 +152,8 @@ namespace Files.App.Helpers
 			});
 
 			// Prefill text box with default name #17845
-			if (itemType.Equals("Folder", StringComparison.OrdinalIgnoreCase))
-				inputText.Text = Strings.NewFolder.GetLocalizedResource();
+			if (itemType == AddItemDialogItemType.Folder)
+				namingOptions!.UpdateGeneratedName();
 			else if (itemName is not null)
 				inputText.Text = FilesystemHelpers.FilterRestrictedCharacters(string.Format(Strings.CreateNewFile.GetLocalizedResource(), itemName));
 
