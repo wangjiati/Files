@@ -787,7 +787,7 @@ try {
             Fail "Release output directory '$outputFullPath' is not empty. Pass -ReplaceExistingRelease to replace an existing release explicitly."
         }
     }
-    if (Test-PathUnderDirectory $certificatePathResolved $outputFullPath) {
+    if (-not $PortableOnly -and (Test-PathUnderDirectory $certificatePathResolved $outputFullPath)) {
         Fail "The signing certificate must not be inside the release output directory."
     }
 
