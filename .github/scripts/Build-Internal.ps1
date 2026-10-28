@@ -56,6 +56,10 @@ switch are recorded as Dirty and are not reproducible from the recorded commit.
 Replace release files already present in the output directory. Without this
 switch a non-empty output directory is rejected before any build starts.
 
+.PARAMETER PortableOnly
+Build and validate only the portable release. This mode does not require a
+signing certificate and does not produce or update an MSIX package.
+
 .EXAMPLE
 $securePassword = Read-Host -AsSecureString "Signing certificate password"
 $env:FILES_INTERNAL_CERT_PASSWORD = (New-Object System.Net.NetworkCredential("", $securePassword)).Password
@@ -80,7 +84,8 @@ param(
     [string]$CertificatePath = "",
     [string]$CertificatePassword = "",
     [switch]$AllowDirty,
-    [switch]$ReplaceExistingRelease
+    [switch]$ReplaceExistingRelease,
+    [switch]$PortableOnly
 )
 
 Set-StrictMode -Version Latest
@@ -657,42 +662,6 @@ try {
         Fail "Server project not found at '$serverProject'."
     }
 
-    if ([string]::IsNullOrWhiteSpace($CertificatePath)) {
-        Fail "A signing certificate is required. Pass -CertificatePath or set the release environment. No unsigned or pseudo-signed package was produced."
-    }
-
-    if (-not (Test-Path -LiteralPath $CertificatePath -PathType Leaf)) {
-        Fail "Signing certificate '$CertificatePath' was not found. No unsigned or pseudo-signed package was produced."
-    }
-
-    if ([string]::IsNullOrWhiteSpace($CertificatePassword)) {
-        $CertificatePassword = $env:FILES_INTERNAL_CERT_PASSWORD
-    }
-    if ([string]::IsNullOrWhiteSpace($CertificatePassword)) {
-        Fail "A signing certificate password is required. Pass -CertificatePassword or set FILES_INTERNAL_CERT_PASSWORD. No unsigned or pseudo-signed package was produced."
-    }
-
-    $certificatePathResolved = (Resolve-Path -LiteralPath $CertificatePath).Path
-    try {
-        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
-            $certificatePathResolved,
-            $CertificatePassword,
-            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
-    }
-    catch {
-        Fail "Could not open signing certificate '$certificatePathResolved' with the supplied password: $($_.Exception.Message)"
-    }
-
-    if (-not $certificate.HasPrivateKey) {
-        Fail "Signing certificate '$certificatePathResolved' does not contain a private key."
-    }
-    if ($certificate.NotBefore.ToUniversalTime() -gt [DateTime]::UtcNow) {
-        Fail "Signing certificate '$certificatePathResolved' is not valid yet (NotBefore $($certificate.NotBefore.ToUniversalTime().ToString('u')))."
-    }
-    if ($certificate.NotAfter.ToUniversalTime() -lt [DateTime]::UtcNow) {
-        Fail "Signing certificate '$certificatePathResolved' has expired (NotAfter $($certificate.NotAfter.ToUniversalTime().ToString('u')))."
-    }
-
     [xml]$manifestXml = Get-Content -LiteralPath $appManifest -Raw
     $version = [string]$manifestXml.Package.Identity.Version
     $manifestProductId = [string]$manifestXml.Package.Identity.Name
@@ -705,8 +674,47 @@ try {
     if ($manifestProductId -ne $productId) {
         Fail "Package identity '$manifestProductId' is not the expected internal identity '$productId'."
     }
-    if ($certificate.Subject -ne $publisher) {
-        Fail "Signing certificate subject '$($certificate.Subject)' does not match Package.appxmanifest publisher '$publisher'."
+
+    $certificatePathResolved = ""
+    if (-not $PortableOnly) {
+        if ([string]::IsNullOrWhiteSpace($CertificatePath)) {
+            Fail "A signing certificate is required. Pass -CertificatePath or use -PortableOnly to build only the portable release."
+        }
+
+        if (-not (Test-Path -LiteralPath $CertificatePath -PathType Leaf)) {
+            Fail "Signing certificate '$CertificatePath' was not found. Pass -PortableOnly to build only the portable release."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($CertificatePassword)) {
+            $CertificatePassword = $env:FILES_INTERNAL_CERT_PASSWORD
+        }
+        if ([string]::IsNullOrWhiteSpace($CertificatePassword)) {
+            Fail "A signing certificate password is required. Pass -CertificatePassword or set FILES_INTERNAL_CERT_PASSWORD."
+        }
+
+        $certificatePathResolved = (Resolve-Path -LiteralPath $CertificatePath).Path
+        try {
+            $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(
+                $certificatePathResolved,
+                $CertificatePassword,
+                [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
+        }
+        catch {
+            Fail "Could not open signing certificate '$certificatePathResolved' with the supplied password: $($_.Exception.Message)"
+        }
+
+        if (-not $certificate.HasPrivateKey) {
+            Fail "Signing certificate '$certificatePathResolved' does not contain a private key."
+        }
+        if ($certificate.NotBefore.ToUniversalTime() -gt [DateTime]::UtcNow) {
+            Fail "Signing certificate '$certificatePathResolved' is not valid yet (NotBefore $($certificate.NotBefore.ToUniversalTime().ToString('u')))."
+        }
+        if ($certificate.NotAfter.ToUniversalTime() -lt [DateTime]::UtcNow) {
+            Fail "Signing certificate '$certificatePathResolved' has expired (NotAfter $($certificate.NotAfter.ToUniversalTime().ToString('u')))."
+        }
+        if ($certificate.Subject -ne $publisher) {
+            Fail "Signing certificate subject '$($certificate.Subject)' does not match Package.appxmanifest publisher '$publisher'."
+        }
     }
 
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -753,7 +761,11 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-        $OutputDirectory = Join-Path $repoRoot "artifacts\internal\$version"
+        $outputGroup = "internal"
+        if ($PortableOnly) {
+            $outputGroup = "internal-portable"
+        }
+        $OutputDirectory = Join-Path $repoRoot "artifacts\$outputGroup\$version"
     }
     elseif (-not [System.IO.Path]::IsPathRooted($OutputDirectory)) {
         $OutputDirectory = Join-Path $repoRoot $OutputDirectory
@@ -783,7 +795,10 @@ try {
     $zipName = "${productId}_${version}_${platform}-portable.zip"
     $checksumsName = "SHA256SUMS.txt"
     $releaseInfoName = "RELEASE-INFO.txt"
-    $releaseFileNames = @($msixName, $zipName, $releaseInfoName, $checksumsName)
+    $releaseFileNames = @($zipName, $releaseInfoName, $checksumsName)
+    if (-not $PortableOnly) {
+        $releaseFileNames = @($msixName) + $releaseFileNames
+    }
 
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("files-internal-" + [Guid]::NewGuid().ToString("N"))
     $msixStaging = Join-Path $tempRoot "msix"
@@ -795,6 +810,9 @@ try {
     $env:PackageCertificatePassword = $CertificatePassword
 
     $builtUtc = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $dependencySummary = @()
+    $authenticodeStatus = "NotApplicable"
+    $msixSourcePath = $null
 
     if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
         Fail "dotnet is required to build and run the unit tests."
@@ -834,18 +852,20 @@ try {
         "--no-restore"
     )
 
-    Invoke-MSBuild "Build Msix (Debug)" @(
-        $appProject,
-        "-restore",
-        "-t:Build",
-        "-p:Configuration=Debug",
-        "-p:Platform=$platform",
-        "-p:Distribution=Msix",
-        "-m:1",
-        "-nr:false",
-        "-v:quiet",
-        "-clp:ErrorsOnly"
-    )
+    if (-not $PortableOnly) {
+        Invoke-MSBuild "Build Msix (Debug)" @(
+            $appProject,
+            "-restore",
+            "-t:Build",
+            "-p:Configuration=Debug",
+            "-p:Platform=$platform",
+            "-p:Distribution=Msix",
+            "-m:1",
+            "-nr:false",
+            "-v:quiet",
+            "-clp:ErrorsOnly"
+        )
+    }
 
     Invoke-MSBuild "Build Portable (Debug)" @(
         $appProject,
@@ -887,6 +907,7 @@ try {
     }
     Assert-SourceIntegrationAssets
 
+    if (-not $PortableOnly) {
     Invoke-MSBuild "Build signed internal MSIX" @(
         $appProject,
         "-restore",
@@ -988,6 +1009,7 @@ try {
     }
     Assert-MsixIntegrationAssets $msixSourcePath
     Assert-ZipHasNoPrivateKeyFiles $msixSourcePath "The MSIX package"
+    }
 
     Invoke-MSBuild "Publish portable application" @(
         $appProject,
@@ -1047,7 +1069,7 @@ try {
 
     Assert-NoPrivateKeyFiles $portableStaging "The portable publish output"
 
-    $releaseInfo = @(
+    $releaseInfoLines = @(
         "Product: $productId"
         "Display-Name: $displayName"
         "Version: $version"
@@ -1058,13 +1080,21 @@ try {
         "Upstream-Commit-Source: $upstreamSource"
         "Working-Tree: $workingTreeState"
         "Built-Utc: $builtUtc"
-        "Msix: $msixName"
         "Portable: $zipName"
-        "Msix-Dependencies: $($dependencySummary -join '; ')"
-        "Signature-Subject: $($certificate.Subject)"
-        "Signature-Thumbprint: $($certificate.Thumbprint)"
-        "Signature-Status: $authenticodeStatus"
-    ) -join "`r`n"
+    )
+    if ($PortableOnly) {
+        $releaseInfoLines += "MSIX: Not included (portable-only build)"
+    }
+    else {
+        $releaseInfoLines += @(
+            "Msix: $msixName"
+            "Msix-Dependencies: $($dependencySummary -join '; ')"
+            "Signature-Subject: $($certificate.Subject)"
+            "Signature-Thumbprint: $($certificate.Thumbprint)"
+            "Signature-Status: $authenticodeStatus"
+        )
+    }
+    $releaseInfo = $releaseInfoLines -join "`r`n"
     Write-Utf8File (Join-Path $portableStaging $releaseInfoName) ($releaseInfo + "`r`n")
 
     $zipSourcePath = Join-Path $tempRoot $zipName
@@ -1077,27 +1107,41 @@ try {
     }
     $releaseStaging = Join-Path $outputParent (".$outputLeaf.staging-" + [Guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $releaseStaging -Force | Out-Null
-    Copy-Item -LiteralPath $msixSourcePath -Destination (Join-Path $releaseStaging $msixName) -Force
+    if (-not $PortableOnly) {
+        Copy-Item -LiteralPath $msixSourcePath -Destination (Join-Path $releaseStaging $msixName) -Force
+    }
     Copy-Item -LiteralPath $zipSourcePath -Destination (Join-Path $releaseStaging $zipName) -Force
     Write-Utf8File (Join-Path $releaseStaging $releaseInfoName) ($releaseInfo + "`r`n")
 
-    $msixHash = Get-Sha256 (Join-Path $releaseStaging $msixName)
+    $msixHash = $null
+    if (-not $PortableOnly) {
+        $msixHash = Get-Sha256 (Join-Path $releaseStaging $msixName)
+    }
     $zipHash = Get-Sha256 (Join-Path $releaseStaging $zipName)
     $releaseInfoHash = Get-Sha256 (Join-Path $releaseStaging $releaseInfoName)
-    $checksums = @(
+    $checksumLines = @(
         "# $displayName $version"
         "# Commit: $commit"
         "# Upstream-Commit: $resolvedUpstream"
         "# Built-Utc: $builtUtc"
         "# Format: SHA-256, two spaces, filename"
-        "$msixHash  $msixName"
+    )
+    if (-not $PortableOnly) {
+        $checksumLines += "$msixHash  $msixName"
+    }
+    $checksumLines += @(
         "$zipHash  $zipName"
         "$releaseInfoHash  $releaseInfoName"
-    ) -join "`r`n"
+    )
+    $checksums = $checksumLines -join "`r`n"
     Write-Utf8File (Join-Path $releaseStaging $checksumsName) ($checksums + "`r`n")
 
     Assert-NoPrivateKeyFiles $releaseStaging "The release staging directory"
-    Assert-ReleaseChecksums (Join-Path $releaseStaging $checksumsName) $releaseStaging @($msixName, $zipName, $releaseInfoName)
+    $checksumFileNames = @($zipName, $releaseInfoName)
+    if (-not $PortableOnly) {
+        $checksumFileNames = @($msixName) + $checksumFileNames
+    }
+    Assert-ReleaseChecksums (Join-Path $releaseStaging $checksumsName) $releaseStaging $checksumFileNames
 
     Publish-ReleaseSet $releaseStaging $outputFullPath $releaseFileNames $checksumsName
     $releaseStaging = $null
@@ -1108,13 +1152,17 @@ try {
     Write-Host "  Version:     $version"
     Write-Host "  Commit:      $commit"
     Write-Host "  Upstream:    $resolvedUpstream ($upstreamSource)"
-    Write-Host "  MSIX:        $(Join-Path $outputFullPath $msixName)"
-    Write-Host "  MSIX SHA256: $msixHash"
+    if (-not $PortableOnly) {
+        Write-Host "  MSIX:        $(Join-Path $outputFullPath $msixName)"
+        Write-Host "  MSIX SHA256: $msixHash"
+    }
     Write-Host "  Portable:    $(Join-Path $outputFullPath $zipName)"
     Write-Host "  ZIP SHA256:  $zipHash"
     Write-Host "  Info SHA256: $releaseInfoHash"
     Write-Host "  Checksums:   $(Join-Path $outputFullPath $checksumsName)"
-    Write-Host "  MSIX target dependency: $($dependencySummary -join '; ') (install or provision separately)"
+    if (-not $PortableOnly) {
+        Write-Host "  MSIX target dependency: $($dependencySummary -join '; ') (install or provision separately)"
+    }
 }
 finally {
     Remove-Item Env:\PackageCertificatePassword -ErrorAction SilentlyContinue
