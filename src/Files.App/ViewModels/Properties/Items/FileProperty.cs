@@ -307,8 +307,7 @@ namespace Files.App.ViewModels.Properties
 			// cache the contents of the file to avoid repeatedly reading the file
 			if (!cachedPropertiesListFiles.TryGetValue(path, out var text))
 			{
-				var propertiesJsonFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri(path));
-				text = await FileIO.ReadTextAsync(propertiesJsonFile);
+				text = await AppResourceLoader.ReadAllTextAsync(path);
 				cachedPropertiesListFiles[path] = text;
 			}
 

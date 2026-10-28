@@ -155,12 +155,12 @@ namespace Files.App
 			/// <summary>
 			/// The path to the json file containing a list of file properties to be loaded in the properties window details page.
 			/// </summary>
-			public const string DetailsPagePropertiesJsonPath = @"ms-appx:///Assets/Resources/PropertiesInformation.json";
+			public const string DetailsPagePropertiesJsonPath = @"Assets\Resources\PropertiesInformation.json";
 
 			/// <summary>
 			/// The path to the json file containing a list of file properties to be loaded in the preview pane.
 			/// </summary>
-			public const string PreviewPaneDetailsPropertiesJsonPath = @"ms-appx:///Assets/Resources/PreviewPanePropertiesInformation.json";
+			public const string PreviewPaneDetailsPropertiesJsonPath = @"Assets\Resources\PreviewPanePropertiesInformation.json";
 		}
 
 		public static class Filesystem
