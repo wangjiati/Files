@@ -3,6 +3,7 @@
 
 using Files.App.Dialogs;
 using Files.App.ViewModels.Properties;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
