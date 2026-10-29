@@ -1,10 +1,10 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
-using Files.App.Data.Items;
 using Files.App.Server.Core;
 using Files.App.Server.Core.Cloud;
 using Files.Shared;
+using Files.Storage;
 using Files.Shared.Cloud;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
