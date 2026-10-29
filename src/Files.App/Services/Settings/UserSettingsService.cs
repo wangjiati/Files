@@ -91,6 +91,16 @@ namespace Files.App.Services.Settings
 
 		public UserSettingsService()
 		{
+#if DISTRIBUTION_MSIX
+			JsonSettingsSerializer = new DefaultJsonSettingsSerializer();
+			var database = new ServerSettingsDatabase(Constants.LocalSettings.UserSettingsFileName, JsonSettingsSerializer, UserSettingsJsonSerializationContext.Default);
+			JsonSettingsDatabase = database;
+			IsAvailable = true;
+			database.Changed += (name, value) =>
+			{
+				RaiseOnSettingChangedEvent(this, new SettingChangedEventArgs(name, value));
+			};
+#else
 			var settingsSerializer = new DefaultSettingsSerializer();
 			SettingsSerializer = settingsSerializer;
 
@@ -102,6 +112,7 @@ namespace Files.App.Services.Settings
 				settingsSerializer,
 				jsonSettingsSerializer,
 				UserSettingsJsonSerializationContext.Default);
+#endif
 		}
 
 		public override object ExportSettings()

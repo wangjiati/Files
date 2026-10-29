@@ -1,19 +1,22 @@
-﻿// Copyright (c) Files Community
+// Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.Shared.Extensions;
 using Microsoft.Win32;
 using System.Runtime.CompilerServices;
 using System.Security;
-using static Files.App.Helpers.RegistryHelpers;
-using static Files.App.Utils.FileTags.TaggedFileRegistry;
-using JsonSerializer = System.Text.Json.JsonSerializer;
+using Windows.ApplicationModel;
+using static Files.Storage.RegistryHelpers;
+using static Files.Storage.TaggedFileRegistry;
 
-namespace Files.App.Utils.FileTags
+namespace Files.Storage
 {
-	internal sealed class RegistryFileTagsDatabase : IFileTagsDatabase
+	public sealed class FileTagRegistryStore
 	{
 		private static string? _FileTagsKey;
-		private string? FileTagsKey => _FileTagsKey ??= SafetyExtensions.IgnoreExceptions(() => @$"Software\Files Community\{AppRuntime.Current.ProductId}\v1\FileTags");
+		private string? FileTagsKey => _FileTagsKey ??= SafetyExtensions.IgnoreExceptions(() => @$"Software\Files Community\{Package.Current.Id.Name}\v1\FileTags");
+
+		public bool IsAvailable => FileTagsKey is not null;
 
 		public void SetTags(string filePath, ulong? frn, string[] tags)
 		{
@@ -159,7 +162,7 @@ namespace Files.App.Utils.FileTags
 			return FindTag(filePath, frn)?.Tags ?? [];
 		}
 
-		public IEnumerable<TaggedFile> GetAll()
+		public List<TaggedFile> GetAll(bool ignoreAccessErrors = false)
 		{
 			var list = new List<TaggedFile>();
 
@@ -169,9 +172,9 @@ namespace Files.App.Utils.FileTags
 				{
 					IterateKeys(list, FileTagsKey, 0);
 				}
-				catch (SecurityException)
+				catch (SecurityException) when (ignoreAccessErrors)
 				{
-					// Handle edge case where IterateKeys results in SecurityException
+					// Keep the entries read before access was denied.
 				}
 			}
 
@@ -198,12 +201,10 @@ namespace Files.App.Utils.FileTags
 			return list;
 		}
 
-		public void Import(string json)
+		public void ReplaceAll(TaggedFile[]? tags)
 		{
 			if (FileTagsKey is null)
 				return;
-
-			var tags = JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.TaggedFileArray);
 
 			Registry.CurrentUser.DeleteSubKeyTree(FileTagsKey, false);
 			if (tags is null)
@@ -220,16 +221,6 @@ namespace Files.App.Utils.FileTags
 					SaveValues(frnKey, tag);
 				}
 			}
-		}
-
-		public string Export()
-		{
-			var list = new List<TaggedFile>();
-
-			if (FileTagsKey is not null)
-				IterateKeys(list, FileTagsKey, 0);
-
-			return JsonSerializer.Serialize(list, AppJsonSerializerContext.Default.ListTaggedFile);
 		}
 
 		private void IterateKeys(List<TaggedFile> list, string path, int depth)

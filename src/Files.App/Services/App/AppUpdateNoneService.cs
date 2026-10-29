@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿
+using System.Net.Http;
 
 namespace Files.App.Services
 {

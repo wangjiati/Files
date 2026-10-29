@@ -71,6 +71,10 @@
         <SentryUploadSymbols>true</SentryUploadSymbols>
     </PropertyGroup>
 
+    <ItemGroup Condition="'$(Distribution)' == 'Msix'">
+        <Compile Include="..\Files.App.Server\Settings\SettingsValueCodec.cs" Link="Utils\Serialization\SettingsValueCodec.cs" />
+    </ItemGroup>
+
     <ItemGroup>
         <DirectPInvoke Include="ADVAPI32" />
         <DirectPInvoke Include="api-ms-win-core-com-l1-1-0" />

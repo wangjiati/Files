@@ -22,17 +22,17 @@ internal static class ServerHost
 	private static int pendingUpdates;
 	private static SystemTrayIcon? tray;
 	private static DispatcherQueueController controller = null!;
-	private static ServerSettings settings = null!;
+	private static BackgroundSettingsMonitor settings = null!;
 
 	internal static void Initialize()
 	{
 		controller = DispatcherQueueController.CreateOnDedicatedThread();
-		settings = new ServerSettings();
+		settings = new BackgroundSettingsMonitor();
 		settings.Changed += OnSettingsChanged;
 		OnSettingsChanged();
 	}
 
-	internal static long AddClient(int processId)
+	internal static (long Id, bool CanRestorePreviousSession) AddClient(int processId)
 	{
 		lock (gate)
 		{
@@ -47,8 +47,10 @@ internal static class ServerHost
 				process = Process.GetProcessById(processId);
 				process.Exited += (_, _) => controller.DispatcherQueue.TryEnqueue(() => RemoveClient(id));
 				process.EnableRaisingEvents = true;
+				// Decide under the registration lock so simultaneous launches cannot both restore.
+				var canRestorePreviousSession = clients.Values.All(client => client.Process.HasExited);
 				clients.Add(id, (process, default));
-				return id;
+				return (id, canRestorePreviousSession);
 			}
 			catch
 			{
@@ -103,6 +105,7 @@ internal static class ServerHost
 			process = client.Process;
 		}
 		process.Dispose();
+		ServerEvents.RemoveClient(id);
 		if (!Program.ExitSignal.Task.IsCompleted)
 		{
 			settings.Refresh();
@@ -140,6 +143,8 @@ internal static class ServerHost
 			});
 		}
 	}
+
+	internal static nint GetDialogWindowHandle() => (tray ??= new SystemTrayIcon()).WindowHandle;
 
 	internal static bool ActivateWindow()
 	{
@@ -179,7 +184,7 @@ internal static class ServerHost
 		ExitIfIdle();
 	}
 
-	private static Task InvokeAsync(Action action)
+	internal static Task InvokeAsync(Action action)
 	{
 		var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 		if (!controller.DispatcherQueue.TryEnqueue(() =>
@@ -203,6 +208,7 @@ internal static class ServerHost
 		settings.Dispose();
 		await InvokeAsync(() =>
 		{
+			StartupServices.Stop();
 			tray?.Dispose();
 			tray = null;
 		});

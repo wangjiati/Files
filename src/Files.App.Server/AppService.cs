@@ -1,57 +1,64 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
-using Files.App.Server.Core;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
-using Windows.Storage;
 
 namespace Files.App.Server;
 
 public sealed partial class AppService : IDisposable
 {
-	private static readonly Lazy<LocalSystemDataProvider> dataProvider = new(() =>
-		new LocalSystemDataProvider(ApplicationData.Current.LocalCacheFolder.Path, Program.Logger));
-
-	private readonly long clientId;
 	private int disposed;
+
+	internal long ClientId { get; }
+	internal bool IsDisposed => disposed != 0;
+
+	public bool CanRestorePreviousSession { get; }
 
 	public AppService(int processId)
 	{
-		clientId = ServerHost.AddClient(processId);
+		(ClientId, CanRestorePreviousSession) = ServerHost.AddClient(processId);
 	}
 
 	~AppService() => Dispose();
 
-	public static int CloudProviderGroupCount => dataProvider.Value.CloudProviderGroupCount;
-
-	public void SetWindowHandle(long handle) => ServerHost.SetWindow(clientId, handle);
-
-	public static IAsyncAction InitializeAsync() => AsyncInfo.Run(token => dataProvider.Value.InitializeAsync().WaitAsync(token));
-
-	public static IAsyncOperation<IReadOnlyList<ShellNewEntryInfo>> GetShellNewEntriesAsync() => AsyncInfo.Run<IReadOnlyList<ShellNewEntryInfo>>(async token =>
-		(await dataProvider.Value.GetShellNewEntriesAsync().WaitAsync(token)).Select(entry => new ShellNewEntryInfo(entry)).ToList().AsReadOnly());
-
-	public static IAsyncOperation<ShellNewEntryInfo?> GetShellNewEntryAsync(string extension) => AsyncInfo.Run(async token =>
+	public event EventHandler<string> Changed
 	{
-		var entry = await dataProvider.Value.GetShellNewEntryAsync(extension).WaitAsync(token);
+		add => ServerEvents.Add(ClientId, value);
+		remove => ServerEvents.Remove(ClientId, value);
+	}
+
+	public void SetWindowHandle(long handle) => ServerHost.SetWindow(ClientId, handle);
+
+	public static IAsyncAction InitializeAsync() => ServerAsync.Run(token => StartupServices.InitializeAsync().WaitAsync(token));
+
+	public static int CloudProviderGroupCount => InitializationCache.CloudProviders.Length;
+
+	public static IAsyncOperation<IReadOnlyList<ShellNewEntryInfo>> GetShellNewEntriesAsync() => ServerAsync.Run(token => InitializationCache.ShellNew.GetAsync().WaitAsync(token));
+
+	public static IAsyncOperation<ShellNewEntryInfo?> GetShellNewEntryAsync(string extension) => ServerAsync.Run(async token =>
+	{
+		var entry = await Task.Run(() => ShellNewMenuHelper.GetNewContextMenuEntryForType(extension), token);
 		return entry is null ? null : new ShellNewEntryInfo(entry);
 	});
 
-	public static IAsyncOperation<IReadOnlyList<string>> GetWslDistributionsAsync() =>
-		AsyncInfo.Run(token => dataProvider.Value.GetWslDistributionsAsync().WaitAsync(token));
+	public static IAsyncOperation<IReadOnlyList<string>> GetWslDistributionsAsync() => ServerAsync.Run(token => InitializationCache.Wsl.GetAsync().WaitAsync(token));
 
-	public static IAsyncOperation<IReadOnlyList<LibraryInfo>> GetLibrariesAsync() => AsyncInfo.Run<IReadOnlyList<LibraryInfo>>(async token =>
-		(await dataProvider.Value.GetLibrariesAsync().WaitAsync(token)).Select(library => new LibraryInfo(library)).ToList().AsReadOnly());
+	public static IAsyncOperation<IReadOnlyList<LibraryInfo>> GetLibrariesAsync() => ServerAsync.Run(token => InitializationCache.Libraries.GetAsync().WaitAsync(token));
 
-	public static IAsyncOperation<IReadOnlyList<PinnedFolderInfo>> GetPinnedFoldersAsync() => AsyncInfo.Run<IReadOnlyList<PinnedFolderInfo>>(async token =>
-		(await dataProvider.Value.GetPinnedFoldersAsync().WaitAsync(token))
-			.Select(folder => new PinnedFolderInfo(folder.Path, folder.Name, folder.Pidl, folder.IsPinned)).ToList().AsReadOnly());
+	public static IAsyncOperation<IReadOnlyList<PinnedFolderInfo>> GetPinnedFoldersAsync() => ServerAsync.Run(token => InitializationCache.PinnedFolders.GetAsync().WaitAsync(token));
 
-	public static void InvalidatePinnedFolders() => dataProvider.Value.InvalidatePinnedFolders();
+	public static void InvalidatePinnedFolders()
+	{
+		InitializationCache.PinnedFolders.Invalidate();
+		ServerEvents.Notify(ServerChangeNames.PinnedFolders);
+	}
 
-	public static IAsyncOperation<IReadOnlyList<CloudProviderInfo>> GetCloudProvidersAsync(int group) => AsyncInfo.Run<IReadOnlyList<CloudProviderInfo>>(async token =>
-		(await dataProvider.Value.GetCloudProvidersAsync(group).WaitAsync(token)).Select(provider => new CloudProviderInfo(provider)).ToList().AsReadOnly());
+	public static IAsyncOperation<IReadOnlyList<CloudProviderInfo>> GetCloudProvidersAsync(int group)
+	{
+		if ((uint)group >= InitializationCache.CloudProviders.Length)
+			throw new ArgumentOutOfRangeException(nameof(group));
+		return ServerAsync.Run(token => InitializationCache.CloudProviders[group].GetAsync().WaitAsync(token));
+	}
 
 	public static void BeginUpdate() => ServerHost.BeginUpdate();
 
@@ -60,7 +67,7 @@ public sealed partial class AppService : IDisposable
 	public void Dispose()
 	{
 		if (Interlocked.Exchange(ref disposed, 1) == 0)
-			ServerHost.RemoveClient(clientId);
+			ServerHost.RemoveClient(ClientId);
 		GC.SuppressFinalize(this);
 	}
 }

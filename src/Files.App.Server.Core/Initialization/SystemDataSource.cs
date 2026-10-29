@@ -83,7 +83,7 @@ internal sealed class SystemDataSource : ISystemDataSource
 			{
 				using (item)
 				{
-					var isFolder = item is Files.App.Utils.Shell.ShellLink link
+					var isFolder = item is Files.Storage.ShellLink link
 						? link.StoredTargetIsFolder() ?? link.IsTargetFolder(Environment.ExpandEnvironmentVariables(link.TargetPath))
 						: item.IsFolder && !item.IsStream;
 					if (!isFolder)

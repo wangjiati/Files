@@ -62,6 +62,11 @@ namespace Files.App.Utils.Serialization
 				// Can register only once
 				_settingsSharingContext = settingsSharingContext;
 				IsAvailable = settingsSharingContext.Instance.IsAvailable;
+				settingsSharingContext.Instance.OnSettingChangedEvent += (_, e) =>
+				{
+					if (e.NewValue is JsonElement)
+						OnSharedSettingChanged(e.SettingName);
+				};
 				return true;
 			}
 
@@ -106,6 +111,8 @@ namespace Files.App.Utils.Serialization
 
 			return false;
 		}
+
+		protected virtual void OnSharedSettingChanged(string name) { }
 
 		protected virtual void RaiseOnSettingChangedEvent(object sender, SettingChangedEventArgs e)
 		{

@@ -12,7 +12,7 @@ internal sealed class PackagedAppServerService : IAppServerService
 
 	internal PackagedAppServerService()
 	{
-		serverSession = Task.Run(() => new Server.AppService(Environment.ProcessId));
+		serverSession = App.ServerSession;
 	}
 
 	public int CloudProviderGroupCount => Server.AppService.CloudProviderGroupCount;
