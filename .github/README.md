@@ -23,7 +23,7 @@ Files is a modern file manager that helps users organize their files and folders
 
 | 领域 | 上游原版 | 本 Fork |
 | --- | --- | --- |
-| 分发方式 | MSIX/Store 与经典安装包 | 新增 `Distribution=Msix` 与 `Distribution=Portable`；提供完整目录便携 ZIP |
+| 分发方式 | MSIX 与经典安装包 | 新增 `Distribution=Msix` 与 `Distribution=Portable`；提供完整目录便携 ZIP |
 | 数据位置 | 包数据或用户目录 | 便携版必要数据位于程序目录 `Data`，可随目录复制和移动 |
 | 运行依赖 | 依赖已安装的运行时 | 便携版自带 .NET 与 Windows App SDK，采用 Native AOT，无需额外安装或管理员权限 |
 | 系统集成 | 安装后提供文件关联、协议、Shell/COM 等集成 | 便携版不注册这些集成；本 Fork 的 MSIX 版默认不接管，显式开启后显示状态，并可恢复原值 |
@@ -67,25 +67,12 @@ Files is a modern file manager that helps users organize their files and folders
 - **SQL 工作台**：仅允许只读 `SELECT`，禁止写入、DDL、多语句、`ATTACH`、扩展和文件访问；查询在私有内存快照上执行。
 - **MSIX 版**：使用独立包身份 `Files.Internal` 和独立证书签名，默认不接管原版系统集成；不支持通过官方渠道自动更新。
 
-## Installing and running Files
+## 下载与安装
 
-Files is a community-driven project that depends on your support to grow and improve. Please consider purchasing Files through the Microsoft Store or supporting us on GitHub if you use the classic installer.
+本 Fork 仅通过 [GitHub Releases](https://github.com/wangjiati/Files/releases) 分发。
 
-You can also use the preview version alongside the stable release to get early access to new features and improvements.
-
-<p align="left">
-  <!-- Store Badge -->
-  <a style="text-decoration:none" href="https://apps.microsoft.com/detail/9NGHP3DX8HDX?launch=true&mode=full">
-    <picture>
-      <source media="(prefers-color-scheme: light)" srcset="./assets/StoreBadge-dark.png" height="80" />
-      <img src="./assets/StoreBadge-light.png" height="80" /></picture></a>
-  &ensp;
-  <!-- Classic Installer Badge -->
-  <a style="text-decoration:none" href="https://files.community/download">
-    <picture>
-      <source media="(prefers-color-scheme: light)" srcset="./assets/ClassicInstallerBadge-dark.png" height="80" />
-      <img src="./assets/ClassicInstallerBadge-light.png" height="80" /></picture></a>
-</p>
+- 便携版：下载 `Files.Internal_<version>_x64-portable.zip`，解压后运行 `Files.exe`。
+- 设置、标签和布局数据保存在程序目录的 `Data` 文件夹中，可随目录移动。
 
 ## Building from source
 
