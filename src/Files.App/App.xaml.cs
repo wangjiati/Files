@@ -48,7 +48,7 @@ namespace Files.App
 		internal static bool CanRestorePreviousSession { get; private set; }
 #else
 		internal static event EventHandler<string>? ServerChanged;
-		internal static bool CanRestorePreviousSession => false;
+		internal static bool CanRestorePreviousSession => true;
 #endif
 		public static FlyoutBase? LastOpenedFlyout
 		{
