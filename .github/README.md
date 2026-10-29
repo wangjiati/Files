@@ -34,6 +34,24 @@ Files is a modern file manager that helps users organize their files and folders
 | 新建文件夹命名 | 固定默认名称 | 命名方案（名称、日期、时间、年月、顺序、分隔符及预设） |
 | 本地化 | 上游语言包 | 补充简体中文与繁体中文的命名方案等界面文本 |
 
+### 界面截图
+
+#### 时间格式设置
+
+![时间格式设置](./assets/fork/time-format-settings.png)
+
+#### 列头筛选
+
+![列头筛选](./assets/fork/date-column-filter.png)
+
+#### SQL 查询工作台
+
+![SQL 查询工作台](./assets/fork/sql-workbench.png)
+
+#### 新建文件夹命名方案
+
+![新建文件夹命名方案](./assets/fork/new-folder-naming.png)
+
 ### 便携版特性
 
 - 解压整个 ZIP 后运行 `Files.exe`，支持含空格或中文的路径。
