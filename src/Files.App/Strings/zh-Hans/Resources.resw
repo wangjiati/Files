@@ -357,6 +357,51 @@
   <data name="NewFolder" xml:space="preserve">
     <value>新建文件夹</value>
   </data>
+  <data name="NewFolderNamingScheme" xml:space="preserve">
+    <value>命名方案</value>
+  </data>
+  <data name="NewFolderNamingComponents" xml:space="preserve">
+    <value>命名元素</value>
+  </data>
+  <data name="NewFolderNamingComponentName" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="NewFolderNamingComponentDate" xml:space="preserve">
+    <value>日期（年-月-日）</value>
+  </data>
+  <data name="NewFolderNamingComponentTime" xml:space="preserve">
+    <value>时间（时-分-秒）</value>
+  </data>
+  <data name="NewFolderNamingComponentYearMonth" xml:space="preserve">
+    <value>年和月</value>
+  </data>
+  <data name="NewFolderNamingCustom" xml:space="preserve">
+    <value>自定义</value>
+  </data>
+  <data name="NewFolderNamingSeparator" xml:space="preserve">
+    <value>分隔符</value>
+  </data>
+  <data name="NewFolderNamingSeparatorUnderscore" xml:space="preserve">
+    <value>下划线（_）</value>
+  </data>
+  <data name="NewFolderNamingSeparatorHyphen" xml:space="preserve">
+    <value>连字符（-）</value>
+  </data>
+  <data name="NewFolderNamingSeparatorSpace" xml:space="preserve">
+    <value>空格</value>
+  </data>
+  <data name="NewFolderNamingSeparatorNone" xml:space="preserve">
+    <value>无</value>
+  </data>
+  <data name="NewFolderNamingSelectComponent" xml:space="preserve">
+    <value>请至少选择一个命名元素。</value>
+  </data>
+  <data name="NewFolderNamingMoveUp" xml:space="preserve">
+    <value>上移{0}</value>
+  </data>
+  <data name="NewFolderNamingMoveDown" xml:space="preserve">
+    <value>下移{0}</value>
+  </data>
   <data name="NewFile" xml:space="preserve">
     <value>新建文件</value>
   </data>
