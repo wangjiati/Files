@@ -838,6 +838,7 @@ try {
         "-t:Build",
         "-p:Configuration=Debug",
         "-p:Platform=$platform",
+        "-p:Distribution=Portable",
         "-m:1",
         "-nr:false",
         "-v:quiet",
@@ -848,6 +849,7 @@ try {
         $testProject,
         "-c", "Debug",
         "-p:Platform=$platform",
+        "-p:Distribution=Portable",
         "--no-build",
         "--no-restore"
     )
