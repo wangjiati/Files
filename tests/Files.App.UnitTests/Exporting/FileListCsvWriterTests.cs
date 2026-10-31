@@ -73,7 +73,6 @@ namespace Files.App.UnitTests.Exporting
 					CreateRow(name: "=cmd"),
 				],
 				out _);
-			text = text;
 
 			var lines = text.Split("\r\n");
 			Assert.AreEqual("\"a,b\"", lines[1]);
@@ -92,7 +91,6 @@ namespace Files.App.UnitTests.Exporting
 					CreateRow(name: "empty.txt", sizeBytes: 0),
 				],
 				out _);
-			text = text;
 
 			var lines = text.Split("\r\n");
 			Assert.AreEqual(",,", lines[1], "folder/null values stay empty");
@@ -109,7 +107,6 @@ namespace Files.App.UnitTests.Exporting
 					CreateRow(isFolder: false, isHidden: true),
 				],
 				out _);
-			text = text;
 
 			var lines = text.Split("\r\n");
 			Assert.AreEqual("true,false", lines[1]);
@@ -126,7 +123,6 @@ namespace Files.App.UnitTests.Exporting
 				FileListExportColumns.All.Select(c => (c, c.ToString())).ToList(),
 				[row],
 				out _);
-			text = text;
 
 			var fields = text.Split("\r\n")[1].Split(',');
 			Assert.AreEqual("r.txt", fields[0]);

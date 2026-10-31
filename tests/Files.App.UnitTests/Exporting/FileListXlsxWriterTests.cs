@@ -132,6 +132,42 @@ namespace Files.App.UnitTests.Exporting
 			Assert.AreEqual("true", dataRows[1].Elements(Ns + "c").ElementAt(3).Element(Ns + "is")!.Element(Ns + "t")!.Value);
 		}
 
+		[TestMethod]
+		public void Write_StylesFollowMainstreamMinimalStructure()
+		{
+			var entries = ReadEntries(WritePackage([(FileListExportColumn.Name, "Name")], [CreateRow()]));
+
+			var styles = XDocument.Parse(entries["xl/styles.xml"], XmlLoadOptions).Root!;
+
+			var fonts = styles.Element(Ns + "fonts")!.Elements(Ns + "font").ToList();
+			var firstFontChildren = fonts[0].Elements().Select(e => (e.Name.LocalName, (string?)e.Attribute("val"))).ToList();
+			CollectionAssert.Contains(firstFontChildren, ("sz", "11"), "default font must declare a size");
+			CollectionAssert.Contains(firstFontChildren, ("name", "Calibri"), "default font must declare a family");
+
+			var fills = styles.Element(Ns + "fills")!.Elements(Ns + "fill").ToList();
+			Assert.AreEqual(2, fills.Count, "Excel expects the two reserved fills");
+			Assert.AreEqual("none", (string?)fills[0].Element(Ns + "patternFill")!.Attribute("patternType"));
+			Assert.AreEqual("gray125", (string?)fills[1].Element(Ns + "patternFill")!.Attribute("patternType"));
+		}
+
+		[TestMethod]
+		public void Write_ThrowsWhenExceedingExcelRowLimit()
+		{
+			const int excelMaxRows = 1_048_576; // including the header row
+			var rows = Enumerable.Range(0, excelMaxRows)
+				.Select(i => CreateRow(name: $"r{i}.txt"));
+
+			using var stream = new MemoryStream();
+			try
+			{
+				FileListXlsxWriter.Write(stream, "FileList", [(FileListExportColumn.Name, "Name")], rows);
+				Assert.Fail("exporting more rows than Excel supports must fail instead of producing a broken file");
+			}
+			catch (InvalidOperationException)
+			{
+			}
+		}
+
 		private static LoadOptions XmlLoadOptions => LoadOptions.None;
 	}
 }

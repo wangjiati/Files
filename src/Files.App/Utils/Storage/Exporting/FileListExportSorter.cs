@@ -24,11 +24,15 @@ namespace Files.App.Utils.Storage
 				if (x.IsFolder != y.IsFolder)
 					return x.IsFolder ? -1 : 1;
 
+				// Unknown values sort last regardless of direction, matching folder view behavior.
+				if (GetNullOrder(option, x, y) is { } nullOrder && nullOrder != 0)
+					return nullOrder;
+
 				var result = option switch
 				{
-					SortOption.Size => CompareNullable(x.SizeBytes, y.SizeBytes),
-					SortOption.DateModified => CompareNullable(x.DateModified, y.DateModified),
-					SortOption.DateCreated => CompareNullable(x.DateCreated, y.DateCreated),
+					SortOption.Size => x.SizeBytes!.Value.CompareTo(y.SizeBytes!.Value),
+					SortOption.DateModified => x.DateModified!.Value.CompareTo(y.DateModified!.Value),
+					SortOption.DateCreated => x.DateCreated!.Value.CompareTo(y.DateCreated!.Value),
 					SortOption.FileType => string.Compare(x.ItemType ?? x.Extension ?? string.Empty, y.ItemType ?? y.Extension ?? string.Empty, StringComparison.OrdinalIgnoreCase),
 					SortOption.Path => string.Compare(x.FullPath, y.FullPath, StringComparison.OrdinalIgnoreCase),
 					_ => nameComparer.Compare(x.Name, y.Name),
@@ -38,14 +42,22 @@ namespace Files.App.Utils.Storage
 			});
 		}
 
-		private static int CompareNullable<T>(T? x, T? y)
-			where T : struct, IComparable<T>
-		{
-			if (x is null)
-				return y is null ? 0 : 1;
-			if (y is null)
-				return -1;
-			return x.Value.CompareTo(y.Value);
-		}
+		private static int? GetNullOrder(SortOption option, FileListExportRow x, FileListExportRow y)
+			=> option switch
+			{
+				SortOption.Size => NullOrder(x.SizeBytes.HasValue, y.SizeBytes.HasValue),
+				SortOption.DateModified => NullOrder(x.DateModified.HasValue, y.DateModified.HasValue),
+				SortOption.DateCreated => NullOrder(x.DateCreated.HasValue, y.DateCreated.HasValue),
+				_ => null,
+			};
+
+		private static int NullOrder(bool xHasValue, bool yHasValue)
+			=> (xHasValue, yHasValue) switch
+			{
+				(true, true) => 0,
+				(false, true) => 1,
+				(true, false) => -1,
+				_ => 0,
+			};
 	}
 }

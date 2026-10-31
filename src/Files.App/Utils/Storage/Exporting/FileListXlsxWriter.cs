@@ -110,17 +110,29 @@ namespace Files.App.Utils.Storage
 			writer.WriteStartElement("fonts");
 			writer.WriteAttributeString("count", "2");
 			writer.WriteStartElement("font");
+			writer.WriteStartElement("sz");
+			writer.WriteAttributeString("val", "11");
+			writer.WriteEndElement();
+			writer.WriteStartElement("name");
+			writer.WriteAttributeString("val", "Calibri");
+			writer.WriteEndElement();
 			writer.WriteEndElement();
 			writer.WriteStartElement("font");
 			writer.WriteStartElement("b");
 			writer.WriteEndElement();
 			writer.WriteEndElement();
 			writer.WriteEndElement();
+			// Excel expects the two reserved fills (none, gray125) in this order.
 			writer.WriteStartElement("fills");
-			writer.WriteAttributeString("count", "1");
+			writer.WriteAttributeString("count", "2");
 			writer.WriteStartElement("fill");
 			writer.WriteStartElement("patternFill");
 			writer.WriteAttributeString("patternType", "none");
+			writer.WriteEndElement();
+			writer.WriteEndElement();
+			writer.WriteStartElement("fill");
+			writer.WriteStartElement("patternFill");
+			writer.WriteAttributeString("patternType", "gray125");
 			writer.WriteEndElement();
 			writer.WriteEndElement();
 			writer.WriteEndElement();
@@ -148,6 +160,8 @@ namespace Files.App.Utils.Storage
 
 		private static void WriteWorksheet(ZipArchive archive, IReadOnlyList<(FileListExportColumn Column, string Header)> columns, IEnumerable<FileListExportRow> rows)
 		{
+			const int excelMaxRowCount = 1_048_576; // hard Excel limit, including the header row
+
 			using var writer = CreateEntryWriter(archive, "xl/worksheets/sheet1.xml");
 			writer.WriteStartDocument(true);
 			writer.WriteStartElement("worksheet", MainNs);
@@ -158,6 +172,9 @@ namespace Files.App.Utils.Storage
 
 			foreach (var row in rows)
 			{
+				if (rowIndex > excelMaxRowCount)
+					throw new InvalidOperationException("The export exceeds the maximum number of rows an Excel worksheet supports. Export as CSV instead.");
+
 				WriteRow(writer, columns.Count, rowIndex, (index, currentRow) => WriteDataCell(writer, columns[index].Column, index, currentRow, row));
 				rowIndex++;
 			}

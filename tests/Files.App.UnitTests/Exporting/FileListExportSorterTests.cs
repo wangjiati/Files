@@ -107,6 +107,25 @@ namespace Files.App.UnitTests.Exporting
 		}
 
 		[TestMethod]
+		public void NullValuesStayLast_InDescendingOrder()
+		{
+			var day1 = new DateTimeOffset(new DateTime(2026, 1, 1));
+			var day2 = new DateTimeOffset(new DateTime(2026, 1, 2));
+
+			var order = SortNames(SortOption.DateModified, SortDirection.Descending,
+				CreateRow(name: "unknown", dateModified: null),
+				CreateRow(name: "older", dateModified: day1),
+				CreateRow(name: "newer", dateModified: day2));
+			CollectionAssert.AreEqual(new[] { "newer", "older", "unknown" }, order);
+
+			order = SortNames(SortOption.Size, SortDirection.Descending,
+				CreateRow(name: "unknown", sizeBytes: null),
+				CreateRow(name: "small", sizeBytes: 1),
+				CreateRow(name: "big", sizeBytes: 100));
+			CollectionAssert.AreEqual(new[] { "big", "small", "unknown" }, order);
+		}
+
+		[TestMethod]
 		public void UnsupportedOptionFallsBackToName()
 		{
 			var order = SortNames(SortOption.SyncStatus, SortDirection.Ascending,

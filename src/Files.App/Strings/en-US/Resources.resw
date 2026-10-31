@@ -5206,6 +5206,6 @@
     <value>Failed to export the file list</value>
   </data>
   <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
-    <value>{0}</value>
+    <value>Could not write {2}</value>
   </data>
 </root>

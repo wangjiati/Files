@@ -65,11 +65,13 @@ namespace Files.App.Actions
 			if (shellViewModel?.WorkingDirectory is not { } workingDirectory)
 				return;
 
-			var isSearchPage = context.PageType == ContentPageTypes.SearchResults;
-			var hasActiveFilter = isSearchPage || !shellViewModel.DirectoryFilter.IsEmpty;
-			var supportsRecursion = !isSearchPage && context.PageType is ContentPageTypes.Folder or ContentPageTypes.CloudDrive;
+			// Search and SQL query views both show a query result; the dialog locks the
+			// filter on (the view IS the result) and disables recursion for them.
+			var isResultView = context.PageType == ContentPageTypes.SearchResults || shellViewModel.IsQueryViewActive;
+			var hasActiveFilter = isResultView || !shellViewModel.DirectoryFilter.IsEmpty;
+			var supportsRecursion = !isResultView && context.PageType is ContentPageTypes.Folder or ContentPageTypes.CloudDrive;
 
-			var dialogViewModel = new ViewModels.Dialogs.ExportFileListDialogViewModel(isSearchPage, hasActiveFilter, supportsRecursion);
+			var dialogViewModel = new ViewModels.Dialogs.ExportFileListDialogViewModel(isResultView, hasActiveFilter, supportsRecursion);
 			var dialog = new Dialogs.ExportFileListDialog { ViewModel = dialogViewModel };
 
 			if (ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8))

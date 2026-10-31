@@ -77,7 +77,7 @@ namespace Files.App.Utils.Storage
 				if (entries.Count == 0)
 					yield break;
 
-				var rows = BuildRows(entries, directoryPath);
+				var rows = BuildRows(entries);
 
 				var sorter = FileListExportSorter.Create(sortOption, sortDirection);
 				foreach (var row in rows.OrderBy(row => row, sorter))
@@ -95,13 +95,22 @@ namespace Files.App.Utils.Storage
 				}
 			}
 
-			private List<FileListExportRow> BuildRows(IReadOnlyList<FileSystemInfo> entries, string directoryPath)
+			private List<FileListExportRow> BuildRows(IReadOnlyList<FileSystemInfo> entries)
 			{
 				var rows = new List<FileListExportRow>(entries.Count);
+				var rowTagIds = new List<IReadOnlyList<string>>(entries.Count);
 				foreach (var entry in entries)
 				{
-					tagsByPath.TryGetValue(entry.FullName, out var tagIds);
-					rows.Add(FileListExportRowFactory.FromFileSystemInfo(entry, rootPath, FormatTagNames(tagIds)));
+					var tagIds = tagsByPath.TryGetValue(entry.FullName, out var ids) ? ids : [];
+					try
+					{
+						rows.Add(FileListExportRowFactory.FromFileSystemInfo(entry, rootPath, FormatTagNames(tagIds)));
+						rowTagIds.Add(tagIds);
+					}
+					catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+					{
+						context.AddSkipped();
+					}
 				}
 
 				if (filterSpec is null || filterSpec.IsEmpty)
@@ -118,7 +127,7 @@ namespace Files.App.Utils.Storage
 						row.FullPath,
 						row.Extension,
 						row.ItemType,
-						tagIdsFor(row),
+						rowTagIds[index],
 						row.SizeBytes,
 						row.DateModified,
 						row.DateCreated,
@@ -128,9 +137,6 @@ namespace Files.App.Utils.Storage
 				var matches = DirectoryFilterEvaluator.Evaluate(snapshots, filterSpec);
 				var matched = new HashSet<long>(matches);
 				return rows.Where((_, index) => matched.Contains(index)).ToList();
-
-				IReadOnlyList<string> tagIdsFor(FileListExportRow row)
-					=> tagsByPath.TryGetValue(row.FullPath, out var ids) ? ids : [];
 			}
 
 			private IReadOnlyList<FileSystemInfo> ListEntries(string directoryPath)

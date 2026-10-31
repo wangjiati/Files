@@ -197,6 +197,12 @@ namespace Files.App.ViewModels
 		private DirectoryFilterSpec directoryFilterSpec = DirectoryFilterSpec.Empty;
 		private DirectoryFilterSpec lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 		private IReadOnlyList<ListedItem>? queryViewItems;
+
+		/// <summary>
+		/// True while a SQL query result view is active; FilesAndFolders shows the query
+		/// result instead of the directory items, so export must treat it like search.
+		/// </summary>
+		public bool IsQueryViewActive => queryViewItems is not null;
 		private string? queryViewDirectory;
 		private DirectoryFilterExecutionContext? activeFilterContext;
 		private long filterGeneration;

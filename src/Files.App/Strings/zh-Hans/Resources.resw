@@ -5152,6 +5152,6 @@
     <value>导出文件列表失败</value>
   </data>
   <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
-    <value>{0}</value>
+    <value>无法写入 {2}</value>
   </data>
 </root>

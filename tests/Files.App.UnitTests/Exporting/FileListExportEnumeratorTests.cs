@@ -150,6 +150,40 @@ namespace Files.App.UnitTests.Exporting
 		}
 
 		[TestMethod]
+		public void Recursive_EntryPropertyFailureSkipsRowAndContinues()
+		{
+			Directory.CreateDirectory(Path.Combine(root, "Sub"));
+			File.WriteAllText(Path.Combine(root, "Sub", "ok.txt"), "ok");
+
+			var rootRows = SortRows(new DirectoryInfo(root).EnumerateFileSystemInfos().Select(CreateRootRow));
+			Func<string, IReadOnlyList<FileSystemInfo>> listDirectory = path
+				=> new List<FileSystemInfo>(new DirectoryInfo(path).EnumerateFileSystemInfos())
+				{
+					new ThrowingEntry(),
+				};
+
+			var names = FileListExportEnumerator.EnumerateRecursive(
+				rootRows, root, SortOption.Name, SortDirection.Ascending, null, new Dictionary<string, IReadOnlyList<string>>(), context, listDirectory)
+				.Select(row => row.Name).ToList();
+
+			Assert.IsTrue(names.Contains("ok.txt"), "healthy sibling rows are still exported");
+			Assert.IsFalse(names.Contains("broken.txt"), "unreadable entries are skipped");
+			Assert.AreEqual(1L, context.SkippedCount);
+		}
+
+		private sealed class ThrowingEntry : FileSystemInfo
+		{
+			public override bool Exists => false;
+
+			public override string Name
+				=> throw new UnauthorizedAccessException("denied");
+
+			public override string FullName => string.Empty;
+
+			public override void Delete() { }
+		}
+
+		[TestMethod]
 		public void CurrentLevel_MapsListedItemsInOrder()
 		{
 			var first = new ListedItem { ItemNameRaw = "a.txt", ItemPath = Path.Combine(root, "a.txt"), PrimaryItemAttribute = StorageItemTypes.File };
