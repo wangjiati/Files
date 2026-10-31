@@ -1,7 +1,7 @@
 # 导出文件列表设计
 
 日期：2026-10-31
-状态：待审阅
+状态：已批准
 关联规格：`docs/superpowers/specs/2026-10-24-files-internal-edition-design.md`
 
 ## 1. 意图与背景
