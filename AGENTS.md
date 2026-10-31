@@ -64,6 +64,8 @@ Before changing a server feature, its WinRT contract, or client code that calls 
 Prefer explicit platform/configuration builds.
 Unless the task is specifically about resolving or inspecting warnings, add `-v:quiet -clp:ErrorsOnly` to `msbuild` commands so the log proves success or shows only actionable errors.
 
+Internal release and portable packaging must go through `.github/scripts/Build-Internal.ps1` (add `-PortableOnly` for portable-only; see `.github/scripts/INTERNAL-RELEASE.md`). Never hand-roll an `msbuild -t:Publish` for the portable profile: `-p:PublishProfile` alone applies `Distribution` too late in MSBuild evaluation and breaks conditional compilation, and it skips the script's staging and validation.
+
 ```powershell
 msbuild -restore Files.slnx -p:Configuration=Debug -p:Platform=x64 -v:quiet -clp:ErrorsOnly
 ```

@@ -48,6 +48,28 @@ The script rejects a dirty working tree by default. Pass `-AllowDirty` only when
 an uncommitted build is intentional; such artifacts are recorded as `Dirty` and
 are not reproducible from the recorded commit.
 
+### Portable-only rebuild
+
+Use the same script for a portable-only build; no signing certificate is
+required in this mode:
+
+```powershell
+.\.github\scripts\Build-Internal.ps1 -PortableOnly -OutputDirectory artifacts\portable-<version> -ReplaceExistingRelease
+```
+
+Always package through this script. Do not hand-roll an `msbuild -t:Publish`
+command for the portable profile:
+
+- Passing only `-p:PublishProfile=win-x64-portable` applies `Distribution` too
+  late in MSBuild evaluation: `DISTRIBUTION_MSIX` stays defined while the
+  Msix-only server build target is skipped, so `Files.App.Server` types fail to
+  resolve and the build breaks. `Distribution` must be a global property from
+  the start, which the script already does correctly.
+- A raw publish also skips the staging and validation this script performs:
+  unit tests, Debug builds of both distributions, launcher and dialog binaries,
+  portable payload and asset checks, executable/manifest version match, ZIP
+  layout, and the `SHA256SUMS.txt`/`RELEASE-INFO.txt` manifest.
+
 The script always builds and runs the unit tests, builds both Msix and Portable
 in Debug, builds the native launcher and 32/64-bit open/save dialog projects in
 Release, then creates the signed Release MSIX and the Portable Native AOT
