@@ -5070,4 +5070,76 @@
   <data name="ConfirmRemoveTagsDialogContent" xml:space="preserve">
     <value>您确定要从所选项目中删除标签吗？</value>
   </data>
+  <data name="ExportFileList" xml:space="preserve">
+    <value>导出文件列表</value>
+  </data>
+  <data name="ExportFileListDescription" xml:space="preserve">
+    <value>将当前文件夹的项目导出为 Excel 或 CSV 文件</value>
+  </data>
+  <data name="ExportFileListDialog_Header" xml:space="preserve">
+    <value>导出文件列表</value>
+  </data>
+  <data name="ExportFileListDialog_FilterOption" xml:space="preserve">
+    <value>仅导出当前筛选结果</value>
+  </data>
+  <data name="ExportFileListDialog_FilterLockedHint" xml:space="preserve">
+    <value>取消勾选时将导出当前文件夹的全部项目</value>
+  </data>
+  <data name="ExportFileListDialog_RecursiveOption" xml:space="preserve">
+    <value>包含所有子文件夹</value>
+  </data>
+  <data name="ExportFileListDialog_ColumnsHeader" xml:space="preserve">
+    <value>列</value>
+  </data>
+  <data name="ExportFileListDialog_FormatHeader" xml:space="preserve">
+    <value>格式</value>
+  </data>
+  <data name="ExportFileListDialog_FormatCsv" xml:space="preserve">
+    <value>CSV (.csv)</value>
+  </data>
+  <data name="ExportFileListDialog_FormatExcel" xml:space="preserve">
+    <value>Excel (.xlsx)</value>
+  </data>
+  <data name="ExportFileListDialog_ExportButton" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="ExportFileList_SheetName" xml:space="preserve">
+    <value>文件列表</value>
+  </data>
+  <data name="ExportFileList_ColumnName" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="ExportFileList_ColumnExtension" xml:space="preserve">
+    <value>扩展名</value>
+  </data>
+  <data name="ExportFileList_ColumnItemType" xml:space="preserve">
+    <value>项目类型</value>
+  </data>
+  <data name="ExportFileList_ColumnSizeBytes" xml:space="preserve">
+    <value>大小(字节)</value>
+  </data>
+  <data name="ExportFileList_ColumnSizeDisplay" xml:space="preserve">
+    <value>大小(可读)</value>
+  </data>
+  <data name="ExportFileList_ColumnDateCreated" xml:space="preserve">
+    <value>创建时间</value>
+  </data>
+  <data name="ExportFileList_ColumnDateModified" xml:space="preserve">
+    <value>修改时间</value>
+  </data>
+  <data name="ExportFileList_ColumnFullPath" xml:space="preserve">
+    <value>完整路径</value>
+  </data>
+  <data name="ExportFileList_ColumnRelativePath" xml:space="preserve">
+    <value>相对路径</value>
+  </data>
+  <data name="ExportFileList_ColumnIsFolder" xml:space="preserve">
+    <value>是否文件夹</value>
+  </data>
+  <data name="ExportFileList_ColumnIsHidden" xml:space="preserve">
+    <value>是否隐藏</value>
+  </data>
+  <data name="ExportFileList_ColumnFileTags" xml:space="preserve">
+    <value>文件标签</value>
+  </data>
 </root>

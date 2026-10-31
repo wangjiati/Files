@@ -5124,4 +5124,76 @@
   <data name="SearchForQuery" xml:space="preserve">
     <value>Search for `{0}`</value>
   </data>
+  <data name="ExportFileList" xml:space="preserve">
+    <value>Export file list</value>
+  </data>
+  <data name="ExportFileListDescription" xml:space="preserve">
+    <value>Export the current folder's items as an Excel or CSV file</value>
+  </data>
+  <data name="ExportFileListDialog_Header" xml:space="preserve">
+    <value>Export file list</value>
+  </data>
+  <data name="ExportFileListDialog_FilterOption" xml:space="preserve">
+    <value>Export only items matching the current filter</value>
+  </data>
+  <data name="ExportFileListDialog_FilterLockedHint" xml:space="preserve">
+    <value>When disabled, all items in the folder are exported</value>
+  </data>
+  <data name="ExportFileListDialog_RecursiveOption" xml:space="preserve">
+    <value>Include all subfolders</value>
+  </data>
+  <data name="ExportFileListDialog_ColumnsHeader" xml:space="preserve">
+    <value>Columns</value>
+  </data>
+  <data name="ExportFileListDialog_FormatHeader" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="ExportFileListDialog_FormatCsv" xml:space="preserve">
+    <value>CSV (.csv)</value>
+  </data>
+  <data name="ExportFileListDialog_FormatExcel" xml:space="preserve">
+    <value>Excel (.xlsx)</value>
+  </data>
+  <data name="ExportFileListDialog_ExportButton" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="ExportFileList_SheetName" xml:space="preserve">
+    <value>File list</value>
+  </data>
+  <data name="ExportFileList_ColumnName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ExportFileList_ColumnExtension" xml:space="preserve">
+    <value>Extension</value>
+  </data>
+  <data name="ExportFileList_ColumnItemType" xml:space="preserve">
+    <value>Item type</value>
+  </data>
+  <data name="ExportFileList_ColumnSizeBytes" xml:space="preserve">
+    <value>Size (bytes)</value>
+  </data>
+  <data name="ExportFileList_ColumnSizeDisplay" xml:space="preserve">
+    <value>Size (readable)</value>
+  </data>
+  <data name="ExportFileList_ColumnDateCreated" xml:space="preserve">
+    <value>Date created</value>
+  </data>
+  <data name="ExportFileList_ColumnDateModified" xml:space="preserve">
+    <value>Date modified</value>
+  </data>
+  <data name="ExportFileList_ColumnFullPath" xml:space="preserve">
+    <value>Full path</value>
+  </data>
+  <data name="ExportFileList_ColumnRelativePath" xml:space="preserve">
+    <value>Relative path</value>
+  </data>
+  <data name="ExportFileList_ColumnIsFolder" xml:space="preserve">
+    <value>Is folder</value>
+  </data>
+  <data name="ExportFileList_ColumnIsHidden" xml:space="preserve">
+    <value>Is hidden</value>
+  </data>
+  <data name="ExportFileList_ColumnFileTags" xml:space="preserve">
+    <value>Tags</value>
+  </data>
 </root>
