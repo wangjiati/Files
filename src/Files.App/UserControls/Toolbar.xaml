@@ -120,6 +120,21 @@
 				<FontIcon FontSize="16" Glyph="&#xE943;" />
 			</AppBarButton>
 
+			<!--  Export file list  -->
+			<AppBarButton
+				x:Name="ExportFileListButton"
+				Width="Auto"
+				MinWidth="46"
+				x:Load="{x:Bind ViewModel.InstanceViewModel.IsPageTypeNotHome, Mode=OneWay}"
+				AutomationProperties.Name="{x:Bind Commands.ExportFileList.AutomationName}"
+				Command="{x:Bind Commands.ExportFileList}"
+				IsEnabled="{x:Bind Commands.ExportFileList.IsExecutable, Mode=OneWay}"
+				Label="{x:Bind Commands.ExportFileList.Label}"
+				LabelPosition="Collapsed"
+				ToolTipService.ToolTip="{x:Bind Commands.ExportFileList.LabelWithHotKey, Mode=OneWay}">
+				<FontIcon FontSize="16" Glyph="&#xE8E5;" />
+			</AppBarButton>
+
 			<!--  Selection Commands  -->
 			<AppBarButton
 				x:Name="SelectionOptions"

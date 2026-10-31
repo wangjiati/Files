@@ -5196,4 +5196,16 @@
   <data name="ExportFileList_ColumnFileTags" xml:space="preserve">
     <value>Tags</value>
   </data>
+  <data name="StatusCenter_ExportFileListComplete_Header" xml:space="preserve">
+    <value>Exported {0} items</value>
+  </data>
+  <data name="StatusCenter_ExportFileListComplete_SubHeader" xml:space="preserve">
+    <value>Skipped {1} inaccessible items · {2}</value>
+  </data>
+  <data name="StatusCenter_ExportFileListFailed_Header" xml:space="preserve">
+    <value>Failed to export the file list</value>
+  </data>
+  <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
+    <value>{0}</value>
+  </data>
 </root>

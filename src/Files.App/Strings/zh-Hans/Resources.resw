@@ -5142,4 +5142,16 @@
   <data name="ExportFileList_ColumnFileTags" xml:space="preserve">
     <value>文件标签</value>
   </data>
+  <data name="StatusCenter_ExportFileListComplete_Header" xml:space="preserve">
+    <value>已导出 {0} 个项目</value>
+  </data>
+  <data name="StatusCenter_ExportFileListComplete_SubHeader" xml:space="preserve">
+    <value>跳过 {1} 个无法访问的项目 · {2}</value>
+  </data>
+  <data name="StatusCenter_ExportFileListFailed_Header" xml:space="preserve">
+    <value>导出文件列表失败</value>
+  </data>
+  <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
+    <value>{0}</value>
+  </data>
 </root>

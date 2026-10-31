@@ -1,4 +1,4 @@
-﻿// Copyright (c) Files Community
+// Copyright (c) Files Community
 // Licensed under the MIT License.
 
 namespace Files.App.Data.Enums
@@ -72,5 +72,10 @@ namespace Files.App.Data.Enums
 		/// A font has been installed
 		/// </summary>
 		InstallFont = 13,
+
+		/// <summary>
+		/// A file list has been exported
+		/// </summary>
+		ExportFileList = 14,
 	}
 }

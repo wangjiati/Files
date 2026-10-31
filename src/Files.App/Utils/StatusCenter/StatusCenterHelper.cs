@@ -517,6 +517,29 @@ namespace Files.App.Utils.StatusCenter
 				cancellationTokenSource: operationCancellationToken);
 		}
 
+		public static StatusCenterItem AddCard_ExportFileList(
+			ReturnResult returnStatus,
+			string destinationPath,
+			long itemsCount = 0,
+			long skippedCount = 0)
+		{
+			// totalSize carries the skipped-item count for the export card.
+			return _statusCenterViewModel.AddItem(
+				returnStatus == ReturnResult.Success
+					? "StatusCenter_ExportFileListComplete_Header"
+					: "StatusCenter_ExportFileListFailed_Header",
+				returnStatus == ReturnResult.Success
+					? "StatusCenter_ExportFileListComplete_SubHeader"
+					: "StatusCenter_ExportFileListFailed_SubHeader",
+				returnStatus,
+				FileOperationType.ExportFileList,
+				destinationPath.CreateEnumerable(),
+				string.Empty.CreateEnumerable(),
+				false,
+				itemsCount,
+				skippedCount);
+		}
+
 		public static StatusCenterItem AddCard_InstallFont(
 			IEnumerable<string> source,
 			ReturnResult returnStatus,
@@ -743,6 +766,18 @@ namespace Files.App.Utils.StatusCenter
 
 						string subHeaderString = string.IsNullOrWhiteSpace(card.SubHeaderStringResource) ? string.Empty
 							: card.SubHeaderStringResource.GetLocalizedFormatResource(card.TotalItemsCount, sourcePath);
+						card.SubHeader = subHeaderString;
+						break;
+					}
+				case FileOperationType.ExportFileList:
+					{
+						string headerString = string.IsNullOrWhiteSpace(card.HeaderStringResource) ? string.Empty
+							: card.HeaderStringResource.GetLocalizedFormatResource(card.TotalItemsCount);
+						card.Header = headerString;
+
+						// totalSize carries the skipped-item count.
+						string subHeaderString = string.IsNullOrWhiteSpace(card.SubHeaderStringResource) ? string.Empty
+							: card.SubHeaderStringResource.GetLocalizedFormatResource(card.TotalItemsCount, card.TotalSize, sourcePath);
 						card.SubHeader = subHeaderString;
 						break;
 					}

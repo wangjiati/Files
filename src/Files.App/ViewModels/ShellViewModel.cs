@@ -78,6 +78,13 @@ namespace Files.App.ViewModels
 		// Only used for Binding and ApplyFilesAndFoldersChangesAsync, don't manipulate on this!
 		public GroupableBulkConcurrentObservableCollection<ListedItem> FilesAndFolders { get; }
 
+		/// <summary>
+		/// Snapshot of every loaded item before any filter projection, in the current sort order.
+		/// Used by export to produce the unfiltered list without re-enumerating disk.
+		/// </summary>
+		public IReadOnlyList<ListedItem> GetFullItemListSnapshot()
+			=> filesAndFolders.ToList();
+
 		// Number of folders in FilesAndFolders
 		public int FoldersCount { get; private set; }
 
