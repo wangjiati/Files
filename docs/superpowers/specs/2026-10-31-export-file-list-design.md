@@ -37,19 +37,18 @@
 
 1. **范围**：
    - 「仅导出当前筛选结果」复选框。当前无任何活动筛选（`DirectoryFilter == Empty` 且无搜索关键词）时禁用并提示无可筛选。默认勾选状态：存在活动筛选时勾选，否则禁用。
-   - 「包含所有子文件夹」复选框。位置不支持递归枚举时禁用（MTP、FTP、搜索结果页）。默认不勾选。
+   - 「包含所有子文件夹」复选框。位置不支持递归枚举时禁用（MTP、FTP、搜索结果页、库根目录）。默认不勾选。
    - 两项可同时勾选：递归枚举出的子文件夹条目也要经过同一筛选规范的求值。
 2. **列**：复选框列表，至少勾选一列才能导出（确认按钮联动禁用）。默认勾选：名称、项目类型、大小(字节)、修改时间、完整路径。
 3. **格式**：Excel (.xlsx) / CSV 单选，默认 CSV。
 
 确认后走系统 FileSavePicker（需按现有模式用主窗口句柄 `InitializeWithWindow`，参照 `AdvancedViewModel.InitializeWithWindow`），默认文件名 `{当前文件夹名}_FileList_{yyyyMMdd}`，扩展名跟随所选格式。
 
-### 3.3 进度与完成
+### 3.3 执行与完成
 
-- 枚举与写文件在后台线程执行，不阻塞 UI。
-- 递归导出通过 StatusCenter 横幅显示进度（参照 `InstallFontAction` 使用 `StatusCenterViewModel` 的模式），显示已处理条目数，可取消；取消后删除未完成的输出文件。
-- 非递归导出数据已就绪，直接同步写出后以完成横幅/通知提示，不显示进度。
-- 完成提示包含导出的行数与因无法访问被跳过的条目数。
+- 枚举与写文件在后台线程执行，不阻塞 UI；不做实时进度与取消（v1 简化）。
+- 输出先写同目录临时文件，成功后移动为目标文件；任何失败自动清理临时文件，不产生半成品。
+- 完成时通过 StatusCenter 弹一张结果卡片（参照 `InstallFontAction` 的一次性卡片模式），显示导出行数与因无法访问被跳过的条目数。
 
 ## 4. 数据规范
 
@@ -77,7 +76,7 @@
 - **勾选「当前筛选」**：直接取 `ShellViewModel.FilesAndFolders`（已是筛选+排序后的投影集合），顺序即视图顺序。
 - **未勾选**：取当前目录全部项目（绕过活动筛选，从 ShellViewModel 的投影前集合或等价来源获得；不重新枚举磁盘）。顺序沿用当前排序设置。
 - **递归**：在后台按当前排序设置逐层枚举子文件夹。每个子目录内按同一排序选项排序；行序为「当前层全部行，随后各子树按遍历序」，文件夹行出现在其内容行之前。
-- **库根目录递归**：库聚合多个物理文件夹，递归时遍历库的全部成员文件夹（解析方式参照 `BaseCompressArchiveAction.TryGetLibrary` 先例）；相对路径以「库名」为虚拟根（如 `库名\成员内相对路径`），默认文件名取库名。库根当前层导出不受影响。
+- **库根目录**：v1 不支持递归（库聚合多个物理成员文件夹，递归语义复杂且非核心场景）；需要递归时进入具体文件夹导出。库根当前层导出不受影响。
 - **递归 + 筛选**：对每个枚举出的条目构造 `DirectoryItemFilterSnapshot`，用当前 `DirectoryFilterSpec`（搜索关键词已并入 `NameContains`）经 `DirectoryFilterEvaluator` 求值，不匹配的跳过；文件夹行是否保留按求值结果，其子树仍照常遍历（父被筛掉不等于跳过整个子树）。
 
 ### 4.3 CSV 格式
@@ -88,7 +87,7 @@
 ### 4.4 xlsx 格式
 
 - 用 `System.IO.Compression` ZipArchive + 手写 OpenXML 生成，**不引入第三方库**。
-- 单工作表「文件列表」；表头行加粗；按列类型给近似列宽。
+- 单工作表「文件列表」；表头行加粗（静态 styles.xml）；不设显式列宽（打开后由 Excel 自适应/用户调整）。
 - 行数据以流式写入 zip 条目，不把整份文档驻留内存；单元格用 inline string，数值列（大小字节、是否文件夹）写原生数值。
 - 日期作为 ISO 文本写入，不做 Excel 日期序列转换。
 
@@ -101,7 +100,7 @@
 - `Utils/Storage/Exporting/FileListExportModel.cs`：导出请求（根目录、范围、列集、格式、排序、筛选规范）与结果（行数、跳过数）。
 - `Utils/Storage/Exporting/FileListCsvWriter.cs`：纯函数 CSV 写入器（`Stream` 目标）。
 - `Utils/Storage/Exporting/FileListXlsxWriter.cs`：纯函数 xlsx 写入器（`Stream` 目标）。
-- `Utils/Storage/Exporting/RecursiveListEnumerator.cs`：递归枚举 + 快照构造 + 筛选求值，接受 `CancellationToken`，产出 `ListedItem` 或等价行模型。
+- `Utils/Storage/Exporting/RecursiveListEnumerator.cs`：递归枚举 + 快照构造 + 筛选求值，产出 `ListedItem` 或等价行模型。
 - 本地化资源（`en-US` / `zh-CN` resw）与对应 `Strings` 生成项。
 
 ### 5.2 约束
@@ -129,6 +128,6 @@
 
 ## 8. 风险
 
-- 递归枚举超大目录树耗时较长：已有取消与进度应对；首版不做性能上限保护。
+- 递归枚举超大目录树耗时较长：后台执行不阻塞 UI，但 v1 无进度与取消，误发起的大导出只能等待其完成（接受的代价）。
 - 网络路径递归可能很慢或部分失败：跳过不可访问项并计数，不中断整体导出。
 - xlsx 手写 OpenXML 需保证结构合法：以测试重新解包验证；如实现中发现结构成本过高，降级方案为「Excel 可直接打开的带 BOM CSV」并回报用户重新确认。
