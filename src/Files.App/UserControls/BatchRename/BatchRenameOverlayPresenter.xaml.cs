@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using CommunityToolkit.WinUI;
-using CommunityToolkit.WinUI;
 using Files.App.Utils.Rename;
 using Files.App.ViewModels.Dialogs;
 using Microsoft.Extensions.Logging;
@@ -37,6 +36,15 @@ namespace Files.App.UserControls
 		private const string DateVariable = "$YYYY-$MM-$DD";
 		private const string FolderVariable = "${folder}";
 
+		/// <summary>Fraction of the window client area the dialog targets.</summary>
+		private const double DialogSizeRatio = 0.85;
+
+		/// <summary>Smallest dialog size that keeps the rule panel and the preview readable.</summary>
+		private const double DialogMinWidth = 720;
+
+		/// <summary>Smallest dialog size that keeps the rule panel and the preview readable.</summary>
+		private const double DialogMinHeight = 480;
+
 		public static BatchRenameOverlayPresenter? Instance { get; private set; }
 
 		public bool IsOpen { get; private set; }
@@ -67,6 +75,7 @@ namespace Files.App.UserControls
 			Loaded += BatchRenameOverlayPresenter_Loaded;
 			Unloaded += BatchRenameOverlayPresenter_Unloaded;
 			ActualThemeChanged += BatchRenameOverlayPresenter_ActualThemeChanged;
+			RootGrid.SizeChanged += RootGrid_SizeChanged;
 		}
 
 		private void BatchRenameOverlayPresenter_Loaded(object sender, RoutedEventArgs e)
@@ -134,6 +143,7 @@ namespace Files.App.UserControls
 
 			IsOpen = true;
 			Visibility = Visibility.Visible;
+			UpdateDialogSize();
 
 			DispatcherQueue.TryEnqueue(() =>
 			{
@@ -218,8 +228,9 @@ namespace Files.App.UserControls
 					ResolveErrorText.Visibility = vm.ResolveError is null ? Visibility.Collapsed : Visibility.Visible;
 					break;
 				case nameof(BatchRenameViewModel.PasteTruncated):
-					if (vm.PasteTruncated)
-						SetNotice(Strings.BatchRenamePasteTruncated.GetLocalizedResource());
+					SetNotice(vm.PasteTruncated
+						? Strings.BatchRenamePasteTruncated.GetLocalizedResource()
+						: string.Empty);
 					break;
 				case nameof(BatchRenameViewModel.Rule):
 				case nameof(BatchRenameViewModel.Scope):
@@ -370,7 +381,6 @@ namespace Files.App.UserControls
 
 			ResolvingRing.IsActive = vm.IsResolving;
 			EmptyStatePanel.Visibility = vm.IsResolving || vm.Rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-			EmptyStateText.Text = string.Empty;
 
 			UpdateApplyUi();
 		}
@@ -458,10 +468,10 @@ namespace Files.App.UserControls
 
 			if (ctrl && e.Key is VirtualKey.H)
 			{
-				// Ctrl+H focuses the search box while the overlay is open; the global accelerator is suppressed.
+				// Ctrl+H focuses the rule's find box while the overlay is open; the global accelerator is suppressed.
 				e.Handled = true;
-				SearchBox.Focus(FocusState.Programmatic);
-				SearchBox.SelectAll();
+				FindBox.Focus(FocusState.Programmatic);
+				FindBox.SelectAll();
 			}
 			else if (e.Key is VirtualKey.Escape)
 			{
@@ -586,8 +596,9 @@ namespace Files.App.UserControls
 		}
 
 		/// <summary>
-		/// Focuses the row's edit box once its container is realized; scrolling to a virtualized row
-		/// realizes it asynchronously, so the lookup is retried once on the next pass.
+		/// Focuses the row's edit box once its container is realized. Scrolling to a virtualized row
+		/// realizes it asynchronously, so the lookup runs one dispatcher pass later; if the container
+		/// still is not realized by then, the focus is dropped and the user reopens the editor.
 		/// </summary>
 		private void FocusEditBox(BatchRenameRowViewModel wrapper)
 		{
@@ -767,9 +778,18 @@ namespace Files.App.UserControls
 			if (vm is null || vm.Rows.Count == 0)
 				return;
 
-			DataPackage package = new();
-			package.SetText(vm.CopyOriginalNames());
-			Clipboard.SetContent(package);
+			try
+			{
+				DataPackage package = new();
+				package.SetText(vm.CopyOriginalNames());
+				Clipboard.SetContent(package);
+			}
+			catch (Exception ex)
+			{
+				// Clipboard access is a COM call and can fail while another process holds it.
+				App.Logger.LogWarning(ex, "The original names could not be copied.");
+				SetNotice(Strings.BatchRenameClipboardFailed.GetLocalizedResource());
+			}
 		}
 
 		private async void PasteNewButton_Click(object sender, RoutedEventArgs e)
@@ -777,12 +797,26 @@ namespace Files.App.UserControls
 			if (vm is null)
 				return;
 
-			DataPackageView content = Clipboard.GetContent();
-			if (!content.Contains(StandardDataFormats.Text))
-				return;
+			try
+			{
+				DataPackageView content = Clipboard.GetContent();
+				if (!content.Contains(StandardDataFormats.Text))
+					return;
 
-			string text = await content.GetTextAsync();
-			vm.PasteNewNames(text);
+				string text = await content.GetTextAsync();
+				vm.PasteNewNames(text);
+
+				// A paste without truncation clears the previous paste's notice itself: the flag
+				// only raises a change when it flips to true.
+				if (!vm.PasteTruncated)
+					SetNotice(string.Empty);
+			}
+			catch (Exception ex)
+			{
+				// Clipboard access is a COM call and can fail while another process holds it.
+				App.Logger.LogWarning(ex, "The new names could not be pasted.");
+				SetNotice(Strings.BatchRenameClipboardFailed.GetLocalizedResource());
+			}
 		}
 
 		// Presets
@@ -955,6 +989,33 @@ namespace Files.App.UserControls
 
 			VisualStateManager.GoToState(this, maximized ? "NormalSizeState" : "MaximizedState", true);
 			MaximizeButton.Content = maximized ? "\uE922" : "\uE923";
+
+			// Leaving the maximized state restores the last computed size; recompute it in case the
+			// window changed while the dialog was stretched.
+			if (maximized)
+				UpdateDialogSize();
+		}
+
+		private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+		{
+			UpdateDialogSize();
+		}
+
+		/// <summary>
+		/// Sizes the dialog to ~85% of the client area the overlay covers, clamped to a readable
+		/// minimum; the maximized visual state keeps stretching it to the full area.
+		/// </summary>
+		private void UpdateDialogSize()
+		{
+			if (RootGrid.ActualWidth <= 0 || RootGrid.ActualHeight <= 0)
+				return;
+
+			if (VisualStateManager.GetVisualStateGroups(RootGrid)
+				.First(group => group.Name == "SizeStates").CurrentState?.Name == "MaximizedState")
+				return;
+
+			DialogBorder.MaxWidth = Math.Max(DialogMinWidth, Math.Round(RootGrid.ActualWidth * DialogSizeRatio));
+			DialogBorder.MaxHeight = Math.Max(DialogMinHeight, Math.Round(RootGrid.ActualHeight * DialogSizeRatio));
 		}
 
 		private void CloseButton_Click(object sender, RoutedEventArgs e)

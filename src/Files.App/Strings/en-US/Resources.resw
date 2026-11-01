@@ -5517,4 +5517,19 @@
   <data name="BatchRenameActionDescription" xml:space="preserve">
     <value>Batch rename items with find and replace rules</value>
   </data>
+  <data name="BatchRenameRowDuplicateName" xml:space="preserve">
+    <value>Duplicate name</value>
+  </data>
+  <data name="BatchRenameProgressFormat" xml:space="preserve">
+    <value>Renaming {0}/{1}: {2}</value>
+  </data>
+  <data name="BatchRenameRenameFailedFormat" xml:space="preserve">
+    <value>Rename failed ({0}).</value>
+  </data>
+  <data name="BatchRenameFreeFailedFormat" xml:space="preserve">
+    <value>The destination could not be freed ({0}).</value>
+  </data>
+  <data name="BatchRenameClipboardFailed" xml:space="preserve">
+    <value>The clipboard could not be accessed.</value>
+  </data>
 </root>

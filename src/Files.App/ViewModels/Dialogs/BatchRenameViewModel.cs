@@ -47,9 +47,12 @@ namespace Files.App.ViewModels.Dialogs
 		private readonly IRenameExecutor executor;
 		private readonly RenameEngine engine = new();
 
+		private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> NoFolderNames = new Dictionary<string, IReadOnlyList<string>>();
+
 		private IReadOnlyList<ListedItem> selectedItems = [];
 		private ListedItem? currentFolderItem;
 		private IReadOnlyList<RenameTarget> targets = [];
+		private IReadOnlyDictionary<string, IReadOnlyList<string>> existingFolderNames = NoFolderNames;
 		private CancellationTokenSource? updateCts;
 
 		public BatchRenameViewModel(IRenameScopeResolver scopeResolver, IRenameExecutor executor)
@@ -133,7 +136,26 @@ namespace Files.App.ViewModels.Dialogs
 		/// <summary>
 		/// Whether an apply has anything to execute: the rule is intact and at least one row enters the plan.
 		/// </summary>
-		public bool CanApply => !IsRuleBroken && RenameExecutor.BuildExecutionPlan(Rows, ConflictStrategy).Count > 0;
+		/// <remarks>
+		/// This is the existence form of <see cref="RenameExecutor.BuildExecutionPlan"/>, not a plan
+		/// build: it runs on every counts refresh, so it stays linear in the row count.
+		/// </remarks>
+		public bool CanApply
+		{
+			get
+			{
+				if (IsRuleBroken)
+					return false;
+
+				foreach (RenamePreviewRow row in Rows)
+				{
+					if (RenameExecutor.IsExecutable(row))
+						return true;
+				}
+
+				return false;
+			}
+		}
 
 		public RenamePreviewCounts Counts { get; private set; } = new(0, 0, 0, 0, 0, 0, 0, 0);
 
@@ -171,7 +193,9 @@ namespace Files.App.ViewModels.Dialogs
 			{
 				IsResolving = true;
 				ResolveError = null;
-				targets = await scopeResolver.ResolveAsync(Scope, Depth, IncludeFiles, IncludeFolders, selectedItems, currentFolderItem, ct);
+				RenameScopeResult scope = await scopeResolver.ResolveAsync(Scope, Depth, IncludeFiles, IncludeFolders, selectedItems, currentFolderItem, ct);
+				targets = scope.Targets;
+				existingFolderNames = scope.ExistingNamesInFolders;
 				RebuildPreview();
 			}
 			catch (OperationCanceledException)
@@ -203,6 +227,7 @@ namespace Files.App.ViewModels.Dialogs
 			if (targets.Count > 0)
 				built.AddRange(ComputeRows(carried));
 
+			FlagDuplicateFinalNames(built);
 			Rows = built;
 			RefreshCounts();
 			OnPropertyChanged(nameof(Rows));
@@ -215,8 +240,9 @@ namespace Files.App.ViewModels.Dialogs
 		{
 			IReadOnlyList<RenameOutcome> outcomes = engine.Run(targets, Rule);
 
-			// Seed every folder's occupied-name set with all original names in it; the resolver's
-			// two passes account for same-batch collisions on top of that.
+			// Seed every folder's occupied-name set with all original names in it and the sibling
+			// names the resolver reported, so a destination that already exists conflicts too; the
+			// resolver's two passes account for same-batch collisions on top of that.
 			Dictionary<string, HashSet<string>> folderNames = new(StringComparer.OrdinalIgnoreCase);
 			foreach (RenameTarget target in targets)
 			{
@@ -224,6 +250,14 @@ namespace Files.App.ViewModels.Dialogs
 				if (!folderNames.TryGetValue(folder, out HashSet<string>? names))
 					folderNames[folder] = names = new(StringComparer.OrdinalIgnoreCase);
 				names.Add(target.Name);
+			}
+
+			foreach ((string folder, IReadOnlyList<string> names) in existingFolderNames)
+			{
+				if (!folderNames.TryGetValue(folder, out HashSet<string>? set))
+					folderNames[folder] = set = new(StringComparer.OrdinalIgnoreCase);
+				foreach (string name in names)
+					set.Add(name);
 			}
 
 			List<ConflictInput> inputs = new(targets.Count);
@@ -247,6 +281,28 @@ namespace Files.App.ViewModels.Dialogs
 
 				yield return row;
 			}
+		}
+
+		/// <summary>
+		/// Flags manual names whose final name another row also ends up with in the same folder: they
+		/// bypass conflict resolution, so the duplicate is caught here instead. Only manual rows are
+		/// flagged; computed names are already unique per folder.
+		/// </summary>
+		private static void FlagDuplicateFinalNames(IReadOnlyList<RenamePreviewRow> rows)
+		{
+			Dictionary<string, Dictionary<string, int>> finalNameCounts = new(StringComparer.OrdinalIgnoreCase);
+			foreach (RenamePreviewRow row in rows)
+			{
+				string folder = GetFolderPath(row.Target);
+				if (!finalNameCounts.TryGetValue(folder, out Dictionary<string, int>? names))
+					finalNameCounts[folder] = names = new(StringComparer.OrdinalIgnoreCase);
+				names.TryGetValue(row.FinalName, out int count);
+				names[row.FinalName] = count + 1;
+			}
+
+			foreach (RenamePreviewRow row in rows)
+				row.HasDuplicateFinalName = row.ManualName is not null &&
+					finalNameCounts[GetFolderPath(row.Target)][row.FinalName] > 1;
 		}
 
 		// Rule shortcuts
@@ -297,6 +353,7 @@ namespace Files.App.ViewModels.Dialogs
 			if (lines.Length > Rows.Count)
 				PasteTruncated = true;
 
+			FlagDuplicateFinalNames(Rows);
 			RefreshCounts();
 			OnPropertyChanged(nameof(VisibleRows));
 			ApplyCommand.NotifyCanExecuteChanged();
@@ -308,6 +365,7 @@ namespace Files.App.ViewModels.Dialogs
 		public void SetManualName(RenamePreviewRow row, string name)
 		{
 			row.SetManual(name);
+			FlagDuplicateFinalNames(Rows);
 			RefreshCounts();
 			OnPropertyChanged(nameof(VisibleRows));
 			ApplyCommand.NotifyCanExecuteChanged();
@@ -319,6 +377,7 @@ namespace Files.App.ViewModels.Dialogs
 		public void ResetManualName(RenamePreviewRow row)
 		{
 			row.ResetManual();
+			FlagDuplicateFinalNames(Rows);
 			RefreshCounts();
 			OnPropertyChanged(nameof(VisibleRows));
 			ApplyCommand.NotifyCanExecuteChanged();

@@ -65,9 +65,36 @@ namespace Files.App.Utils.Rename
 		public bool IsIncluded { get; set; } = true;
 
 		/// <summary>
+		/// Whether the row's final name duplicates another row's final name in the same folder; the
+		/// preview pass over the rows sets it, because a manual override bypasses conflict resolution.
+		/// </summary>
+		public bool HasDuplicateFinalName { get; internal set; }
+
+		/// <summary>
 		/// The name the item ends up with: the manual name, else the conflict-resolved name.
 		/// </summary>
 		public string FinalName => ManualName ?? Conflict.FinalName ?? Outcome.OriginalName;
+
+		/// <summary>
+		/// Why the row is in error; <see cref="RenameError.None"/> when it is not.
+		/// </summary>
+		public RenameError RowError
+		{
+			get
+			{
+				if (ManualName is not null)
+				{
+					if (RenameValidator.Validate(ManualName) is not null)
+						return RenameError.InvalidName;
+					if (HasDuplicateFinalName)
+						return RenameError.DuplicateName;
+
+					return RenameError.None;
+				}
+
+				return Outcome.Kind == RenameOutcomeKind.RuleError ? Outcome.Error : RenameError.None;
+			}
+		}
 
 		public RenameRowStatus Status
 		{
@@ -75,8 +102,10 @@ namespace Files.App.Utils.Rename
 			{
 				// A manual name that fails name validation flags the row as an error and keeps it
 				// out of the plan, but the typed value stays until the user resets the row.
+				if (RowError != RenameError.None)
+					return RenameRowStatus.Error;
 				if (ManualName is not null)
-					return RenameValidator.Validate(ManualName) is null ? RenameRowStatus.Manual : RenameRowStatus.Error;
+					return RenameRowStatus.Manual;
 				if (Target.IsFolder && !IncludeFolders)
 					return RenameRowStatus.Unchanged;
 				if (Outcome.Kind == RenameOutcomeKind.RuleError)

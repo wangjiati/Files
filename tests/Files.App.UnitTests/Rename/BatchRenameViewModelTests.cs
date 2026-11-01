@@ -45,14 +45,18 @@ namespace Files.App.UnitTests.Rename
 		{
 			public IReadOnlyList<RenameTarget> Targets { get; set; } = [];
 
+			public IReadOnlyDictionary<string, IReadOnlyList<string>>? ExistingNamesInFolders { get; set; }
+
 			public Exception? Throw { get; set; }
 
 			public int CallCount { get; private set; }
 
-			public Task<IReadOnlyList<RenameTarget>> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem? currentFolderItem, CancellationToken ct)
+			public Task<RenameScopeResult> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem? currentFolderItem, CancellationToken ct)
 			{
 				CallCount++;
-				return Throw is null ? Task.FromResult(Targets) : Task.FromException<IReadOnlyList<RenameTarget>>(Throw);
+				return Throw is null
+					? Task.FromResult(new RenameScopeResult(Targets, ExistingNamesInFolders ?? new Dictionary<string, IReadOnlyList<string>>()))
+					: Task.FromException<RenameScopeResult>(Throw);
 			}
 		}
 
@@ -408,6 +412,114 @@ namespace Files.App.UnitTests.Rename
 			Assert.AreEqual(RenameRowStatus.Changed, vm.Rows[1].Status);
 			Assert.AreEqual("照片_002.jpg", vm.Rows[1].FinalName);
 			Assert.AreEqual(1, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+		}
+
+		[TestMethod]
+		public async Task RenameOntoExistingSibling_AppendNumber_NumbersTheName()
+		{
+			var vm = CreateVm(new FakeScopeResolver
+			{
+				Targets = [FileTarget("a.jpg")],
+				ExistingNamesInFolders = new Dictionary<string, IReadOnlyList<string>> { [@"C:\pic"] = ["a.jpg", "b.jpg"] },
+			});
+			vm.Rule = vm.Rule with { Find = "a", ReplaceWith = "b" };
+
+			await vm.ResolveScopeAsync();
+
+			Assert.AreEqual(RenameRowStatus.Sequenced, vm.Rows[0].Status);
+			Assert.AreEqual("b (2).jpg", vm.Rows[0].FinalName);
+		}
+
+		[TestMethod]
+		public async Task RenameOntoExistingSibling_Skip_MarksRowSkipped()
+		{
+			var vm = CreateVm(new FakeScopeResolver
+			{
+				Targets = [FileTarget("a.jpg")],
+				ExistingNamesInFolders = new Dictionary<string, IReadOnlyList<string>> { [@"C:\pic"] = ["a.jpg", "b.jpg"] },
+			});
+			vm.Rule = vm.Rule with { Find = "a", ReplaceWith = "b" };
+			vm.ConflictStrategy = ConflictStrategy.Skip;
+
+			await vm.ResolveScopeAsync();
+
+			Assert.AreEqual(RenameRowStatus.Skipped, vm.Rows[0].Status);
+			Assert.AreEqual("a.jpg", vm.Rows[0].FinalName);
+		}
+
+		[TestMethod]
+		public async Task RenameOntoExistingSibling_Overwrite_MarksRowOverwrite()
+		{
+			var vm = CreateVm(new FakeScopeResolver
+			{
+				Targets = [FileTarget("a.jpg")],
+				ExistingNamesInFolders = new Dictionary<string, IReadOnlyList<string>> { [@"C:\pic"] = ["a.jpg", "b.jpg"] },
+			});
+			vm.Rule = vm.Rule with { Find = "a", ReplaceWith = "b" };
+			vm.ConflictStrategy = ConflictStrategy.Overwrite;
+
+			await vm.ResolveScopeAsync();
+
+			Assert.AreEqual(RenameRowStatus.Overwrite, vm.Rows[0].Status);
+			Assert.AreEqual("b.jpg", vm.Rows[0].FinalName);
+		}
+
+		[TestMethod]
+		public async Task SetManualName_TwoRowsSameFinalName_BothMarkedError()
+		{
+			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("IMG_001.jpg"), FileTarget("IMG_002.jpg")] });
+			vm.Rule = vm.Rule with { Find = "IMG", ReplaceWith = "照片" };
+			await vm.ResolveScopeAsync();
+
+			vm.SetManualName(vm.Rows[0], "同.jpg");
+			vm.SetManualName(vm.Rows[1], "同.jpg");
+
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[0].Status);
+			Assert.AreEqual(RenameError.DuplicateName, vm.Rows[0].RowError);
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[1].Status);
+			Assert.AreEqual(RenameError.DuplicateName, vm.Rows[1].RowError);
+			Assert.IsFalse(vm.IsRuleBroken);
+			Assert.IsFalse(vm.ApplyCommand.CanExecute(null));
+			Assert.AreEqual(0, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+		}
+
+		[TestMethod]
+		public async Task PasteNewNames_DuplicateLines_MarkRowsErrorWithoutBlockingOthers()
+		{
+			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("a.jpg"), FileTarget("b.jpg"), FileTarget("c.jpg")] });
+			vm.Rule = vm.Rule with { Find = "a", ReplaceWith = "x" };
+			await vm.ResolveScopeAsync();
+
+			vm.PasteNewNames("同.jpg\r\n同.jpg\r\n別.jpg");
+
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[0].Status);
+			Assert.AreEqual(RenameError.DuplicateName, vm.Rows[0].RowError);
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[1].Status);
+			Assert.AreEqual(RenameError.DuplicateName, vm.Rows[1].RowError);
+			Assert.AreEqual(RenameRowStatus.Manual, vm.Rows[2].Status);
+			Assert.IsTrue(vm.ApplyCommand.CanExecute(null));
+			Assert.AreEqual(1, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+		}
+
+		[TestMethod]
+		public async Task ManualNameMatchingComputedFinalName_FlagsOnlyTheManualRow()
+		{
+			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("a.jpg"), FileTarget("b.jpg")] });
+			vm.Rule = vm.Rule with { Find = "a", ReplaceWith = "x" };
+			await vm.ResolveScopeAsync();
+			Assert.AreEqual("x.jpg", vm.Rows[0].FinalName);
+
+			vm.SetManualName(vm.Rows[1], "x.jpg");
+
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[1].Status);
+			Assert.AreEqual(RenameError.DuplicateName, vm.Rows[1].RowError);
+			Assert.AreEqual(RenameRowStatus.Changed, vm.Rows[0].Status);
+
+			// Resetting the row clears the duplicate flag along with the manual name.
+			vm.ResetManualName(vm.Rows[1]);
+
+			Assert.AreEqual(RenameRowStatus.Unchanged, vm.Rows[1].Status);
+			Assert.AreEqual(RenameError.None, vm.Rows[1].RowError);
 		}
 
 		[TestMethod]

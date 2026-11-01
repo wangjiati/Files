@@ -114,6 +114,24 @@ namespace Files.App.UnitTests.Rename
 		}
 
 		[TestMethod]
+		public void BuildPlan_CaseOnlyRename_IsNotDeferredByItsOwnSource()
+		{
+			// "a.jpg" → "A.jpg" renames in place; its destination equals its own source ignoring
+			// case, which must not count as another row occupying the destination.
+			var rows = new RenamePreviewRow[]
+			{
+				Row(Target(@"C:\pic", "a.jpg"), Changed("a.jpg", "A.jpg"), manualName: "A.jpg"),
+				Row(Target(@"C:\pic", "b.jpg"), Changed("b.jpg", "乙.jpg")),
+			};
+
+			var plan = RenameExecutor.BuildExecutionPlan(rows, ConflictStrategy.AppendNumber);
+
+			Assert.AreEqual(2, plan.Count);
+			Assert.AreEqual(rows[0].Target.FullPath, plan[0].SourcePath);
+			Assert.AreEqual(rows[1].Target.FullPath, plan[1].SourcePath);
+		}
+
+		[TestMethod]
 		public void BuildPlan_ChainedRenames_ReorderedSoReverseReplayIsSafe()
 		{
 			// Renaming a→b requires b to be vacated first, so (b→c) must run before (a→b);

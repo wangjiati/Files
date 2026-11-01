@@ -278,6 +278,13 @@
 					<VisualState.Setters>
 						<Setter Target="PreviewPanel.(Grid.Column)" Value="1" />
 						<Setter Target="RulesPanel.(Grid.Column)" Value="0" />
+						<!--  The panels swap columns, so the fixed sidebar width and the star size swap with them.  -->
+						<Setter Target="PreviewColumn.Width" Value="300" />
+						<Setter Target="PreviewColumn.MinWidth" Value="0" />
+						<Setter Target="RulesColumn.Width" Value="*" />
+						<Setter Target="RulesColumn.MinWidth" Value="320" />
+						<!--  The divider stays between the panels.  -->
+						<Setter Target="RulesPanel.BorderThickness" Value="0,0,1,0" />
 					</VisualState.Setters>
 				</VisualState>
 			</VisualStateGroup>
@@ -298,10 +305,9 @@
 		<Border Background="#550F172A" />
 
 		<!--  Dialog  -->
+		<!--  MaxWidth/MaxHeight are sized in code to ~85% of the window client area.  -->
 		<Border
 			x:Name="DialogBorder"
-			MaxWidth="1180"
-			MaxHeight="780"
 			Margin="16"
 			HorizontalAlignment="Stretch"
 			VerticalAlignment="Stretch"
@@ -389,8 +395,8 @@
 				<!--  Body  -->
 				<Grid Grid.Row="1" MinHeight="200">
 					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="*" MinWidth="320" />
-						<ColumnDefinition Width="300" />
+						<ColumnDefinition x:Name="PreviewColumn" Width="*" MinWidth="320" />
+						<ColumnDefinition x:Name="RulesColumn" Width="300" />
 					</Grid.ColumnDefinitions>
 
 					<!--  Preview  -->

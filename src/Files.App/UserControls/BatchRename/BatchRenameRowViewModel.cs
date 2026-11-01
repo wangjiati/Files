@@ -89,7 +89,9 @@ namespace Files.App.UserControls
 				RenameRowStatus.Sequenced => Strings.BatchRenameRowSequenced.GetLocalizedResource(),
 				RenameRowStatus.Skipped => Strings.BatchRenameRowSkipped.GetLocalizedResource(),
 				RenameRowStatus.Overwrite => Strings.BatchRenameRowOverwrite.GetLocalizedResource(),
-				RenameRowStatus.Error => Strings.BatchRenameRowError.GetLocalizedResource(),
+				RenameRowStatus.Error => Source.RowError == RenameError.DuplicateName
+					? Strings.BatchRenameRowDuplicateName.GetLocalizedResource()
+					: Strings.BatchRenameRowError.GetLocalizedResource(),
 				RenameRowStatus.Unchanged => Source.UnchangedReason == UnchangedReason.ExcludedFolderType
 					? Strings.BatchRenameRowExcludedFolder.GetLocalizedResource()
 					: Strings.BatchRenameRowNotMatched.GetLocalizedResource(),

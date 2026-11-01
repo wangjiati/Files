@@ -36,6 +36,9 @@ namespace Files.App.Utils.Rename
 		BadPattern,
 		RegexTimeout,
 		InvalidName,
+
+		/// <summary>The row's final name duplicates another row's final name in the same folder.</summary>
+		DuplicateName,
 	}
 
 	/// <summary>

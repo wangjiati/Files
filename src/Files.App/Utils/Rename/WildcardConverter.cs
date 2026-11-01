@@ -16,8 +16,9 @@ namespace Files.App.Utils.Rename
 	/// characters (including regex metacharacters) pass through unescaped. This converter maps that alphabet
 	/// onto a regex fragment without '^'/'$' anchors; the caller adds them. Every star becomes a capture
 	/// group so a wildcard replacement string can map '*' back to the matched text. The DOS star is
-	/// deliberately treated like a plain star: its "stop at the final dot" distinction only distinguishes
-	/// extension-less names, which has no meaning when renaming. The DOS dot '"' is never emitted by
+	/// deliberately treated like a plain star: its "stop at the final dot" distinction only shows when the
+	/// matched span contains an interior dot (a trailing extension), which has no meaning when renaming.
+	/// The DOS dot '"' is never emitted by
 	/// <see cref="FileSystemName.TranslateWin32Expression"/> and is therefore not handled.
 	/// </remarks>
 	public static class WildcardConverter

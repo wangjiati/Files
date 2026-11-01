@@ -38,19 +38,30 @@ namespace Files.App.Utils.Rename
 					pending.Add(row);
 			}
 
+			// Sources of the pending rows, counted so duplicates release only with their last row;
+			// a row waits while another pending row still occupies its destination.
+			Dictionary<string, int> pendingSources = new(StringComparer.OrdinalIgnoreCase);
+			foreach (RenamePreviewRow row in pending)
+			{
+				pendingSources.TryGetValue(row.Target.FullPath, out int count);
+				pendingSources[row.Target.FullPath] = count + 1;
+			}
+
 			List<RenameExecutionItem> plan = new(pending.Count);
 			while (pending.Count > 0)
 			{
 				bool progressed = false;
 				for (int i = 0; i < pending.Count;)
 				{
-					if (VacatesAnotherRow(pending, i))
+					if (VacatesAnotherRow(pending[i], pendingSources))
 					{
 						i++;
 						continue;
 					}
 
-					plan.Add(ToItem(pending[i]));
+					RenamePreviewRow row = pending[i];
+					plan.Add(ToItem(row));
+					ReleaseSource(pendingSources, row.Target.FullPath);
 					pending.RemoveAt(i);
 					progressed = true;
 				}
@@ -96,7 +107,11 @@ namespace Files.App.Utils.Rename
 					ct.ThrowIfCancellationRequested();
 
 					RenameExecutionItem item = plan[i];
-					progress?.Report($"Renaming {i + 1}/{plan.Count}: {Path.GetFileName(item.SourcePath)}");
+					progress?.Report(string.Format(
+						Strings.BatchRenameProgressFormat.GetLocalizedResource(),
+						i + 1,
+						plan.Count,
+						Path.GetFileName(item.SourcePath)));
 
 					try
 					{
@@ -123,7 +138,7 @@ namespace Files.App.Utils.Rename
 						}
 						else
 						{
-							failed.Add((item.SourcePath, $"Rename failed ({result})."));
+							failed.Add((item.SourcePath, string.Format(Strings.BatchRenameRenameFailedFormat.GetLocalizedResource(), result)));
 						}
 					}
 					catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -161,7 +176,7 @@ namespace Files.App.Utils.Rename
 				permanently: false,
 				registerHistory: false);
 
-			return deleted == ReturnResult.Success ? null : $"The destination could not be freed ({deleted}).";
+			return deleted == ReturnResult.Success ? null : string.Format(Strings.BatchRenameFreeFailedFormat.GetLocalizedResource(), deleted);
 		}
 
 		// One merged rename history keeps the whole batch a single undo entry; it is registered as
@@ -179,9 +194,11 @@ namespace Files.App.Utils.Rename
 				: FilesystemItemType.File;
 		}
 
-		// A row runs when it is checked in and its rename actually changes the name; a case-only
-		// change differs ordinally from the original and still runs.
-		private static bool IsExecutable(RenamePreviewRow row)
+		/// <summary>
+		/// Whether the row enters the execution plan: it is checked in, its status renames, and its
+		/// final name differs from its current name. A case-only change differs ordinally and still runs.
+		/// </summary>
+		public static bool IsExecutable(RenamePreviewRow row)
 		{
 			if (!row.IsIncluded)
 				return false;
@@ -196,16 +213,23 @@ namespace Files.App.Utils.Rename
 
 		// True when the row's destination is the source of another pending row: renaming this row
 		// first would collide with the name the other row still holds, so the other row goes first.
-		private static bool VacatesAnotherRow(List<RenamePreviewRow> pending, int index)
+		// A destination equal to the row's own source ignoring case is a case-only rename in place,
+		// not an occupied destination.
+		private static bool VacatesAnotherRow(RenamePreviewRow row, Dictionary<string, int> pendingSources)
 		{
-			string destination = DestinationPath(pending[index]);
-			for (int i = 0; i < pending.Count; i++)
-			{
-				if (i != index && string.Equals(destination, pending[i].Target.FullPath, StringComparison.OrdinalIgnoreCase))
-					return true;
-			}
+			string destination = DestinationPath(row);
+			if (string.Equals(destination, row.Target.FullPath, StringComparison.OrdinalIgnoreCase))
+				return false;
 
-			return false;
+			return pendingSources.ContainsKey(destination);
+		}
+
+		private static void ReleaseSource(Dictionary<string, int> pendingSources, string path)
+		{
+			if (pendingSources.TryGetValue(path, out int count) && count > 1)
+				pendingSources[path] = count - 1;
+			else
+				pendingSources.Remove(path);
 		}
 
 		private static RenameExecutionItem ToItem(RenamePreviewRow row)
