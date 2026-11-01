@@ -59,6 +59,12 @@ namespace Files.App.Services.Settings
 			get => GetSettingsService(ref _FoldersSettingsService);
 		}
 
+		private IBatchRenameSettingsService? _BatchRenameSettingsService;
+		public IBatchRenameSettingsService BatchRenameSettingsService
+		{
+			get => GetSettingsService(ref _BatchRenameSettingsService);
+		}
+
 		private IAppearanceSettingsService? _AppearanceSettingsService;
 		public IAppearanceSettingsService AppearanceSettingsService
 		{

@@ -276,6 +276,12 @@ namespace Files.App.Views
 				case VirtualKey.RightWindows:
 					break;
 				default:
+					// The batch rename overlay handles its own keyboard (Ctrl+H, Esc, F2, Enter); while it
+					// is open, global hotkeys — including the Ctrl+H show-hidden-items accelerator —
+					// must not fire.
+					if (BatchRenameOverlay.IsOpen)
+						break;
+
 					var currentModifiers = HotKeyHelpers.GetCurrentKeyModifiers();
 					HotKey hotKey = new((Keys)e.Key, currentModifiers);
 					var source = e.OriginalSource as DependencyObject;

@@ -1,0 +1,934 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<UserControl
+	x:Class="Files.App.UserControls.BatchRenameOverlayPresenter"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:helpers="using:Files.App.Helpers"
+	xmlns:local="using:Files.App.UserControls"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+	IsTabStop="False"
+	mc:Ignorable="d">
+
+	<UserControl.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="ms-appx:///CommunityToolkit.WinUI.Controls.Segmented/Segmented/Segmented.xaml" />
+			</ResourceDictionary.MergedDictionaries>
+
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Light">
+					<SolidColorBrush x:Key="BatchRename.ChangedTextBrush" Color="#FF0369A1" />
+					<SolidColorBrush x:Key="BatchRename.RemovedTextBrush" Color="#FFB3261E" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTextBrush" Color="#FF92600A" />
+					<SolidColorBrush x:Key="BatchRename.MutedTextBrush" Color="#FF64748B" />
+					<SolidColorBrush x:Key="BatchRename.AddedTextBrush" Color="#FF0F7B3D" />
+					<SolidColorBrush x:Key="BatchRename.ErrorTagBrush" Color="#FFFDECEA" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTagBrush" Color="#FFFFF7E6" />
+					<SolidColorBrush x:Key="BatchRename.NeutralTagBrush" Color="#FFF1F5F9" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Dark">
+					<SolidColorBrush x:Key="BatchRename.ChangedTextBrush" Color="#FF66B2E8" />
+					<SolidColorBrush x:Key="BatchRename.RemovedTextBrush" Color="#FFFF99A4" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTextBrush" Color="#FFFFC83D" />
+					<SolidColorBrush x:Key="BatchRename.MutedTextBrush" Color="#FF94A3B8" />
+					<SolidColorBrush x:Key="BatchRename.AddedTextBrush" Color="#FF6CCB5F" />
+					<SolidColorBrush x:Key="BatchRename.ErrorTagBrush" Color="#FF5A2320" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTagBrush" Color="#FF5F4A14" />
+					<SolidColorBrush x:Key="BatchRename.NeutralTagBrush" Color="#FF333946" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="HighContrast">
+					<SolidColorBrush x:Key="BatchRename.ChangedTextBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+					<SolidColorBrush x:Key="BatchRename.RemovedTextBrush" Color="{ThemeResource SystemColorHotlinkColor}" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTextBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+					<SolidColorBrush x:Key="BatchRename.MutedTextBrush" Color="{ThemeResource SystemColorGrayTextColor}" />
+					<SolidColorBrush x:Key="BatchRename.AddedTextBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+					<SolidColorBrush x:Key="BatchRename.ErrorTagBrush" Color="{ThemeResource SystemColorWindowColor}" />
+					<SolidColorBrush x:Key="BatchRename.SequenceTagBrush" Color="{ThemeResource SystemColorWindowColor}" />
+					<SolidColorBrush x:Key="BatchRename.NeutralTagBrush" Color="{ThemeResource SystemColorWindowColor}" />
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+
+			<CollectionViewSource x:Name="RowsView" IsSourceGrouped="True" />
+
+			<x:Double x:Key="BatchRename.PositionColumnWidth">130</x:Double>
+
+			<Style x:Key="BatchRename.SettingsCardStyle" TargetType="Border">
+				<Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+				<Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+				<Setter Property="BorderThickness" Value="1" />
+				<Setter Property="CornerRadius" Value="8" />
+				<Setter Property="Padding" Value="12" />
+			</Style>
+
+			<Style x:Key="BatchRename.CardHeaderStyle" TargetType="TextBlock">
+				<Setter Property="FontSize" Value="12" />
+				<Setter Property="FontWeight" Value="SemiBold" />
+				<Setter Property="Margin" Value="0,0,0,8" />
+			</Style>
+
+			<Style x:Key="BatchRename.FieldLabelStyle" TargetType="TextBlock">
+				<Setter Property="FontSize" Value="11" />
+				<Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+				<Setter Property="Margin" Value="0,0,0,4" />
+			</Style>
+
+			<Style x:Key="BatchRename.HintStyle" TargetType="TextBlock">
+				<Setter Property="FontSize" Value="11" />
+				<Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}" />
+				<Setter Property="TextWrapping" Value="Wrap" />
+				<Setter Property="Margin" Value="0,6,0,0" />
+			</Style>
+
+			<Style x:Key="BatchRename.ChipButtonStyle" TargetType="Button">
+				<Setter Property="Padding" Value="10,4" />
+				<Setter Property="FontSize" Value="11" />
+				<Setter Property="CornerRadius" Value="12" />
+			</Style>
+
+			<Style x:Key="BatchRename.ToolButtonStyle" TargetType="Button">
+				<Setter Property="Width" Value="28" />
+				<Setter Property="Height" Value="26" />
+				<Setter Property="Padding" Value="0" />
+				<Setter Property="CornerRadius" Value="6" />
+			</Style>
+
+			<Style x:Key="BatchRename.RowToolButtonStyle" TargetType="Button">
+				<Setter Property="Width" Value="24" />
+				<Setter Property="Height" Value="24" />
+				<Setter Property="Padding" Value="0" />
+				<Setter Property="CornerRadius" Value="4" />
+			</Style>
+
+			<DataTemplate x:Key="BatchRename.RowTemplate" x:DataType="local:BatchRenameRowViewModel">
+				<Grid
+					MinHeight="32"
+					Opacity="{x:Bind RowOpacity, Mode=OneWay}"
+					Padding="14,0"
+					ColumnSpacing="8">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="28" />
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="*" MinWidth="120" />
+						<ColumnDefinition Width="*" MinWidth="120" />
+					</Grid.ColumnDefinitions>
+
+					<!--  Include checkbox  -->
+					<CheckBox
+						Grid.Column="0"
+						MinWidth="0"
+						Padding="0"
+						VerticalAlignment="Center"
+						AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameRowUnchecked}"
+						IsChecked="{x:Bind IsIncluded, Mode=TwoWay}" />
+
+					<!--  Position  -->
+					<Border
+						x:Name="PositionCell"
+						Grid.Column="1"
+						Width="{StaticResource BatchRename.PositionColumnWidth}"
+						Padding="0,0,8,0"
+						VerticalAlignment="Center"
+						Visibility="{x:Bind PositionVisibility}">
+						<TextBlock
+							FontSize="11"
+							Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+							Text="{x:Bind PositionText}"
+							TextTrimming="CharacterEllipsis" />
+					</Border>
+
+					<!--  Original name  -->
+					<StackPanel
+						Grid.Column="2"
+						VerticalAlignment="Center"
+						Orientation="Horizontal"
+						Spacing="0">
+						<StackPanel Orientation="Horizontal" Visibility="{x:Bind DiffVisibility}">
+							<TextBlock
+								FontSize="12"
+								Text="{x:Bind OldPrefix}"
+								TextTrimming="CharacterEllipsis" />
+							<TextBlock
+								FontSize="12"
+								Foreground="{ThemeResource BatchRename.RemovedTextBrush}"
+								Text="{x:Bind OldRemoved}"
+								TextDecorations="Strikethrough"
+								TextTrimming="CharacterEllipsis" />
+							<TextBlock
+								FontSize="12"
+								Text="{x:Bind OldSuffix}"
+								TextTrimming="CharacterEllipsis" />
+						</StackPanel>
+						<TextBlock
+							FontSize="12"
+							Text="{x:Bind OriginalName}"
+							TextTrimming="CharacterEllipsis"
+							Visibility="{x:Bind OldPlainVisibility}" />
+					</StackPanel>
+
+					<!--  New name  -->
+					<Grid Grid.Column="3" VerticalAlignment="Center">
+
+						<!--  Display state  -->
+						<StackPanel
+							x:Name="NewNameCell"
+							Orientation="Horizontal"
+							Spacing="6"
+							Visibility="{x:Bind DisplayVisibility, Mode=OneWay}"
+							DoubleTapped="NewNameCell_DoubleTapped">
+							<StackPanel Orientation="Horizontal" Visibility="{x:Bind DiffVisibility}">
+								<TextBlock
+									FontSize="12"
+									FontWeight="SemiBold"
+									Foreground="{x:Bind NewNameBrush, Mode=OneWay}"
+									Text="{x:Bind NewPrefix}"
+									TextTrimming="CharacterEllipsis" />
+								<TextBlock
+									FontSize="12"
+									FontWeight="SemiBold"
+									Foreground="{ThemeResource BatchRename.AddedTextBrush}"
+									Text="{x:Bind NewAdded}"
+									TextTrimming="CharacterEllipsis" />
+								<TextBlock
+									FontSize="12"
+									FontWeight="SemiBold"
+									Foreground="{x:Bind NewNameBrush, Mode=OneWay}"
+									Text="{x:Bind NewSuffix}"
+									TextTrimming="CharacterEllipsis" />
+							</StackPanel>
+							<TextBlock
+								FontSize="12"
+								FontWeight="SemiBold"
+								Foreground="{x:Bind NewNameBrush, Mode=OneWay}"
+								Text="{x:Bind NewNameText, Mode=OneWay}"
+								TextTrimming="CharacterEllipsis"
+								Visibility="{x:Bind OldPlainVisibility}" />
+							<Border
+								Padding="5,1"
+								VerticalAlignment="Center"
+								Background="{x:Bind TagBackground, Mode=OneWay}"
+								CornerRadius="4"
+								Visibility="{x:Bind TagVisibility, Mode=OneWay}">
+								<TextBlock
+									FontSize="10"
+									Foreground="{x:Bind TagForeground, Mode=OneWay}"
+									Text="{x:Bind TagText, Mode=OneWay}" />
+							</Border>
+							<Button
+								Padding="0"
+								VerticalAlignment="Center"
+								AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameResetRowToolTip}"
+								Click="ResetRowButton_Click"
+								Style="{StaticResource BatchRename.RowToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameResetRowToolTip}"
+								Visibility="{x:Bind ResetButtonVisibility, Mode=OneWay}">
+								<FontIcon FontSize="12" Glyph="&#xE7A7;" />
+							</Button>
+						</StackPanel>
+
+						<!--  Edit state  -->
+						<StackPanel
+							Orientation="Horizontal"
+							Spacing="4"
+							Visibility="{x:Bind EditVisibility, Mode=OneWay}">
+							<TextBox
+								x:Name="EditBox"
+								MinWidth="120"
+								Padding="6,3"
+								VerticalAlignment="Center"
+								FontSize="12"
+								KeyDown="EditBox_KeyDown"
+								Text="{x:Bind EditText, Mode=TwoWay}" />
+							<Button
+								AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameCommitEditToolTip}"
+								Click="CommitEditButton_Click"
+								Content="&#xE73E;"
+								FontFamily="{ThemeResource SymbolThemeFontFamily}"
+								Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+								Style="{StaticResource BatchRename.RowToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameCommitEditToolTip}" />
+							<Button
+								AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameCancelEditToolTip}"
+								Click="CancelEditButton_Click"
+								Content="&#xE711;"
+								FontFamily="{ThemeResource SymbolThemeFontFamily}"
+								Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+								Style="{StaticResource BatchRename.RowToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameCancelEditToolTip}" />
+							<Button
+								AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameResetRowToolTip}"
+								Click="ResetRowButton_Click"
+								Content="&#xE7A7;"
+								FontFamily="{ThemeResource SymbolThemeFontFamily}"
+								Style="{StaticResource BatchRename.RowToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameResetRowToolTip}" />
+						</StackPanel>
+					</Grid>
+				</Grid>
+			</DataTemplate>
+		</ResourceDictionary>
+	</UserControl.Resources>
+
+	<Grid x:Name="RootGrid" KeyDown="RootGrid_KeyDown">
+		<VisualStateManager.VisualStateGroups>
+			<VisualStateGroup x:Name="DockStates">
+				<VisualState x:Name="DockRightState" />
+				<VisualState x:Name="DockLeftState">
+					<VisualState.Setters>
+						<Setter Target="PreviewPanel.(Grid.Column)" Value="1" />
+						<Setter Target="RulesPanel.(Grid.Column)" Value="0" />
+					</VisualState.Setters>
+				</VisualState>
+			</VisualStateGroup>
+			<VisualStateGroup x:Name="SizeStates">
+				<VisualState x:Name="NormalSizeState" />
+				<VisualState x:Name="MaximizedState">
+					<VisualState.Setters>
+						<Setter Target="DialogBorder.Margin" Value="0" />
+						<Setter Target="DialogBorder.CornerRadius" Value="0" />
+						<Setter Target="DialogBorder.MaxWidth" Value="4000" />
+						<Setter Target="DialogBorder.MaxHeight" Value="4000" />
+					</VisualState.Setters>
+				</VisualState>
+			</VisualStateGroup>
+		</VisualStateManager.VisualStateGroups>
+
+		<!--  Modal mask  -->
+		<Border Background="#550F172A" />
+
+		<!--  Dialog  -->
+		<Border
+			x:Name="DialogBorder"
+			MaxWidth="1180"
+			MaxHeight="780"
+			Margin="16"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Stretch"
+			Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+			BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+			BorderThickness="1"
+			CornerRadius="8">
+			<Grid RowSpacing="0">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+
+				<!--  Title bar  -->
+				<StackPanel
+					Grid.Row="0"
+					Padding="14,8,10,8"
+					BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+					BorderThickness="0,0,0,1"
+					Spacing="2">
+					<Grid ColumnSpacing="8">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<FontIcon
+							Grid.Column="0"
+							FontSize="15"
+							Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+							Glyph="&#xE8AC;" />
+						<TextBlock
+							Grid.Column="1"
+							FontSize="14"
+							FontWeight="SemiBold"
+							Text="{helpers:ResourceString Name=BatchRenameTitle}" />
+						<StackPanel
+							Grid.Column="3"
+							VerticalAlignment="Center"
+							Orientation="Horizontal"
+							Spacing="6">
+							<Button
+								x:Name="DockButton"
+								Padding="8,4"
+								VerticalAlignment="Center"
+								Click="DockButton_Click"
+								CornerRadius="6"
+								FontSize="11">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<FontIcon x:Name="DockIcon" FontSize="12" Glyph="&#xE90D;" />
+									<TextBlock x:Name="DockLabel" Text="{helpers:ResourceString Name=BatchRenameDockRightLabel}" />
+								</StackPanel>
+							</Button>
+							<Button
+								x:Name="MaximizeButton"
+								AutomationProperties.Name="{helpers:ResourceString Name=BatchRenameMaximizeToolTip}"
+								Click="MaximizeButton_Click"
+								Content="&#xE922;"
+								FontFamily="{ThemeResource SymbolThemeFontFamily}"
+								Style="{StaticResource BatchRename.ToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameMaximizeToolTip}" />
+							<Button
+								x:Name="CloseButton"
+								AutomationProperties.Name="{helpers:ResourceString Name=Close}"
+								Click="CloseButton_Click"
+								Content="&#xE8BB;"
+								FontFamily="{ThemeResource SymbolThemeFontFamily}"
+								Style="{StaticResource BatchRename.ToolButtonStyle}"
+								ToolTipService.ToolTip="{helpers:ResourceString Name=Close}" />
+						</StackPanel>
+					</Grid>
+					<TextBlock
+						x:Name="SubtitleText"
+						FontSize="11"
+						Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+						TextTrimming="CharacterEllipsis" />
+					<TextBlock
+						FontSize="10"
+						Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+						Text="{helpers:ResourceString Name=BatchRenameKeyboardHints}"
+						TextTrimming="CharacterEllipsis" />
+				</StackPanel>
+
+				<!--  Body  -->
+				<Grid Grid.Row="1" MinHeight="200">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" MinWidth="320" />
+						<ColumnDefinition Width="300" />
+					</Grid.ColumnDefinitions>
+
+					<!--  Preview  -->
+					<Grid x:Name="PreviewPanel" Grid.Column="0">
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="*" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<!--  Preview toolbar  -->
+						<Grid
+							Grid.Row="0"
+							Padding="12,8"
+							BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+							BorderThickness="0,0,0,1"
+							ColumnSpacing="8">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+
+							<toolkit:Segmented x:Name="FilterSegmented" SelectionChanged="FilterSegmented_SelectionChanged">
+								<toolkit:SegmentedItem x:Name="FilterAllItem" Content="{helpers:ResourceString Name=BatchRenameFilterAll}" />
+								<toolkit:SegmentedItem x:Name="FilterChangedItem" Content="{helpers:ResourceString Name=BatchRenameFilterChanged}" />
+								<toolkit:SegmentedItem x:Name="FilterSequencedItem" Content="{helpers:ResourceString Name=BatchRenameFilterSequenced}" />
+							</toolkit:Segmented>
+
+							<TextBox
+								x:Name="SearchBox"
+								Grid.Column="1"
+								MaxWidth="240"
+								Padding="8,4"
+								HorizontalAlignment="Right"
+								VerticalAlignment="Center"
+								FontSize="11"
+								PlaceholderText="{helpers:ResourceString Name=BatchRenameSearchPlaceholder}"
+								Text="{x:Bind Vm.SearchText, Mode=TwoWay}" />
+
+							<StackPanel
+								Grid.Column="2"
+								VerticalAlignment="Center"
+								Orientation="Horizontal"
+								Spacing="6">
+								<Button
+									x:Name="CopyOriginalButton"
+									Click="CopyOriginalButton_Click"
+									Content="{helpers:ResourceString Name=BatchRenameCopyOriginalNames}"
+									FontSize="11"
+									Padding="8,4"
+									ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameCopyOriginalNamesToolTip}" />
+								<Button
+									x:Name="PasteNewButton"
+									Click="PasteNewButton_Click"
+									Content="{helpers:ResourceString Name=BatchRenamePasteNewNames}"
+									FontSize="11"
+									Padding="8,4"
+									ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenamePasteNewNamesToolTip}" />
+							</StackPanel>
+						</Grid>
+
+						<!--  Column headers  -->
+						<Grid
+							Grid.Row="1"
+							Padding="14,5"
+							BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+							BorderThickness="0,0,0,1"
+							ColumnSpacing="8">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="28" />
+								<ColumnDefinition Width="Auto" />
+								<ColumnDefinition Width="*" MinWidth="120" />
+								<ColumnDefinition Width="*" MinWidth="120" />
+							</Grid.ColumnDefinitions>
+							<Border
+								x:Name="HeaderPositionCell"
+								Grid.Column="1"
+								Width="{StaticResource BatchRename.PositionColumnWidth}"
+								Padding="0,0,8,0"
+								Visibility="Collapsed">
+								<TextBlock
+									FontSize="11"
+									Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+									Text="{helpers:ResourceString Name=BatchRenameColumnPosition}" />
+							</Border>
+							<TextBlock
+								Grid.Column="2"
+								FontSize="11"
+								Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+								Text="{helpers:ResourceString Name=BatchRenameColumnOriginal}" />
+							<TextBlock
+								Grid.Column="3"
+								FontSize="11"
+								Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+								Text="{helpers:ResourceString Name=BatchRenameColumnNew}" />
+						</Grid>
+
+						<!--  Rows  -->
+						<Grid Grid.Row="2">
+							<ListView
+								x:Name="PreviewList"
+								IsItemClickEnabled="False"
+								ItemTemplate="{StaticResource BatchRename.RowTemplate}"
+								ItemsSource="{x:Bind RowsView.View, Mode=OneWay}"
+								SelectionMode="None">
+								<ListView.ItemContainerStyle>
+									<Style TargetType="ListViewItem">
+										<Setter Property="MinHeight" Value="0" />
+										<Setter Property="Padding" Value="0" />
+										<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+										<Setter Property="UseSystemFocusVisuals" Value="True" />
+									</Style>
+								</ListView.ItemContainerStyle>
+								<ListView.GroupStyle>
+									<GroupStyle HidesIfEmpty="False">
+										<GroupStyle.HeaderTemplate>
+											<DataTemplate>
+												<StackPanel Orientation="Horizontal" Spacing="6">
+													<FontIcon
+														FontSize="11"
+														Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+														Glyph="&#xE8B7;" />
+													<TextBlock
+														FontSize="11"
+														Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+														Text="{Binding Group.Key}" />
+												</StackPanel>
+											</DataTemplate>
+										</GroupStyle.HeaderTemplate>
+									</GroupStyle>
+								</ListView.GroupStyle>
+							</ListView>
+
+							<StackPanel
+								x:Name="EmptyStatePanel"
+								HorizontalAlignment="Center"
+								VerticalAlignment="Center"
+								Spacing="6"
+								Visibility="Collapsed">
+								<ProgressRing
+									x:Name="ResolvingRing"
+									Width="24"
+									Height="24"
+									HorizontalAlignment="Center"
+									IsActive="False" />
+								<TextBlock
+									x:Name="EmptyStateText"
+									Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+									Text="{helpers:ResourceString Name=BatchRenameScopeHint}" />
+							</StackPanel>
+						</Grid>
+
+						<!--  Footer  -->
+						<StackPanel
+							Grid.Row="3"
+							Padding="12,8"
+							BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+							BorderThickness="0,1,0,0"
+							Spacing="4">
+							<Grid ColumnSpacing="8">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" />
+									<ColumnDefinition Width="Auto" />
+									<ColumnDefinition Width="*" />
+									<ColumnDefinition Width="Auto" />
+								</Grid.ColumnDefinitions>
+
+								<StackPanel
+									x:Name="ConflictPanel"
+									Grid.Column="0"
+									Orientation="Horizontal"
+									Spacing="6"
+									Visibility="Collapsed">
+									<FontIcon
+										FontSize="12"
+										Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+										Glyph="&#xE7BA;" />
+									<TextBlock
+										x:Name="ConflictText"
+										VerticalAlignment="Center"
+										FontSize="11"
+										Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+								</StackPanel>
+
+								<StackPanel
+									Grid.Column="1"
+									Margin="0,0,0,0"
+									Orientation="Horizontal"
+									Spacing="6">
+									<TextBlock
+										VerticalAlignment="Center"
+										FontSize="11"
+										Text="{helpers:ResourceString Name=BatchRenameConflictWhenLabel}" />
+									<ComboBox
+										x:Name="StrategyCombo"
+										MinWidth="120"
+										SelectionChanged="StrategyCombo_SelectionChanged">
+										<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameStrategyAppendNumber}" ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameStrategyAppendNumberDescription}" />
+										<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameStrategySkip}" ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameStrategySkipDescription}" />
+										<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameStrategyOverwrite}" ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameStrategyOverwriteDescription}" />
+									</ComboBox>
+								</StackPanel>
+
+								<TextBlock
+									x:Name="StatsText"
+									Grid.Column="2"
+									VerticalAlignment="Center"
+									FontSize="11"
+									Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+									TextTrimming="CharacterEllipsis" />
+
+								<StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
+									<Button
+										x:Name="CancelButton"
+										Click="CancelButton_Click"
+										Content="{helpers:ResourceString Name=Cancel}" />
+									<Button
+										x:Name="ApplyButton"
+										Click="ApplyButton_Click"
+										Content="{helpers:ResourceString Name=BatchRenameApply}"
+										Style="{StaticResource AccentButtonStyle}" />
+								</StackPanel>
+							</Grid>
+
+							<Grid ColumnSpacing="8" Visibility="Collapsed" x:Name="StatusPanel">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="Auto" />
+									<ColumnDefinition Width="Auto" />
+									<ColumnDefinition Width="*" />
+								</Grid.ColumnDefinitions>
+								<ProgressRing
+									x:Name="ApplyRing"
+									Width="18"
+									Height="18"
+									HorizontalAlignment="Left"
+									IsActive="False" />
+								<TextBlock
+									x:Name="ProgressText"
+									Grid.Column="1"
+									VerticalAlignment="Center"
+									FontSize="11"
+									Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+									TextTrimming="CharacterEllipsis" />
+								<TextBlock
+									x:Name="NoticeText"
+									Grid.Column="2"
+									VerticalAlignment="Center"
+									FontSize="11"
+									Foreground="{ThemeResource SystemFillColorCautionBrush}"
+									TextTrimming="CharacterEllipsis" />
+							</Grid>
+
+							<TextBlock
+								x:Name="ResolveErrorText"
+								FontSize="11"
+								Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+								TextWrapping="Wrap"
+								Visibility="Collapsed" />
+						</StackPanel>
+					</Grid>
+
+					<!--  Rules panel  -->
+					<Border
+						x:Name="RulesPanel"
+						Grid.Column="1"
+						BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+						BorderThickness="1,0,0,0">
+						<ScrollViewer VerticalScrollBarVisibility="Auto">
+							<StackPanel Padding="12" Spacing="10">
+
+								<!--  Presets  -->
+								<Grid ColumnSpacing="6">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="*" />
+										<ColumnDefinition Width="Auto" />
+										<ColumnDefinition Width="Auto" />
+									</Grid.ColumnDefinitions>
+									<ComboBox
+										x:Name="PresetCombo"
+										Grid.Column="0"
+										HorizontalAlignment="Stretch"
+										Header="{helpers:ResourceString Name=BatchRenamePresetLabel}"
+										PlaceholderText="{helpers:ResourceString Name=BatchRenameNoPresetSelected}"
+										SelectionChanged="PresetCombo_SelectionChanged" />
+									<Button
+										x:Name="SavePresetButton"
+										Grid.Column="1"
+										VerticalAlignment="Bottom"
+										Click="SavePresetButton_Click"
+										Content="&#xE74E;"
+										FontFamily="{ThemeResource SymbolThemeFontFamily}"
+										Style="{StaticResource BatchRename.ToolButtonStyle}"
+										ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameSavePreset}" />
+									<Button
+										x:Name="DeletePresetButton"
+										Grid.Column="2"
+										VerticalAlignment="Bottom"
+										Click="DeletePresetButton_Click"
+										Content="&#xE74D;"
+										FontFamily="{ThemeResource SymbolThemeFontFamily}"
+										IsEnabled="False"
+										Style="{StaticResource BatchRename.ToolButtonStyle}"
+										ToolTipService.ToolTip="{helpers:ResourceString Name=BatchRenameDeletePreset}" />
+								</Grid>
+
+								<!--  Rule templates  -->
+								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
+									<StackPanel Spacing="8">
+										<TextBlock Style="{StaticResource BatchRename.CardHeaderStyle}" Text="{helpers:ResourceString Name=BatchRenameTemplatesHeader}" />
+
+										<toolkit:Segmented
+											x:Name="TemplateSegmented"
+											HorizontalAlignment="Stretch"
+											SelectionChanged="TemplateSegmented_SelectionChanged">
+											<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameTemplateFindReplace}" />
+											<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameTemplatePrepend}" />
+											<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameTemplateAppend}" />
+										</toolkit:Segmented>
+
+										<!--  Find and replace  -->
+										<StackPanel x:Name="FindReplacePanel" Spacing="8">
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenameFind}" />
+												<TextBox x:Name="FindBox" TextChanged="FindBox_TextChanged" />
+											</StackPanel>
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenameReplaceWith}" />
+												<TextBox x:Name="ReplaceBox" TextChanged="ReplaceBox_TextChanged" />
+											</StackPanel>
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenameModeLabel}" />
+												<toolkit:Segmented x:Name="ModeSegmented" SelectionChanged="ModeSegmented_SelectionChanged">
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameModeText}" />
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameModeWildcard}" />
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameModeRegex}" />
+												</toolkit:Segmented>
+											</StackPanel>
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenameApplyToLabel}" />
+												<toolkit:Segmented x:Name="ApplyToSegmented" SelectionChanged="ApplyToSegmented_SelectionChanged">
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameApplyToNameOnly}" />
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameApplyToExtensionOnly}" />
+													<toolkit:SegmentedItem Content="{helpers:ResourceString Name=BatchRenameApplyToAll}" />
+												</toolkit:Segmented>
+											</StackPanel>
+											<StackPanel Orientation="Horizontal" Spacing="14">
+												<CheckBox
+													x:Name="MatchAllCheck"
+													Checked="RuleFlag_CheckChanged"
+													Content="{helpers:ResourceString Name=BatchRenameMatchAllOccurrences}"
+													Unchecked="RuleFlag_CheckChanged" />
+												<CheckBox
+													x:Name="CaseSensitiveCheck"
+													Checked="RuleFlag_CheckChanged"
+													Content="{helpers:ResourceString Name=BatchRenameCaseSensitive}"
+													Unchecked="RuleFlag_CheckChanged" />
+											</StackPanel>
+										</StackPanel>
+
+										<!--  Prepend  -->
+										<StackPanel x:Name="PrependPanel" Spacing="8" Visibility="Collapsed">
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenamePrefixLabel}" />
+												<TextBox x:Name="PrefixBox" TextChanged="PrefixBox_TextChanged" />
+											</StackPanel>
+											<CheckBox
+												x:Name="SkipPrefixCheck"
+												Checked="RuleFlag_CheckChanged"
+												Content="{helpers:ResourceString Name=BatchRenameSkipExistingPrefix}"
+												Unchecked="RuleFlag_CheckChanged" />
+											<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenamePrependHint}" />
+										</StackPanel>
+
+										<!--  Append  -->
+										<StackPanel x:Name="AppendPanel" Spacing="8" Visibility="Collapsed">
+											<StackPanel>
+												<TextBlock Style="{StaticResource BatchRename.FieldLabelStyle}" Text="{helpers:ResourceString Name=BatchRenameSuffixLabel}" />
+												<TextBox x:Name="SuffixBox" TextChanged="SuffixBox_TextChanged" />
+											</StackPanel>
+											<CheckBox
+												x:Name="InsertBeforeExtensionCheck"
+												Checked="RuleFlag_CheckChanged"
+												Content="{helpers:ResourceString Name=BatchRenameInsertBeforeExtension}"
+												Unchecked="RuleFlag_CheckChanged" />
+											<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameAppendHint}" />
+										</StackPanel>
+									</StackPanel>
+								</Border>
+
+								<!--  Scope  -->
+								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
+									<StackPanel Spacing="4">
+										<TextBlock Style="{StaticResource BatchRename.CardHeaderStyle}" Text="{helpers:ResourceString Name=BatchRenameScopeHeader}" />
+										<RadioButton
+											x:Name="ScopeSelectedRadio"
+											Checked="ScopeRadio_Checked"
+											GroupName="BatchRenameScope">
+											<StackPanel Orientation="Horizontal" Spacing="8">
+												<TextBlock Text="{helpers:ResourceString Name=BatchRenameScopeSelectedItemsLabel}" />
+												<TextBlock
+													x:Name="ScopeSelectedCountText"
+													FontSize="10"
+													Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+											</StackPanel>
+										</RadioButton>
+										<RadioButton
+											x:Name="ScopeFolderRadio"
+											Checked="ScopeRadio_Checked"
+											GroupName="BatchRenameScope">
+											<StackPanel Orientation="Horizontal" Spacing="8">
+												<TextBlock Text="{helpers:ResourceString Name=BatchRenameScopeCurrentFolderLabel}" />
+												<TextBlock
+													x:Name="ScopeFolderCountText"
+													FontSize="10"
+													Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+											</StackPanel>
+										</RadioButton>
+										<RadioButton
+											x:Name="ScopeSubfoldersRadio"
+											Checked="ScopeRadio_Checked"
+											GroupName="BatchRenameScope">
+											<StackPanel Orientation="Horizontal" Spacing="8">
+												<TextBlock Text="{helpers:ResourceString Name=BatchRenameScopeWithSubfoldersLabel}" />
+												<TextBlock
+													x:Name="ScopeSubfoldersCountText"
+													FontSize="10"
+													Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+											</StackPanel>
+										</RadioButton>
+
+										<Border
+											x:Name="DepthPanel"
+											Margin="22,4,0,0"
+											Padding="10,7"
+											BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+											BorderThickness="2,0,0,0"
+											CornerRadius="0,6,6,0"
+											Visibility="Collapsed">
+											<StackPanel Orientation="Horizontal" Spacing="8">
+												<TextBlock
+													VerticalAlignment="Center"
+													FontSize="11"
+													Text="{helpers:ResourceString Name=BatchRenameDepthLabel}" />
+												<Button
+													x:Name="DepthMinusButton"
+													Padding="8,2"
+													Click="DepthMinusButton_Click"
+													Content="&#xE738;"
+													FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+												<TextBlock
+													x:Name="DepthValueText"
+													MinWidth="16"
+													VerticalAlignment="Center"
+													HorizontalTextAlignment="Center"
+													FontWeight="SemiBold" />
+												<Button
+													x:Name="DepthPlusButton"
+													Padding="8,2"
+													Click="DepthPlusButton_Click"
+													Content="&#xE710;"
+													FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+												<TextBlock
+													x:Name="DepthRangeText"
+													VerticalAlignment="Center"
+													FontSize="11"
+													Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+											</StackPanel>
+										</Border>
+
+										<StackPanel Orientation="Horizontal" Spacing="14" Margin="0,6,0,0">
+											<CheckBox
+												x:Name="IncludeFilesCheck"
+												Checked="IncludeFlag_CheckChanged"
+												Content="{helpers:ResourceString Name=BatchRenameIncludeFiles}"
+												Unchecked="IncludeFlag_CheckChanged" />
+											<CheckBox
+												x:Name="IncludeFoldersCheck"
+												Checked="IncludeFlag_CheckChanged"
+												Content="{helpers:ResourceString Name=BatchRenameIncludeFolders}"
+												Unchecked="IncludeFlag_CheckChanged" />
+										</StackPanel>
+
+										<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameScopeHint}" />
+									</StackPanel>
+								</Border>
+
+								<!--  Variables and formatting  -->
+								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
+									<StackPanel Spacing="8">
+										<TextBlock Style="{StaticResource BatchRename.CardHeaderStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHeader}" />
+
+										<StackPanel Orientation="Horizontal" Spacing="6">
+											<Button
+												Click="AddCounterChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddCounterVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="AddDateChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddDateVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="AddFolderChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddFolderVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+										</StackPanel>
+
+										<StackPanel Orientation="Horizontal" Spacing="6">
+											<Button
+												Click="NumberingPatternChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameNumberingPattern}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="DatePatternChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameDatePattern}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+										</StackPanel>
+
+										<ComboBox
+											x:Name="CaseCombo"
+											Header="{helpers:ResourceString Name=BatchRenameCaseConversionLabel}"
+											SelectionChanged="CaseCombo_SelectionChanged">
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseNone}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseLowercase}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseUppercase}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseFirstLetter}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseEveryWord}" />
+										</ComboBox>
+
+										<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHint}" />
+									</StackPanel>
+								</Border>
+							</StackPanel>
+						</ScrollViewer>
+					</Border>
+				</Grid>
+			</Grid>
+		</Border>
+	</Grid>
+</UserControl>

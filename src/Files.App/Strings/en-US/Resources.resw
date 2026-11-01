@@ -5208,4 +5208,310 @@
   <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
     <value>Could not write {2}</value>
   </data>
+  <data name="BatchRenameTitle" xml:space="preserve">
+    <value>Batch rename</value>
+  </data>
+  <data name="BatchRenameKeyboardHints" xml:space="preserve">
+    <value>Ctrl+H find (overrides the global shortcut here) · Enter apply · Esc close · F2 edit next row · Double-click the "New" cell to edit it manually</value>
+  </data>
+  <data name="BatchRenameSubtitleFormat" xml:space="preserve">
+    <value>{0} · Scope: {1} · {2} items</value>
+  </data>
+  <data name="BatchRenameScopeSelectedItems" xml:space="preserve">
+    <value>Selected items</value>
+  </data>
+  <data name="BatchRenameScopeCurrentFolder" xml:space="preserve">
+    <value>Current folder</value>
+  </data>
+  <data name="BatchRenameScopeWithSubfoldersFormat" xml:space="preserve">
+    <value>Current folder with subfolders ({0} levels)</value>
+  </data>
+  <data name="BatchRenameDockLeftLabel" xml:space="preserve">
+    <value>Rules on the left</value>
+  </data>
+  <data name="BatchRenameDockRightLabel" xml:space="preserve">
+    <value>Rules on the right</value>
+  </data>
+  <data name="BatchRenameMaximizeToolTip" xml:space="preserve">
+    <value>Maximize / restore</value>
+  </data>
+  <data name="BatchRenamePresetLabel" xml:space="preserve">
+    <value>Preset</value>
+  </data>
+  <data name="BatchRenameNoPresetSelected" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="BatchRenameSavePreset" xml:space="preserve">
+    <value>Save current as preset</value>
+  </data>
+  <data name="BatchRenameDeletePreset" xml:space="preserve">
+    <value>Delete preset</value>
+  </data>
+  <data name="BatchRenameSavePresetTitle" xml:space="preserve">
+    <value>Save preset</value>
+  </data>
+  <data name="BatchRenameSavePresetPrompt" xml:space="preserve">
+    <value>Preset name</value>
+  </data>
+  <data name="BatchRenameTemplatesHeader" xml:space="preserve">
+    <value>Rule templates</value>
+  </data>
+  <data name="BatchRenameTemplateFindReplace" xml:space="preserve">
+    <value>Find and replace</value>
+  </data>
+  <data name="BatchRenameTemplatePrepend" xml:space="preserve">
+    <value>Add to start</value>
+  </data>
+  <data name="BatchRenameTemplateAppend" xml:space="preserve">
+    <value>Add to end</value>
+  </data>
+  <data name="BatchRenameFind" xml:space="preserve">
+    <value>Find</value>
+  </data>
+  <data name="BatchRenameReplaceWith" xml:space="preserve">
+    <value>Replace with</value>
+  </data>
+  <data name="BatchRenameModeLabel" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="BatchRenameModeText" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="BatchRenameModeWildcard" xml:space="preserve">
+    <value>Wildcard</value>
+  </data>
+  <data name="BatchRenameModeRegex" xml:space="preserve">
+    <value>Regex</value>
+  </data>
+  <data name="BatchRenameApplyToLabel" xml:space="preserve">
+    <value>Apply to</value>
+  </data>
+  <data name="BatchRenameApplyToNameOnly" xml:space="preserve">
+    <value>Name only</value>
+  </data>
+  <data name="BatchRenameApplyToExtensionOnly" xml:space="preserve">
+    <value>Extension only</value>
+  </data>
+  <data name="BatchRenameApplyToAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="BatchRenameMatchAllOccurrences" xml:space="preserve">
+    <value>Match all occurrences</value>
+  </data>
+  <data name="BatchRenameCaseSensitive" xml:space="preserve">
+    <value>Case sensitive</value>
+  </data>
+  <data name="BatchRenamePrefixLabel" xml:space="preserve">
+    <value>Text to add to the start</value>
+  </data>
+  <data name="BatchRenameSuffixLabel" xml:space="preserve">
+    <value>Text to add to the end</value>
+  </data>
+  <data name="BatchRenameSkipExistingPrefix" xml:space="preserve">
+    <value>Skip names that already start with this text</value>
+  </data>
+  <data name="BatchRenameInsertBeforeExtension" xml:space="preserve">
+    <value>Insert before the extension</value>
+  </data>
+  <data name="BatchRenamePrependHint" xml:space="preserve">
+    <value>Applies to the start of the name and leaves the extension alone. Equivalent to the regex find ^ → replace with the prefix.</value>
+  </data>
+  <data name="BatchRenameAppendHint" xml:space="preserve">
+    <value>When checked, img.jpg → img_suffix.jpg. When unchecked, img.jpg → img.jpg_suffix.</value>
+  </data>
+  <data name="BatchRenameScopeHeader" xml:space="preserve">
+    <value>Scope</value>
+  </data>
+  <data name="BatchRenameScopeSelectedItemsLabel" xml:space="preserve">
+    <value>Selected items only</value>
+  </data>
+  <data name="BatchRenameScopeCurrentFolderLabel" xml:space="preserve">
+    <value>Current folder</value>
+  </data>
+  <data name="BatchRenameScopeWithSubfoldersLabel" xml:space="preserve">
+    <value>Current folder with subfolders</value>
+  </data>
+  <data name="BatchRenameDepthLabel" xml:space="preserve">
+    <value>Subfolder depth</value>
+  </data>
+  <data name="BatchRenameDepthRangeFormat" xml:space="preserve">
+    <value>Includes levels 1–{0}</value>
+  </data>
+  <data name="BatchRenameIncludeFiles" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="BatchRenameIncludeFolders" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="BatchRenameScopeHint" xml:space="preserve">
+    <value>Counts are shown for the selected scope only; other scopes are enumerated when selected.</value>
+  </data>
+  <data name="BatchRenameVariablesHeader" xml:space="preserve">
+    <value>Variables and formatting</value>
+  </data>
+  <data name="BatchRenameAddCounterVariable" xml:space="preserve">
+    <value>+ Counter $&#x7B;…&#x7D;</value>
+  </data>
+  <data name="BatchRenameAddDateVariable" xml:space="preserve">
+    <value>+ Date $YYYY…</value>
+  </data>
+  <data name="BatchRenameAddFolderVariable" xml:space="preserve">
+    <value>+ Folder name $&#x7B;folder&#x7D;</value>
+  </data>
+  <data name="BatchRenameNumberingPattern" xml:space="preserve">
+    <value>Numbering pattern</value>
+  </data>
+  <data name="BatchRenameDatePattern" xml:space="preserve">
+    <value>Date pattern</value>
+  </data>
+  <data name="BatchRenameCaseConversionLabel" xml:space="preserve">
+    <value>Case conversion</value>
+  </data>
+  <data name="BatchRenameCaseNone" xml:space="preserve">
+    <value>Unchanged</value>
+  </data>
+  <data name="BatchRenameCaseLowercase" xml:space="preserve">
+    <value>lowercase</value>
+  </data>
+  <data name="BatchRenameCaseUppercase" xml:space="preserve">
+    <value>UPPERCASE</value>
+  </data>
+  <data name="BatchRenameCaseFirstLetter" xml:space="preserve">
+    <value>First letter</value>
+  </data>
+  <data name="BatchRenameCaseEveryWord" xml:space="preserve">
+    <value>Every Word</value>
+  </data>
+  <data name="BatchRenameVariablesHint" xml:space="preserve">
+    <value>The pattern buttons fill the "Replace with" box: numbering = Photos_$&#x7B;padding=3;start=1&#x7D;, date = $YYYY-$MM-$DD_$&#x7B;padding=3&#x7D; — edit freely after. $&#x7B;folder&#x7D; is the immediate parent folder name. Case conversion is applied to the whole result.</value>
+  </data>
+  <data name="BatchRenameFilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="BatchRenameFilterChanged" xml:space="preserve">
+    <value>Changed</value>
+  </data>
+  <data name="BatchRenameFilterSequenced" xml:space="preserve">
+    <value>Numbered</value>
+  </data>
+  <data name="BatchRenameCopyOriginalNames" xml:space="preserve">
+    <value>Copy original names</value>
+  </data>
+  <data name="BatchRenameCopyOriginalNamesToolTip" xml:space="preserve">
+    <value>Copy the original names to the clipboard, one per line</value>
+  </data>
+  <data name="BatchRenamePasteNewNames" xml:space="preserve">
+    <value>Paste new names</value>
+  </data>
+  <data name="BatchRenamePasteNewNamesToolTip" xml:space="preserve">
+    <value>Read new names from the clipboard, one per line. Empty lines leave their row unchanged.</value>
+  </data>
+  <data name="BatchRenameSearchPlaceholder" xml:space="preserve">
+    <value>Filter…</value>
+  </data>
+  <data name="BatchRenameColumnPosition" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="BatchRenameColumnOriginal" xml:space="preserve">
+    <value>Original</value>
+  </data>
+  <data name="BatchRenameColumnNew" xml:space="preserve">
+    <value>New (double-click to edit)</value>
+  </data>
+  <data name="BatchRenameGroupCurrentFolder" xml:space="preserve">
+    <value>Current folder</value>
+  </data>
+  <data name="BatchRenameGroupLevelFormat" xml:space="preserve">
+    <value>{0} · Level {1}</value>
+  </data>
+  <data name="BatchRenameRowManual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="BatchRenameRowSequenced" xml:space="preserve">
+    <value>Will be numbered</value>
+  </data>
+  <data name="BatchRenameRowSkipped" xml:space="preserve">
+    <value>Skipped</value>
+  </data>
+  <data name="BatchRenameRowOverwrite" xml:space="preserve">
+    <value>Will overwrite</value>
+  </data>
+  <data name="BatchRenameRowUnchanged" xml:space="preserve">
+    <value>Unchanged</value>
+  </data>
+  <data name="BatchRenameRowNotMatched" xml:space="preserve">
+    <value>No match</value>
+  </data>
+  <data name="BatchRenameRowExcludedFolder" xml:space="preserve">
+    <value>Folders not included</value>
+  </data>
+  <data name="BatchRenameRowError" xml:space="preserve">
+    <value>Invalid name</value>
+  </data>
+  <data name="BatchRenameRowUnchecked" xml:space="preserve">
+    <value>Unchecked</value>
+  </data>
+  <data name="BatchRenameResetRowToolTip" xml:space="preserve">
+    <value>Reset this row to the rule result</value>
+  </data>
+  <data name="BatchRenameCommitEditToolTip" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="BatchRenameCancelEditToolTip" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="BatchRenamePasteTruncated" xml:space="preserve">
+    <value>The clipboard had more lines than rows; the extra lines were ignored.</value>
+  </data>
+  <data name="BatchRenameResolveFailed" xml:space="preserve">
+    <value>The folder could not be read: {0}</value>
+  </data>
+  <data name="BatchRenameConflictSummaryFormat" xml:space="preserve">
+    <value>{0} name conflicts · {1} invalid</value>
+  </data>
+  <data name="BatchRenameConflictWhenLabel" xml:space="preserve">
+    <value>On conflict</value>
+  </data>
+  <data name="BatchRenameStrategyAppendNumber" xml:space="preserve">
+    <value>Add a number</value>
+  </data>
+  <data name="BatchRenameStrategyAppendNumberDescription" xml:space="preserve">
+    <value>Conflicting names become "name (2)". The preview shows the result and apply is not blocked.</value>
+  </data>
+  <data name="BatchRenameStrategySkip" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+  <data name="BatchRenameStrategySkipDescription" xml:space="preserve">
+    <value>Conflicting rows are marked "Skipped" and are not renamed.</value>
+  </data>
+  <data name="BatchRenameStrategyOverwrite" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="BatchRenameStrategyOverwriteDescription" xml:space="preserve">
+    <value>Asks for confirmation before applying. Overwritten files go to the recycle bin and cannot be restored with undo; the renames themselves can still be undone.</value>
+  </data>
+  <data name="BatchRenameStatsFormat" xml:space="preserve">
+    <value>{0} to change · {1} numbered · {2} unchanged · {3} excluded</value>
+  </data>
+  <data name="BatchRenameApply" xml:space="preserve">
+    <value>Apply rename</value>
+  </data>
+  <data name="BatchRenameApplying" xml:space="preserve">
+    <value>Applying renames…</value>
+  </data>
+  <data name="BatchRenameCanceled" xml:space="preserve">
+    <value>The rename was canceled. Items renamed so far can be undone with Ctrl+Z.</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmTitle" xml:space="preserve">
+    <value>Overwrite items?</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmMessage" xml:space="preserve">
+    <value>{0} items will be overwritten. Overwritten items are moved to the recycle bin and cannot be restored with undo. Do you want to continue?</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmButton" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="BatchRenameFailuresTitle" xml:space="preserve">
+    <value>Some items could not be renamed</value>
+  </data>
 </root>

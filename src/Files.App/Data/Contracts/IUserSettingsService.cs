@@ -1,4 +1,4 @@
-﻿// Copyright (c) Files Community
+// Copyright (c) Files Community
 // Licensed under the MIT License.
 
 namespace Files.App.Data.Contracts
@@ -14,6 +14,8 @@ namespace Files.App.Data.Contracts
 		IGeneralSettingsService GeneralSettingsService { get; }
 
 		IFoldersSettingsService FoldersSettingsService { get; }
+
+		IBatchRenameSettingsService BatchRenameSettingsService { get; }
 
 		IAppearanceSettingsService AppearanceSettingsService { get; }
 

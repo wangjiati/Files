@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <Page
 	x:Class="Files.App.Views.MainPage"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -360,6 +360,12 @@
 			CloseButtonContent="{helpers:ResourceString Name=Dismiss}"
 			IsOpen="{x:Bind ViewModel.ShowSponsorPrompt, Mode=OneWay}"
 			Subtitle="{helpers:ResourceString Name=SponsorSubtitle}" />
+
+		<!--  Batch Rename Overlay  -->
+		<uc:BatchRenameOverlayPresenter
+			x:Name="BatchRenameOverlay"
+			Grid.RowSpan="3"
+			Visibility="Collapsed" />
 
 		<VisualStateManager.VisualStateGroups>
 			<VisualStateGroup x:Name="SidebarWidthStates">
