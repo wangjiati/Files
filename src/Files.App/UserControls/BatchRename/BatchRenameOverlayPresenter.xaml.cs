@@ -144,6 +144,10 @@ namespace Files.App.UserControls
 
 		public void Close()
 		{
+			// Same semantics as the disabled Cancel button: an apply in flight cannot be dismissed.
+			if (isApplying)
+				return;
+
 			if (!IsOpen && vm is null)
 				return;
 
@@ -292,17 +296,23 @@ namespace Files.App.UserControls
 			if (!withSubfolders)
 				return (Strings.BatchRenameGroupCurrentFolder.GetLocalizedResource(), string.Empty);
 
-			string rootParent = Path.GetDirectoryName(rootPath.TrimEnd(Path.DirectorySeparatorChar)) ?? string.Empty;
-			if (rootParent.Length == 0)
-				return (Strings.BatchRenameGroupCurrentFolder.GetLocalizedResource(), string.Empty);
+			// Paths are relative to the current folder itself: a "D:\photos\京都" under the root
+			// "D:\photos" shows group "京都 · Level 1" and position "京都\", matching the depth
+			// stepper's "levels 1–N". A drive root keeps its label as the group.
+			string root = rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			if (root.Length == 0)
+				return (dir, dir);
 
-			if (string.Equals(dir, rootPath, StringComparison.OrdinalIgnoreCase))
+			if (string.Equals(dir, root, StringComparison.OrdinalIgnoreCase) || string.Equals(dir, rootPath, StringComparison.OrdinalIgnoreCase))
 				return (Strings.BatchRenameGroupCurrentFolder.GetLocalizedResource(), ".");
 
-			if (dir.StartsWith(rootParent, StringComparison.OrdinalIgnoreCase) && dir.Length > rootParent.Length)
+			if (
+				dir.Length > root.Length + 1 &&
+				(dir[root.Length] == Path.DirectorySeparatorChar || dir[root.Length] == Path.AltDirectorySeparatorChar) &&
+				dir.StartsWith(root, StringComparison.OrdinalIgnoreCase))
 			{
-				string relative = dir[(rootParent.Length + 1)..];
-				int level = relative.Split(Path.DirectorySeparatorChar).Length;
+				string relative = dir[(root.Length + 1)..];
+				int level = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length;
 				return (
 					string.Format(Strings.BatchRenameGroupLevelFormat.GetLocalizedResource(), relative, level),
 					relative + Path.DirectorySeparatorChar);
@@ -969,6 +979,9 @@ namespace Files.App.UserControls
 			if (vm is null || isApplying || !vm.ApplyCommand.CanExecute(null))
 				return;
 
+			// Close() nulls the session state, so the refresh below must use the page captured here.
+			IShellPage? page = shellPage;
+
 			if (vm.ConflictStrategy == ConflictStrategy.Overwrite && vm.Counts.Overwrite > 0 && !await ConfirmOverwriteAsync())
 				return;
 
@@ -1009,14 +1022,14 @@ namespace Files.App.UserControls
 			if (canceled)
 			{
 				// Partial renames may have landed; refresh behind the overlay but let the user continue.
-				if (shellPage is not null)
-					await shellPage.Refresh_Click();
+				if (page is not null)
+					await page.Refresh_Click();
 			}
 			else
 			{
 				Close();
-				if (shellPage is not null)
-					await shellPage.Refresh_Click();
+				if (page is not null)
+					await page.Refresh_Click();
 			}
 		}
 
