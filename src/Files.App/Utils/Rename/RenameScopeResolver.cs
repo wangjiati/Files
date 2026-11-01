@@ -18,7 +18,7 @@ namespace Files.App.Utils.Rename
 	public sealed class RenameScopeResolver : IRenameScopeResolver
 	{
 		/// <inheritdoc/>
-		public async Task<IReadOnlyList<RenameTarget>> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem currentFolderItem, CancellationToken ct)
+		public async Task<IReadOnlyList<RenameTarget>> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem? currentFolderItem, CancellationToken ct)
 		{
 			ArgumentNullException.ThrowIfNull(selectedItems);
 

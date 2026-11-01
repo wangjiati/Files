@@ -16,8 +16,8 @@ namespace Files.App.Utils.Rename
 		/// <param name="includeFiles">Whether files participate in the batch.</param>
 		/// <param name="includeFolders">Whether folders participate in the batch.</param>
 		/// <param name="selectedItems">The selected items of the current file list, used by <see cref="RenameScopeOption.SelectedItems"/>.</param>
-		/// <param name="currentFolderItem">The current folder item; anchors <see cref="RenameScopeOption.CurrentFolder"/> and <see cref="RenameScopeOption.CurrentFolderWithSubfolders"/>.</param>
+		/// <param name="currentFolderItem">The current folder item; anchors <see cref="RenameScopeOption.CurrentFolder"/> and <see cref="RenameScopeOption.CurrentFolderWithSubfolders"/>; <c>null</c> leaves those scopes unanchored.</param>
 		/// <param name="ct">Cancels the subfolder enumeration.</param>
-		Task<IReadOnlyList<RenameTarget>> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem currentFolderItem, CancellationToken ct);
+		Task<IReadOnlyList<RenameTarget>> ResolveAsync(RenameScopeOption option, int depth, bool includeFiles, bool includeFolders, IReadOnlyList<ListedItem> selectedItems, ListedItem? currentFolderItem, CancellationToken ct);
 	}
 }
