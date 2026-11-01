@@ -35,9 +35,12 @@ namespace Files.App.Utils.Rename
 	/// </summary>
 	/// <remarks>
 	/// Manual names survive every preview rebuild; they win over both the rule and the conflict
-	/// decision until <see cref="ResetManual"/> is called. A folder row built while folders are
-	/// excluded from the batch is always <see cref="RenameRowStatus.Unchanged"/> with
-	/// <see cref="UnchangedReason.ExcludedFolderType"/>, regardless of what the rule would have done.
+	/// decision until <see cref="ResetManual"/> is called. A manual name that fails
+	/// <see cref="RenameValidator.Validate"/> marks the row <see cref="RenameRowStatus.Error"/>
+	/// and keeps it out of the execution plan, without blocking the rest of the batch. A folder
+	/// row built while folders are excluded from the batch is always
+	/// <see cref="RenameRowStatus.Unchanged"/> with <see cref="UnchangedReason.ExcludedFolderType"/>,
+	/// regardless of what the rule would have done.
 	/// </remarks>
 	public sealed class RenamePreviewRow(
 		RenameTarget Target,
@@ -70,8 +73,10 @@ namespace Files.App.Utils.Rename
 		{
 			get
 			{
+				// A manual name that fails name validation flags the row as an error and keeps it
+				// out of the plan, but the typed value stays until the user resets the row.
 				if (ManualName is not null)
-					return RenameRowStatus.Manual;
+					return RenameValidator.Validate(ManualName) is null ? RenameRowStatus.Manual : RenameRowStatus.Error;
 				if (Target.IsFolder && !IncludeFolders)
 					return RenameRowStatus.Unchanged;
 				if (Outcome.Kind == RenameOutcomeKind.RuleError)

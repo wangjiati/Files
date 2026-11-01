@@ -358,6 +358,59 @@ namespace Files.App.UnitTests.Rename
 		}
 
 		[TestMethod]
+		public async Task RebuildPreview_PreservesIsIncluded_AcrossRuleChange()
+		{
+			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("IMG_001.jpg"), FileTarget("IMG_002.jpg")] });
+			vm.Rule = vm.Rule with { Find = "IMG", ReplaceWith = "照片" };
+			await vm.ResolveScopeAsync();
+			vm.Rows[0].IsIncluded = false;
+
+			vm.Rule = vm.Rule with { ReplaceWith = "新" };
+			vm.RebuildPreview();
+
+			Assert.IsFalse(vm.Rows[0].IsIncluded);
+			Assert.IsTrue(vm.Rows[1].IsIncluded);
+
+			IReadOnlyList<RenameExecutionItem> plan = RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy);
+			Assert.AreEqual(1, plan.Count);
+			Assert.AreEqual(vm.Rows[1].Target.FullPath, plan[0].SourcePath);
+		}
+
+		[TestMethod]
+		public async Task InvalidManualName_MarksRowError_BlocksOnlyThatRow()
+		{
+			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("IMG_001.jpg"), FileTarget("IMG_002.jpg")] });
+			vm.Rule = vm.Rule with { Find = "IMG", ReplaceWith = "照片" };
+			await vm.ResolveScopeAsync();
+
+			// A pasted reserved device name flags its row without blocking the other row.
+			vm.PasteNewNames("CON.txt");
+
+			Assert.AreEqual("CON.txt", vm.Rows[0].ManualName);
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[0].Status);
+			Assert.IsFalse(vm.IsRuleBroken);
+			Assert.IsTrue(vm.ApplyCommand.CanExecute(null));
+			Assert.AreEqual(1, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+
+			// A typed illegal character does the same to the remaining row.
+			vm.SetManualName(vm.Rows[1], "京都_?");
+
+			Assert.AreEqual("京都_?", vm.Rows[1].ManualName);
+			Assert.AreEqual(RenameRowStatus.Error, vm.Rows[1].Status);
+			Assert.IsFalse(vm.IsRuleBroken);
+			Assert.IsFalse(vm.ApplyCommand.CanExecute(null));
+			Assert.AreEqual(0, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+
+			// Resetting the row restores the rule result and the plan.
+			vm.ResetManualName(vm.Rows[1]);
+
+			Assert.IsNull(vm.Rows[1].ManualName);
+			Assert.AreEqual(RenameRowStatus.Changed, vm.Rows[1].Status);
+			Assert.AreEqual("照片_002.jpg", vm.Rows[1].FinalName);
+			Assert.AreEqual(1, RenameExecutor.BuildExecutionPlan(vm.Rows, vm.ConflictStrategy).Count);
+		}
+
+		[TestMethod]
 		public async Task ResolveScope_Failure_SetsErrorStateWithoutThrowing()
 		{
 			var vm = CreateVm(new FakeScopeResolver { Targets = [FileTarget("a.jpg")], Throw = new IOException("boom") });
