@@ -53,9 +53,13 @@ Files 现有的多选 F2 只会打开 `BulkRenameDialog`——"全部改成同�
 
 | 入口 | 行为 |
 |---|---|
-| 多选 + F2 | 打开批量重命名弹窗（替换现 `BulkRenameDialog` 的多选分支） |
-| 右键菜单"批量重命名" | 同上；选中 ≥2 项时显示 |
+| 多选 + F2 | 打开批量重命名弹窗（替换现 `BulkRenameDialog` 的多选分支），默认作用域=仅选中项 |
+| 选中项右键菜单"批量重命名…" | 同上；选中 ≥2 项时显示 |
+| 空白处右键菜单"批量重命名…" | 打开弹窗，无需预先选择；有选中项时默认=仅选中项，否则默认=当前文件夹 |
+| 顶部工具栏"批量重命名"按钮 | 常驻可用；默认作用域规则同空白处右键 |
 | 单选 + F2 | 保持现有内联编辑不变 |
+
+默认作用域规则一句话：**有选中项就默认"仅选中项"，没有就默认"当前文件夹"**（用户随后可在作用域卡片里改）。
 
 ## 4. 界面结构（弹窗）
 
@@ -160,7 +164,7 @@ Files 现有的多选 F2 只会打开 `BulkRenameDialog`——"全部改成同�
 
 ## 12. 实现约束与指引（Files 代码库）
 
-- 入口：`src/Files.App/Actions/FileSystem/RenameAction.cs` 多选分支；`src/Files.App/Data/Factories/ContentPageContextFlyoutFactory.cs`（现 `Commands.Rename` 注册处附近）加"批量重命名"菜单项
+- 入口：`src/Files.App/Actions/FileSystem/RenameAction.cs` 多选分支；`src/Files.App/Data/Factories/ContentPageContextFlyoutFactory.cs` 的**选中项菜单**与**空白处菜单**各加一项"批量重命名…"；顶部工具栏加常驻按钮（沿用现有工具栏/命令注册模式）
 - 替换/重构 `src/Files.App/Dialogs/BulkRenameDialog.*` 与 `src/Files.App/ViewModels/Dialogs/BulkRenameDialogViewModel.cs`；弹窗注册在 `src/Files.App/Services/App/AppDialogService.cs`
 - 执行与校验：`IFilesystemHelpers.RenameAsync`、`FilesystemHelpers.IsValidForFilename`；ADS（`AlternateStreamItem`）重命名兼容沿用现有路径
 - **可缩放/最大化弹窗**：`ContentDialog` 做不到。倾向在主窗口内做自定义模态覆盖层（Chrome 自绘：标题栏、缩放 grip、最大化/还原），生命周期挂主窗口；备选 `AppWindow` 独立窗口（失去模态性）——建造者决定并给出理由
@@ -199,6 +203,7 @@ EXIF/拍摄日期变量、随机串/UUID、多步规则链、计数器拖拽调�
 ## 16. 决策记录（用户已定）
 
 - 形态：弹窗（非双窗格接管）；列表弹窗 + 规则区同屏
+- 入口四个：多选 F2、选中项右键（≥2 项）、空白处右键、顶部工具栏按钮；有选中默认"仅选中项"，无选中默认"当前文件夹"
 - 规则栏默认右侧、可切左侧；宽 300px
 - 通配符模式必须支持
 - v1 含：大小写转换、计数器、日期变量（仅创建/修改时间）、逐项手改、方案模板（开头/结尾追加等）、作用域+子文件夹深度、冲突策略、预设、剪贴板名称、可最大化弹窗
