@@ -5151,4 +5151,331 @@
   <data name="StatusCenter_ExportFileListFailed_SubHeader" xml:space="preserve">
     <value>无法写入 {2}</value>
   </data>
+  <data name="BatchRenameTitle" xml:space="preserve">
+    <value>批量重命名</value>
+  </data>
+  <data name="BatchRenameKeyboardHints" xml:space="preserve">
+    <value>Ctrl+H 查找（弹窗内覆盖全局快捷键）· Enter 应用 · Esc 关闭 · F2 编辑下一行 · 双击“改后”单元格可手动编辑</value>
+  </data>
+  <data name="BatchRenameSubtitleFormat" xml:space="preserve">
+    <value>{0} · 作用域：{1} · {2} 个对象</value>
+  </data>
+  <data name="BatchRenameScopeSelectedItems" xml:space="preserve">
+    <value>仅选中项</value>
+  </data>
+  <data name="BatchRenameScopeCurrentFolder" xml:space="preserve">
+    <value>当前文件夹</value>
+  </data>
+  <data name="BatchRenameScopeWithSubfoldersFormat" xml:space="preserve">
+    <value>含子文件夹（{0} 层）</value>
+  </data>
+  <data name="BatchRenameDockLeftLabel" xml:space="preserve">
+    <value>规则栏在左</value>
+  </data>
+  <data name="BatchRenameDockRightLabel" xml:space="preserve">
+    <value>规则栏在右</value>
+  </data>
+  <data name="BatchRenameMaximizeToolTip" xml:space="preserve">
+    <value>最大化/还原</value>
+  </data>
+  <data name="BatchRenamePresetLabel" xml:space="preserve">
+    <value>预设</value>
+  </data>
+  <data name="BatchRenameNoPresetSelected" xml:space="preserve">
+    <value>默认</value>
+  </data>
+  <data name="BatchRenameSavePreset" xml:space="preserve">
+    <value>存当前为预设</value>
+  </data>
+  <data name="BatchRenameDeletePreset" xml:space="preserve">
+    <value>删除预设</value>
+  </data>
+  <data name="BatchRenameSavePresetTitle" xml:space="preserve">
+    <value>保存预设</value>
+  </data>
+  <data name="BatchRenameSavePresetPrompt" xml:space="preserve">
+    <value>预设名称</value>
+  </data>
+  <data name="BatchRenameTemplatesHeader" xml:space="preserve">
+    <value>方案模板</value>
+  </data>
+  <data name="BatchRenameTemplateFindReplace" xml:space="preserve">
+    <value>查找替换</value>
+  </data>
+  <data name="BatchRenameTemplatePrepend" xml:space="preserve">
+    <value>开头追加</value>
+  </data>
+  <data name="BatchRenameTemplateAppend" xml:space="preserve">
+    <value>结尾追加</value>
+  </data>
+  <data name="BatchRenameFind" xml:space="preserve">
+    <value>查找</value>
+  </data>
+  <data name="BatchRenameReplaceWith" xml:space="preserve">
+    <value>替换为</value>
+  </data>
+  <data name="BatchRenameModeLabel" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="BatchRenameModeText" xml:space="preserve">
+    <value>文本</value>
+  </data>
+  <data name="BatchRenameModeWildcard" xml:space="preserve">
+    <value>通配符</value>
+  </data>
+  <data name="BatchRenameModeRegex" xml:space="preserve">
+    <value>正则</value>
+  </data>
+  <data name="BatchRenameApplyToLabel" xml:space="preserve">
+    <value>应用到</value>
+  </data>
+  <data name="BatchRenameApplyToNameOnly" xml:space="preserve">
+    <value>仅文件名</value>
+  </data>
+  <data name="BatchRenameApplyToExtensionOnly" xml:space="preserve">
+    <value>仅扩展名</value>
+  </data>
+  <data name="BatchRenameApplyToAll" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="BatchRenameMatchAllOccurrences" xml:space="preserve">
+    <value>匹配全部</value>
+  </data>
+  <data name="BatchRenameCaseSensitive" xml:space="preserve">
+    <value>区分大小写</value>
+  </data>
+  <data name="BatchRenamePrefixLabel" xml:space="preserve">
+    <value>追加到名称开头</value>
+  </data>
+  <data name="BatchRenameSuffixLabel" xml:space="preserve">
+    <value>追加到名称结尾</value>
+  </data>
+  <data name="BatchRenameSkipExistingPrefix" xml:space="preserve">
+    <value>跳过已含此前缀的名称</value>
+  </data>
+  <data name="BatchRenameInsertBeforeExtension" xml:space="preserve">
+    <value>插入在扩展名之前</value>
+  </data>
+  <data name="BatchRenamePrependHint" xml:space="preserve">
+    <value>作用于文件名开头，扩展名不动。等价于正则：查找 ^ → 替换为前缀。</value>
+  </data>
+  <data name="BatchRenameAppendHint" xml:space="preserve">
+    <value>勾选后 img.jpg → img_备份.jpg；不勾选则 img.jpg → img.jpg_备份。</value>
+  </data>
+  <data name="BatchRenameScopeHeader" xml:space="preserve">
+    <value>作用域</value>
+  </data>
+  <data name="BatchRenameScopeSelectedItemsLabel" xml:space="preserve">
+    <value>仅选中项</value>
+  </data>
+  <data name="BatchRenameScopeCurrentFolderLabel" xml:space="preserve">
+    <value>当前文件夹</value>
+  </data>
+  <data name="BatchRenameScopeWithSubfoldersLabel" xml:space="preserve">
+    <value>含子文件夹</value>
+  </data>
+  <data name="BatchRenameDepthLabel" xml:space="preserve">
+    <value>子文件夹深度</value>
+  </data>
+  <data name="BatchRenameDepthRangeFormat" xml:space="preserve">
+    <value>含第 1–{0} 层</value>
+  </data>
+  <data name="BatchRenameIncludeFiles" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="BatchRenameIncludeFolders" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="BatchRenameScopeHint" xml:space="preserve">
+    <value>计数只统计当前选中的作用域，选中其它作用域时再枚举。</value>
+  </data>
+  <data name="BatchRenameVariablesHeader" xml:space="preserve">
+    <value>变量与格式</value>
+  </data>
+  <data name="BatchRenameAddCounterVariable" xml:space="preserve">
+    <value>＋ 计数器 $&#x7B;…&#x7D;</value>
+  </data>
+  <data name="BatchRenameAddDateVariable" xml:space="preserve">
+    <value>＋ 日期 $YYYY…</value>
+  </data>
+  <data name="BatchRenameAddFolderVariable" xml:space="preserve">
+    <value>＋ 文件夹名 $&#x7B;folder&#x7D;</value>
+  </data>
+  <data name="BatchRenameNumberingPattern" xml:space="preserve">
+    <value>编号模式</value>
+  </data>
+  <data name="BatchRenameDatePattern" xml:space="preserve">
+    <value>日期模式</value>
+  </data>
+  <data name="BatchRenameCaseConversionLabel" xml:space="preserve">
+    <value>大小写转换</value>
+  </data>
+  <data name="BatchRenameCaseNone" xml:space="preserve">
+    <value>不变</value>
+  </data>
+  <data name="BatchRenameCaseLowercase" xml:space="preserve">
+    <value>全小写</value>
+  </data>
+  <data name="BatchRenameCaseUppercase" xml:space="preserve">
+    <value>全大写</value>
+  </data>
+  <data name="BatchRenameCaseFirstLetter" xml:space="preserve">
+    <value>首字母大写</value>
+  </data>
+  <data name="BatchRenameCaseEveryWord" xml:space="preserve">
+    <value>每词首字母大写</value>
+  </data>
+  <data name="BatchRenameVariablesHint" xml:space="preserve">
+    <value>模式按钮会填入“替换为”框：编号 = 照片_$&#x7B;padding=3;start=1&#x7D;，日期 = $YYYY-$MM-$DD_$&#x7B;padding=3&#x7D;，填入后可自由编辑。$&#x7B;folder&#x7D; 为直接父文件夹名。大小写转换作用于整个结果。</value>
+  </data>
+  <data name="BatchRenameFilterAll" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="BatchRenameFilterChanged" xml:space="preserve">
+    <value>将改动</value>
+  </data>
+  <data name="BatchRenameFilterSequenced" xml:space="preserve">
+    <value>加序号</value>
+  </data>
+  <data name="BatchRenameCopyOriginalNames" xml:space="preserve">
+    <value>复制改前</value>
+  </data>
+  <data name="BatchRenameCopyOriginalNamesToolTip" xml:space="preserve">
+    <value>把改前列表按行复制到剪贴板</value>
+  </data>
+  <data name="BatchRenamePasteNewNames" xml:space="preserve">
+    <value>粘贴新名称</value>
+  </data>
+  <data name="BatchRenamePasteNewNamesToolTip" xml:space="preserve">
+    <value>从剪贴板按行读入新名称；空行=跳过该行</value>
+  </data>
+  <data name="BatchRenameSearchPlaceholder" xml:space="preserve">
+    <value>筛选…</value>
+  </data>
+  <data name="BatchRenameColumnPosition" xml:space="preserve">
+    <value>位置</value>
+  </data>
+  <data name="BatchRenameColumnOriginal" xml:space="preserve">
+    <value>改前</value>
+  </data>
+  <data name="BatchRenameColumnNew" xml:space="preserve">
+    <value>改后（双击可手改）</value>
+  </data>
+  <data name="BatchRenameGroupCurrentFolder" xml:space="preserve">
+    <value>当前文件夹</value>
+  </data>
+  <data name="BatchRenameGroupLevelFormat" xml:space="preserve">
+    <value>{0} · 第 {1} 层</value>
+  </data>
+  <data name="BatchRenameRowManual" xml:space="preserve">
+    <value>手动</value>
+  </data>
+  <data name="BatchRenameRowSequenced" xml:space="preserve">
+    <value>将加序号</value>
+  </data>
+  <data name="BatchRenameRowSkipped" xml:space="preserve">
+    <value>已跳过</value>
+  </data>
+  <data name="BatchRenameRowOverwrite" xml:space="preserve">
+    <value>将覆盖</value>
+  </data>
+  <data name="BatchRenameRowUnchanged" xml:space="preserve">
+    <value>未改动</value>
+  </data>
+  <data name="BatchRenameRowNotMatched" xml:space="preserve">
+    <value>不匹配</value>
+  </data>
+  <data name="BatchRenameRowExcludedFolder" xml:space="preserve">
+    <value>未包含文件夹</value>
+  </data>
+  <data name="BatchRenameRowError" xml:space="preserve">
+    <value>非法名称</value>
+  </data>
+  <data name="BatchRenameRowUnchecked" xml:space="preserve">
+    <value>已取消勾选</value>
+  </data>
+  <data name="BatchRenameResetRowToolTip" xml:space="preserve">
+    <value>重置此行为规则结果</value>
+  </data>
+  <data name="BatchRenameCommitEditToolTip" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="BatchRenameCancelEditToolTip" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="BatchRenamePasteTruncated" xml:space="preserve">
+    <value>剪贴板行数多于对象数，多余行已忽略。</value>
+  </data>
+  <data name="BatchRenameResolveFailed" xml:space="preserve">
+    <value>文件夹无法读取：{0}</value>
+  </data>
+  <data name="BatchRenameConflictSummaryFormat" xml:space="preserve">
+    <value>{0} 项结果重名 · {1} 项非法</value>
+  </data>
+  <data name="BatchRenameConflictWhenLabel" xml:space="preserve">
+    <value>冲突时</value>
+  </data>
+  <data name="BatchRenameStrategyAppendNumber" xml:space="preserve">
+    <value>自动加序号</value>
+  </data>
+  <data name="BatchRenameStrategyAppendNumberDescription" xml:space="preserve">
+    <value>重名项显示为“名称 (2)”，预览直接呈现结果，应用不被阻止。</value>
+  </data>
+  <data name="BatchRenameStrategySkip" xml:space="preserve">
+    <value>跳过</value>
+  </data>
+  <data name="BatchRenameStrategySkipDescription" xml:space="preserve">
+    <value>重名项标记“已跳过”，执行时跳过并在结束汇总提示。</value>
+  </data>
+  <data name="BatchRenameStrategyOverwrite" xml:space="preserve">
+    <value>覆盖</value>
+  </data>
+  <data name="BatchRenameStrategyOverwriteDescription" xml:space="preserve">
+    <value>应用前二次确认；被覆盖文件移入回收站、无法通过撤销还原；重命名本身仍可撤销。</value>
+  </data>
+  <data name="BatchRenameStatsFormat" xml:space="preserve">
+    <value>将改动 {0} · 加序号 {1} · 未变 {2} · 已排除 {3}</value>
+  </data>
+  <data name="BatchRenameApply" xml:space="preserve">
+    <value>应用重命名</value>
+  </data>
+  <data name="BatchRenameApplying" xml:space="preserve">
+    <value>正在应用重命名…</value>
+  </data>
+  <data name="BatchRenameCanceled" xml:space="preserve">
+    <value>重命名已取消；已完成部分可用 Ctrl+Z 撤销。</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmTitle" xml:space="preserve">
+    <value>覆盖这些项目？</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmMessage" xml:space="preserve">
+    <value>将覆盖 {0} 个项目。被覆盖项目移入回收站，且无法通过撤销恢复。要继续吗？</value>
+  </data>
+  <data name="BatchRenameOverwriteConfirmButton" xml:space="preserve">
+    <value>覆盖</value>
+  </data>
+  <data name="BatchRenameFailuresTitle" xml:space="preserve">
+    <value>部分项目无法重命名</value>
+  </data>
+  <data name="BatchRenameActionLabel" xml:space="preserve">
+    <value>批量重命名…</value>
+  </data>
+  <data name="BatchRenameActionDescription" xml:space="preserve">
+    <value>用查找替换规则批量重命名项目</value>
+  </data>
+  <data name="BatchRenameRowDuplicateName" xml:space="preserve">
+    <value>重名</value>
+  </data>
+  <data name="BatchRenameProgressFormat" xml:space="preserve">
+    <value>正在重命名 {0}/{1}：{2}</value>
+  </data>
+  <data name="BatchRenameRenameFailedFormat" xml:space="preserve">
+    <value>重命名失败（{0}）。</value>
+  </data>
+  <data name="BatchRenameFreeFailedFormat" xml:space="preserve">
+    <value>无法释放目标名称（{0}）。</value>
+  </data>
+  <data name="BatchRenameClipboardFailed" xml:space="preserve">
+    <value>无法访问剪贴板。</value>
+  </data>
 </root>

@@ -294,8 +294,6 @@
 					<VisualState.Setters>
 						<Setter Target="DialogBorder.Margin" Value="0" />
 						<Setter Target="DialogBorder.CornerRadius" Value="0" />
-						<Setter Target="DialogBorder.MaxWidth" Value="4000" />
-						<Setter Target="DialogBorder.MaxHeight" Value="4000" />
 					</VisualState.Setters>
 				</VisualState>
 			</VisualStateGroup>
@@ -305,12 +303,12 @@
 		<Border Background="#550F172A" />
 
 		<!--  Dialog  -->
-		<!--  MaxWidth/MaxHeight are sized in code to ~85% of the window client area.  -->
+		<!--  Width/Height are set in code (~85% of the client area, or full area when maximized).  -->
 		<Border
 			x:Name="DialogBorder"
 			Margin="16"
-			HorizontalAlignment="Stretch"
-			VerticalAlignment="Stretch"
+			HorizontalAlignment="Center"
+			VerticalAlignment="Center"
 			Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
 			BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
 			BorderThickness="1"

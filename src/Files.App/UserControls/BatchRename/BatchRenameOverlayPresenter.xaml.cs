@@ -989,11 +989,7 @@ namespace Files.App.UserControls
 
 			VisualStateManager.GoToState(this, maximized ? "NormalSizeState" : "MaximizedState", true);
 			MaximizeButton.Content = maximized ? "\uE922" : "\uE923";
-
-			// Leaving the maximized state restores the last computed size; recompute it in case the
-			// window changed while the dialog was stretched.
-			if (maximized)
-				UpdateDialogSize();
+			UpdateDialogSize();
 		}
 
 		private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1003,19 +999,26 @@ namespace Files.App.UserControls
 
 		/// <summary>
 		/// Sizes the dialog to ~85% of the client area the overlay covers, clamped to a readable
-		/// minimum; the maximized visual state keeps stretching it to the full area.
+		/// minimum; the maximized visual state fills the whole area. Width/Height are set
+		/// explicitly (centered) so every descendant is measured with a finite constraint and the
+		/// rules column can never lay out past the dialog bounds.
 		/// </summary>
 		private void UpdateDialogSize()
 		{
 			if (RootGrid.ActualWidth <= 0 || RootGrid.ActualHeight <= 0)
 				return;
 
-			if (VisualStateManager.GetVisualStateGroups(RootGrid)
-				.First(group => group.Name == "SizeStates").CurrentState?.Name == "MaximizedState")
-				return;
+			bool maximized = VisualStateManager.GetVisualStateGroups(RootGrid)
+				.First(group => group.Name == "SizeStates").CurrentState?.Name == "MaximizedState";
 
-			DialogBorder.MaxWidth = Math.Max(DialogMinWidth, Math.Round(RootGrid.ActualWidth * DialogSizeRatio));
-			DialogBorder.MaxHeight = Math.Max(DialogMinHeight, Math.Round(RootGrid.ActualHeight * DialogSizeRatio));
+			double width = Math.Round(RootGrid.ActualWidth * DialogSizeRatio);
+			double height = Math.Round(RootGrid.ActualHeight * DialogSizeRatio);
+			DialogBorder.Width = maximized
+				? RootGrid.ActualWidth
+				: Math.Clamp(width, DialogMinWidth, Math.Max(DialogMinWidth, RootGrid.ActualWidth - 32));
+			DialogBorder.Height = maximized
+				? RootGrid.ActualHeight
+				: Math.Clamp(height, DialogMinHeight, Math.Max(DialogMinHeight, RootGrid.ActualHeight - 32));
 		}
 
 		private void CloseButton_Click(object sender, RoutedEventArgs e)
