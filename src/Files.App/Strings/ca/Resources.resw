@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>ID d'usuari</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Canvi de nom en bloc</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Comprimeix el contingut</value>
   </data>

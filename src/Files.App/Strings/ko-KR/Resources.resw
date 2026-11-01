@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>사용자 ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>이름 일괄 바꾸기</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>압축 내용</value>
   </data>

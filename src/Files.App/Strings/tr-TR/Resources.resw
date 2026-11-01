@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>Kullanıcı kimliği</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Toplu yeniden adlandırma</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>İçerikleri sıkıştır</value>
   </data>

@@ -4366,9 +4366,6 @@
   <data name="UserID" xml:space="preserve">
     <value>معرف المستخدم</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>إعادة تسمية مجمعة</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>ضغط المحتوى</value>
   </data>

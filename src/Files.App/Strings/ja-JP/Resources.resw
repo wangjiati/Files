@@ -4366,9 +4366,6 @@
   <data name="UserID" xml:space="preserve">
     <value>ユーザー ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>名前を一括して変更</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>内容を圧縮</value>
   </data>

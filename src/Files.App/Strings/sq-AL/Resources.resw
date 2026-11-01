@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>ID e përdoruesit</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Riemërtimi në masë</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Kompresoni përmbajtjen</value>
   </data>

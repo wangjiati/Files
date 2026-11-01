@@ -4605,9 +4605,6 @@
   <data name="UserID" xml:space="preserve">
     <value>使用者 ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>批次重新命名</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>壓縮內容</value>
   </data>

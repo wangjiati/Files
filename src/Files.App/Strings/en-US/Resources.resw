@@ -4737,9 +4737,6 @@
   <data name="UserID" xml:space="preserve">
     <value>User ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Bulk rename</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Compress contents</value>
   </data>
@@ -5513,5 +5510,11 @@
   </data>
   <data name="BatchRenameFailuresTitle" xml:space="preserve">
     <value>Some items could not be renamed</value>
+  </data>
+  <data name="BatchRenameActionLabel" xml:space="preserve">
+    <value>Batch rename</value>
+  </data>
+  <data name="BatchRenameActionDescription" xml:space="preserve">
+    <value>Batch rename items with find and replace rules</value>
   </data>
 </root>

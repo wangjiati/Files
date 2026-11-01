@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>Felhasználói azonosító</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Csoportos átnevezés</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Tartalom tömörítése</value>
   </data>

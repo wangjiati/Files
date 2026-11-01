@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>Käyttäjätunnus</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Usean kohteen uudelleennimeäminen</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Pakkaa sisältö</value>
   </data>

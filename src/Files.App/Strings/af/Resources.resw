@@ -4366,9 +4366,6 @@
   <data name="UserID" xml:space="preserve">
     <value>User ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Bulk rename</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Compress contents</value>
   </data>

@@ -530,6 +530,15 @@ namespace Files.App.Data.Factories
 					IsPrimary = true,
 					IsVisible = itemsSelected
 				}.Build(),
+				new ContextMenuFlyoutItemViewModelBuilder(Commands.BatchRename)
+				{
+					IsPrimary = true,
+					IsVisible = itemsSelected && selectedItems.Count >= 2
+				}.Build(),
+				new ContextMenuFlyoutItemViewModelBuilder(Commands.BatchRename)
+				{
+					IsVisible = !itemsSelected
+				}.Build(),
 				new ContextMenuFlyoutItemViewModelBuilder(Commands.ShareItem)
 				{
 					IsPrimary = true,

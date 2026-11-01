@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>ID người dùng</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Đổi tên hàng loạt</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Nén nội dung</value>
   </data>

@@ -31,6 +31,7 @@ namespace Files.App.Data.Items
 					new(commandCode: nameof(CommandCodes.CopyItem)),
 					new(commandCode: nameof(CommandCodes.PasteItem)),
 					new(commandCode: nameof(CommandCodes.Rename)),
+					new(commandCode: nameof(CommandCodes.BatchRename)),
 					new(commandCode: nameof(CommandCodes.ShareItem)),
 					new(commandCode: nameof(CommandCodes.DeleteItem)),
 					new(commandCode: nameof(CommandCodes.OpenProperties)),

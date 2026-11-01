@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>ID χρήστη</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Μαζική μετονομασία</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Συμπίεση περιεχομένων</value>
   </data>

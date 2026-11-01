@@ -4365,9 +4365,6 @@
   <data name="UserID" xml:space="preserve">
     <value>Bruger-ID</value>
   </data>
-  <data name="BulkRename" xml:space="preserve">
-    <value>Masseomdøb</value>
-  </data>
   <data name="CompressContents" xml:space="preserve">
     <value>Komprimér indhold</value>
   </data>

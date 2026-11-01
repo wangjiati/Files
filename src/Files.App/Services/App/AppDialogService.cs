@@ -26,7 +26,6 @@ namespace Files.App.Services
 				{ typeof(AddBranchDialogViewModel), () => new AddBranchDialog() },
 				{ typeof(GitHubLoginDialogViewModel), () => new GitHubLoginDialog() },
 				{ typeof(FileTooLargeDialogViewModel), () => new FileTooLargeDialog() },
-				{ typeof(BulkRenameDialogViewModel), () => new BulkRenameDialog() },
 				{ typeof(CloneRepoDialogViewModel), () => new CloneRepoDialog() },
 				{ typeof(CompressSkippedItemsDialogViewModel), () => new CompressSkippedItemsDialog() },
 			}.ToFrozenDictionary();

@@ -42,18 +42,19 @@ namespace Files.App.Actions
 			context.PropertyChanged += Context_PropertyChanged;
 		}
 
-		public async Task ExecuteAsync(object? parameter = null)
+		public Task ExecuteAsync(object? parameter = null)
 		{
 			if (context.SelectedItems.Count > 1)
 			{
-				var viewModel = new BulkRenameDialogViewModel();
-				var dialogService = Ioc.Default.GetRequiredService<IDialogService>();
-				var result = await dialogService.ShowDialogAsync(viewModel);
+				if (context.ShellPage is { } shellPage)
+					BatchRenameOverlayPresenter.Instance?.Open(shellPage, context.SelectedItems);
 			}
 			else
 			{
 				context.ShellPage?.SlimContentPage?.ItemManipulationModel.StartRenameItem();
 			}
+
+			return Task.CompletedTask;
 		}
 
 		private bool IsPageTypeValid()
