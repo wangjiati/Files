@@ -50,14 +50,16 @@ namespace Files.App.Utils.Rename
 		}
 
 		/// <summary>
-		/// Writes the presets to the file, replacing any previous content.
+		/// Writes the presets to the file, replacing any previous content atomically.
 		/// </summary>
-		public async Task SaveAsync(IReadOnlyList<RenamePreset> presets)
+		public Task SaveAsync(IReadOnlyList<RenamePreset> presets)
 		{
 			ArgumentNullException.ThrowIfNull(presets);
 
-			await using var stream = SystemIO.File.Create(_filePath);
-			await JsonSerializer.SerializeAsync(stream, presets, RenamePresetsJsonContext.Default.IReadOnlyListRenamePreset);
+			var json = JsonSerializer.Serialize(presets, RenamePresetsJsonContext.Default.IReadOnlyListRenamePreset);
+			AtomicFile.WriteAllText(_filePath, json);
+
+			return Task.CompletedTask;
 		}
 	}
 }
