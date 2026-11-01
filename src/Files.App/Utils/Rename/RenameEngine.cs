@@ -50,8 +50,9 @@ namespace Files.App.Utils.Rename
 	/// Pipeline per row: split the name by <see cref="RenameApplyTo"/>, apply the template to the target
 	/// segment only, expand variables in the injected text (replacement/prefix/suffix), apply the case
 	/// conversion to the name part, then validate the whole name. Counters advance once per matched row,
-	/// never for rows that stay unchanged. In regex mode the replacement string is used verbatim as a
-	/// substitution (so '$1' works) and therefore does not expand variables.
+	/// never for rows that stay unchanged. Variables expand in every mode; in regex mode the expanded
+	/// replacement is used directly as a .NET substitution string, so group references like '$1' that the
+	/// user wrote survive expansion, while a '$' coming from expanded values is escaped to stay literal.
 	/// </remarks>
 	public sealed class RenameEngine
 	{
@@ -103,7 +104,16 @@ namespace Files.App.Utils.Rename
 
 			try
 			{
-				var context = new VariableContext(target.CreatedUtc, target.ModifiedUtc, rule.DateSource, target.ParentFolderName);
+				var context = new VariableContext(
+					target.CreatedUtc,
+					target.ModifiedUtc,
+					rule.DateSource,
+					// Regex mode feeds the expansion product straight into Regex.Replace as a substitution
+					// string, so '$' inside expanded values must be doubled to stay literal; user-written
+					// '$' such as the group reference '$1' is not variable syntax and passes through raw.
+					UsesExpandedSubstitution(rule)
+						? target.ParentFolderName.Replace("$", "$$")
+						: target.ParentFolderName);
 				(string BaseName, string Extension) original = SplitName(target.Name);
 
 				string segment = rule.ApplyTo switch
@@ -144,7 +154,7 @@ namespace Files.App.Utils.Rename
 						if (findRegex is not null && findRegex.IsMatch(segment))
 						{
 							string replacement = rule.Mode == RenameMode.Regex
-								? rule.ReplaceWith
+								? expander.Expand(context)
 								: BuildSubstitution(expander.Expand(context), rule.Mode);
 							(newBaseName, newExtension) = ApplyToSegment(findRegex.Replace(segment, replacement, rule.MatchAllOccurrences ? -1 : 1), rule.ApplyTo, original.BaseName, original.Extension);
 							matched = true;
@@ -198,6 +208,12 @@ namespace Files.App.Utils.Rename
 				options |= RegexOptions.IgnoreCase;
 
 			return options;
+		}
+
+		// True when the expansion product becomes the substitution string itself (regex find & replace).
+		private static bool UsesExpandedSubstitution(RenameRule rule)
+		{
+			return rule.Template == RenameTemplate.FindReplace && rule.Mode == RenameMode.Regex;
 		}
 
 		// Makes the rendered replacement safe as a substitution string: '*' refers to the star number of

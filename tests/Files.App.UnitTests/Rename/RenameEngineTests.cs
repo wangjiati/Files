@@ -179,6 +179,18 @@ namespace Files.App.UnitTests.Rename
 		}
 
 		[TestMethod]
+		public void RegexMode_VariableInReplacement_ExpandsFolderNameAndKeepsGroupReferences()
+		{
+			var rule = new RenameRule(Find: "IMG_(\\d+)", ReplaceWith: "京都_${folder}_$1", Mode: RenameMode.Regex);
+
+			var outcomes = new RenameEngine().Run([Target("IMG_2049.jpg"), Target("IMG_2050.jpg", "夜景$a")], rule);
+
+			Assert.AreEqual(RenameOutcomeKind.Changed, outcomes[0].Kind);
+			Assert.AreEqual("京都_夜景_2049.jpg", outcomes[0].NewName);
+			Assert.AreEqual("京都_夜景$a_2050.jpg", outcomes[1].NewName);
+		}
+
+		[TestMethod]
 		public void NewNameEqualsOriginal_IsUnchanged()
 		{
 			var rule = new RenameRule(Find: "IMG", ReplaceWith: "IMG", Mode: RenameMode.Text);
