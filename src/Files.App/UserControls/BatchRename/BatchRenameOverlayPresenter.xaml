@@ -50,8 +50,6 @@
 				</ResourceDictionary>
 			</ResourceDictionary.ThemeDictionaries>
 
-			<CollectionViewSource x:Name="RowsView" IsSourceGrouped="True" />
-
 			<x:Double x:Key="BatchRename.PositionColumnWidth">130</x:Double>
 
 			<Style x:Key="BatchRename.SettingsCardStyle" TargetType="Border">
@@ -500,7 +498,6 @@
 								x:Name="PreviewList"
 								IsItemClickEnabled="False"
 								ItemTemplate="{StaticResource BatchRename.RowTemplate}"
-								ItemsSource="{x:Bind RowsView.View, Mode=OneWay}"
 								SelectionMode="None">
 								<ListView.ItemContainerStyle>
 									<Style TargetType="ListViewItem">
@@ -510,24 +507,6 @@
 										<Setter Property="UseSystemFocusVisuals" Value="True" />
 									</Style>
 								</ListView.ItemContainerStyle>
-								<ListView.GroupStyle>
-									<GroupStyle HidesIfEmpty="False">
-										<GroupStyle.HeaderTemplate>
-											<DataTemplate>
-												<StackPanel Orientation="Horizontal" Spacing="6">
-													<FontIcon
-														FontSize="11"
-														Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-														Glyph="&#xE8B7;" />
-													<TextBlock
-														FontSize="11"
-														Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-														Text="{Binding Group.Key}" />
-												</StackPanel>
-											</DataTemplate>
-										</GroupStyle.HeaderTemplate>
-									</GroupStyle>
-								</ListView.GroupStyle>
 							</ListView>
 
 							<StackPanel

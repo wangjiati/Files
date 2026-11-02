@@ -186,14 +186,6 @@ namespace Files.App.UserControls
 	}
 
 	/// <summary>
-	/// One group of preview rows: the rows of a folder, keyed by the group header shown in the list.
-	/// </summary>
-	internal sealed class BatchRenameRowGroup(List<BatchRenameRowViewModel> rows) : List<BatchRenameRowViewModel>(rows)
-	{
-		public string Key { get; init; } = string.Empty;
-	}
-
-	/// <summary>
 	/// Theme-aware brushes for the preview rows, resolved from the overlay's theme dictionaries whenever
 	/// the theme changes or the rows are rebuilt.
 	/// </summary>

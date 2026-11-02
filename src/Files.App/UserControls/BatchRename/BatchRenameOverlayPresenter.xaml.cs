@@ -182,7 +182,6 @@ namespace Files.App.UserControls
 			wrapperByRow = new();
 			lastRebuiltRows = [];
 			presets = [];
-			RowsView.Source = null;
 			PreviewList.ItemsSource = null;
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Vm)));
 		}
@@ -274,34 +273,22 @@ namespace Files.App.UserControls
 			UpdateList();
 		}
 
-		/// <summary>Regroups the visible rows into the list and refreshes every derived status area.</summary>
+		/// <summary>Flattens the visible rows into the list and refreshes every derived status area.
+		/// The rows render flat on purpose: a grouped CollectionViewSource over List-based groups
+		/// failed to materialize items under WinUI 3, and the position column already conveys the folder.</summary>
 		private void UpdateList()
 		{
 			if (vm is null)
 				return;
 
-			List<BatchRenameRowGroup> groups = [];
-			BatchRenameRowGroup? current = null;
+			List<BatchRenameRowViewModel> flat = [];
 			foreach (RenamePreviewRow row in vm.VisibleRows)
 			{
-				if (!wrapperByRow.TryGetValue(row, out BatchRenameRowViewModel? wrapper))
-					continue;
-
-				if (current is null || current.Key != wrapper.GroupHeader)
-				{
-					current = new([wrapper]) { Key = wrapper.GroupHeader };
-					groups.Add(current);
-				}
-				else
-				{
-					current.Add(wrapper);
-				}
+				if (wrapperByRow.TryGetValue(row, out BatchRenameRowViewModel? wrapper))
+					flat.Add(wrapper);
 			}
 
-			RowsView.Source = groups;
-			// CollectionViewSource.View raises no change notification, so an x:Bind on it never
-			// updates after the first (null) evaluation; assign the view explicitly instead.
-			PreviewList.ItemsSource = RowsView.View;
+			PreviewList.ItemsSource = flat;
 			UpdateStatusUi();
 		}
 
