@@ -183,6 +183,7 @@ namespace Files.App.UserControls
 			lastRebuiltRows = [];
 			presets = [];
 			RowsView.Source = null;
+			PreviewList.ItemsSource = null;
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Vm)));
 		}
 
@@ -298,6 +299,9 @@ namespace Files.App.UserControls
 			}
 
 			RowsView.Source = groups;
+			// CollectionViewSource.View raises no change notification, so an x:Bind on it never
+			// updates after the first (null) evaluation; assign the view explicitly instead.
+			PreviewList.ItemsSource = RowsView.View;
 			UpdateStatusUi();
 		}
 

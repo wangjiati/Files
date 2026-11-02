@@ -666,7 +666,7 @@
 						BorderThickness="1,0,0,0">
 						<!--  Auto fades the scrollbar when idle and hides that the panel scrolls.  -->
 						<ScrollViewer VerticalScrollBarVisibility="Visible">
-							<StackPanel Padding="12" Spacing="10">
+							<StackPanel Padding="10" Spacing="6">
 
 								<!--  Presets  -->
 								<Grid ColumnSpacing="6">
@@ -787,6 +787,51 @@
 									</StackPanel>
 								</Border>
 
+								<!--  Variables and formatting  -->
+								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
+									<StackPanel Spacing="8">
+										<TextBlock Style="{StaticResource BatchRename.CardHeaderStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHeader}" />
+
+										<StackPanel Orientation="Horizontal" Spacing="6">
+											<Button
+												Click="AddCounterChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddCounterVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="AddDateChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddDateVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="AddFolderChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameAddFolderVariable}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+										</StackPanel>
+
+										<StackPanel Orientation="Horizontal" Spacing="6">
+											<Button
+												Click="NumberingPatternChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameNumberingPattern}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+											<Button
+												Click="DatePatternChip_Click"
+												Content="{helpers:ResourceString Name=BatchRenameDatePattern}"
+												Style="{StaticResource BatchRename.ChipButtonStyle}" />
+										</StackPanel>
+
+										<ComboBox
+											x:Name="CaseCombo"
+											Header="{helpers:ResourceString Name=BatchRenameCaseConversionLabel}"
+											SelectionChanged="CaseCombo_SelectionChanged">
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseNone}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseLowercase}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseUppercase}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseFirstLetter}" />
+											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseEveryWord}" />
+										</ComboBox>
+
+										<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHint}" />
+									</StackPanel>
+								</Border>
 								<!--  Scope  -->
 								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
 									<StackPanel Spacing="4">
@@ -881,52 +926,6 @@
 										</StackPanel>
 
 										<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameScopeHint}" />
-									</StackPanel>
-								</Border>
-
-								<!--  Variables and formatting  -->
-								<Border Style="{StaticResource BatchRename.SettingsCardStyle}">
-									<StackPanel Spacing="8">
-										<TextBlock Style="{StaticResource BatchRename.CardHeaderStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHeader}" />
-
-										<StackPanel Orientation="Horizontal" Spacing="6">
-											<Button
-												Click="AddCounterChip_Click"
-												Content="{helpers:ResourceString Name=BatchRenameAddCounterVariable}"
-												Style="{StaticResource BatchRename.ChipButtonStyle}" />
-											<Button
-												Click="AddDateChip_Click"
-												Content="{helpers:ResourceString Name=BatchRenameAddDateVariable}"
-												Style="{StaticResource BatchRename.ChipButtonStyle}" />
-											<Button
-												Click="AddFolderChip_Click"
-												Content="{helpers:ResourceString Name=BatchRenameAddFolderVariable}"
-												Style="{StaticResource BatchRename.ChipButtonStyle}" />
-										</StackPanel>
-
-										<StackPanel Orientation="Horizontal" Spacing="6">
-											<Button
-												Click="NumberingPatternChip_Click"
-												Content="{helpers:ResourceString Name=BatchRenameNumberingPattern}"
-												Style="{StaticResource BatchRename.ChipButtonStyle}" />
-											<Button
-												Click="DatePatternChip_Click"
-												Content="{helpers:ResourceString Name=BatchRenameDatePattern}"
-												Style="{StaticResource BatchRename.ChipButtonStyle}" />
-										</StackPanel>
-
-										<ComboBox
-											x:Name="CaseCombo"
-											Header="{helpers:ResourceString Name=BatchRenameCaseConversionLabel}"
-											SelectionChanged="CaseCombo_SelectionChanged">
-											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseNone}" />
-											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseLowercase}" />
-											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseUppercase}" />
-											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseFirstLetter}" />
-											<ComboBoxItem Content="{helpers:ResourceString Name=BatchRenameCaseEveryWord}" />
-										</ComboBox>
-
-										<TextBlock Style="{StaticResource BatchRename.HintStyle}" Text="{helpers:ResourceString Name=BatchRenameVariablesHint}" />
 									</StackPanel>
 								</Border>
 							</StackPanel>
