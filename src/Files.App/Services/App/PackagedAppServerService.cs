@@ -10,7 +10,8 @@ internal sealed class PackagedAppServerService : IAppServerService
 {
 	private readonly Task<Server.AppService> serverSession;
 
-	internal PackagedAppServerService()
+	// Must be public: the DI container only considers public constructors.
+	public PackagedAppServerService()
 	{
 		serverSession = App.ServerSession;
 	}

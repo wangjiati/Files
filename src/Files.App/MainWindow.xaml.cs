@@ -27,6 +27,10 @@ namespace Files.App
 		private readonly Lock _canWindowToFrontLock = new();
 		private bool _isWindowIconInitialized;
 
+		// A stalled compositor commit or a frame that never renders must not keep the window hidden.
+		private static readonly TimeSpan InitialCommitTimeout = TimeSpan.FromMilliseconds(1000);
+		private static readonly TimeSpan FirstFrameTimeout = TimeSpan.FromSeconds(3);
+
 		protected override bool PersistPlacement => true;
 
 		public MainWindow() : base(416, 316)
@@ -56,8 +60,34 @@ namespace Files.App
 			if (rootFrame is null)
 				return false;
 
-			// Submit the initial content and backdrop before the window's normal show animation.
-			await CompositionTarget.GetCompositorForCurrentThread().RequestCommitAsync();
+			// Submit the initial content and backdrop before the window's normal show animation, but keep it
+			// best-effort: environments such as Windows Sandbox or remote sessions may never complete the commit.
+			Task commit = Task.CompletedTask;
+			try
+			{
+				commit = CompositionTarget.GetCompositorForCurrentThread().RequestCommitAsync().AsTask();
+			}
+			catch (Exception ex)
+			{
+				Debug.WriteLine(ex);
+			}
+
+			if (await Task.WhenAny(commit, Task.Delay(InitialCommitTimeout)) != commit)
+			{
+				// Observe the abandoned task so it cannot surface as an unobserved exception later.
+				commit.ContinueWith(task => _ = task.Exception, TaskScheduler.Default);
+			}
+			else
+			{
+				try
+				{
+					await commit;
+				}
+				catch (Exception ex)
+				{
+					Debug.WriteLine(ex);
+				}
+			}
 
 			var firstFrame = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 			CompositionTarget.Rendered += OnRendered;
@@ -65,7 +95,11 @@ namespace Files.App
 			try
 			{
 				Activate();
-				// Let the initial content paint before starting the remaining initialization.
+
+				// Let the initial content paint before starting the remaining initialization, but never wait forever.
+				if (await Task.WhenAny(firstFrame.Task, Task.Delay(FirstFrameTimeout)) != firstFrame.Task)
+					return true;
+
 				return await firstFrame.Task;
 			}
 			finally

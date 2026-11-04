@@ -17,16 +17,26 @@ namespace Files.App.Utils
 		public event EventHandler? EnumerationCompleted;
 		public event EventHandler<string>? DeviceModified;
 
-		private DeviceWatcher watcher;
+		private DeviceWatcher? watcher;
 
-		public bool CanBeStarted => watcher.Status is DeviceWatcherStatus.Created or DeviceWatcherStatus.Stopped or DeviceWatcherStatus.Aborted;
+		public bool CanBeStarted => watcher is null || watcher.Status is DeviceWatcherStatus.Created or DeviceWatcherStatus.Stopped or DeviceWatcherStatus.Aborted;
 
 		public WindowsStorageDeviceWatcher()
 		{
-			watcher = DeviceInformation.CreateWatcher(StorageDevice.GetDeviceSelector());
-			watcher.Added += Watcher_Added;
-			watcher.Removed += Watcher_Removed;
-			watcher.EnumerationCompleted += Watcher_EnumerationCompleted;
+			// DeviceInformation.CreateWatcher can fail outside of a normal desktop session
+			// (for example 0x80073B01 in Windows Sandbox). The Win32 notifications below still work.
+			try
+			{
+				watcher = DeviceInformation.CreateWatcher(StorageDevice.GetDeviceSelector());
+				watcher.Added += Watcher_Added;
+				watcher.Removed += Watcher_Removed;
+				watcher.EnumerationCompleted += Watcher_EnumerationCompleted;
+			}
+			catch (Exception ex)
+			{
+				App.Logger?.LogWarning(ex, "Failed to create the Windows storage device watcher; using Win32 device notifications only.");
+				watcher = null;
+			}
 
 			SetupWin32Watcher();
 		}
@@ -121,19 +131,20 @@ namespace Files.App.Utils
 		public void Start()
 		{
 			WindowsDriveManager.Default.Start();
-			watcher.Start();
+			watcher?.Start();
 		}
 
 		public void Stop()
 		{
-			if (watcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted)
+			if (watcher is not null)
 			{
-				watcher.Stop();
-			}
+				if (watcher.Status is DeviceWatcherStatus.Started or DeviceWatcherStatus.EnumerationCompleted)
+					watcher.Stop();
 
-			watcher.Added -= Watcher_Added;
-			watcher.Removed -= Watcher_Removed;
-			watcher.EnumerationCompleted -= Watcher_EnumerationCompleted;
+				watcher.Added -= Watcher_Added;
+				watcher.Removed -= Watcher_Removed;
+				watcher.EnumerationCompleted -= Watcher_EnumerationCompleted;
+			}
 
 			WindowsDriveManager.Default.DeviceAdded -= Win32_OnDeviceAdded;
 			WindowsDriveManager.Default.DeviceRemoved -= Win32_OnDeviceRemoved;

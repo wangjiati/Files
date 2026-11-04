@@ -97,7 +97,22 @@ namespace Files.App
 			// Constructed on the UI thread: the ctor subscribes the UI-thread-only Clipboard.ContentChanged
 			AppModel = new AppModel();
 
-			_ = ActivateAsync();
+			_ = ActivateAsync().ContinueWith(task =>
+			{
+				// Startup failures used to be swallowed here: the window stayed invisible with no trace.
+				var details = task.Exception?.ToString() ?? "Unknown startup failure.";
+				Debug.WriteLine(details);
+				try
+				{
+					SystemIO.File.WriteAllText(SystemIO.Path.Combine(SystemIO.Path.GetTempPath(), "files-startup-error.txt"), details);
+				}
+				catch (Exception ex)
+				{
+					Debug.WriteLine(ex);
+				}
+
+				AppLifecycleHelper.HandleAppUnhandledException(task.Exception, true, "App.OnLaunched.ActivateAsync");
+			}, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
 			async Task ActivateAsync()
 			{
