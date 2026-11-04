@@ -821,6 +821,21 @@ try {
     # Files.App.Server is built by a custom target outside the app's project
     # references, so a clean checkout needs an explicit restore before any
     # project that references Files.App is built.
+    #
+    # Both distributions also share obj/bin, and the Msix build needs the
+    # Files.App.Server CsWinRT projection that a Portable build drops. Start
+    # every release from clean app/server outputs so the order of distributions
+    # cannot poison the projection or the merged resource index.
+    foreach ($projectOutput in @(
+        (Join-Path $repoRoot "src\Files.App\obj"),
+        (Join-Path $repoRoot "src\Files.App\bin"),
+        (Join-Path $repoRoot "src\Files.App.Server\obj"),
+        (Join-Path $repoRoot "src\Files.App.Server\bin"))) {
+        if (Test-Path -LiteralPath $projectOutput) {
+            Remove-Item -LiteralPath $projectOutput -Recurse -Force
+        }
+    }
+
     Invoke-MSBuild "Restore Files.App.Server" @(
         $serverProject,
         "-t:Restore",
@@ -1013,6 +1028,18 @@ try {
     Assert-ZipHasNoPrivateKeyFiles $msixSourcePath "The MSIX package"
     }
 
+    # The Msix and Portable distributions share obj/bin, and the merged resource index inherits the
+    # packaging of the previous distribution. Rebuild the app from scratch for the portable publish:
+    # otherwise Files.pri loses the WinUI theme resources and the unpackaged app fails at startup
+    # with 0x802B000A (XAML parse failure).
+    foreach ($intermediate in @(
+        (Join-Path $repoRoot "src\Files.App\obj\$platform\$configuration"),
+        (Join-Path $repoRoot "src\Files.App\bin\$platform\$configuration"))) {
+        if (Test-Path -LiteralPath $intermediate) {
+            Remove-Item -LiteralPath $intermediate -Recurse -Force
+        }
+    }
+
     Invoke-MSBuild "Publish portable application" @(
         $appProject,
         "-restore",
@@ -1040,6 +1067,29 @@ try {
         Fail "The portable launcher was not produced at '$portableLauncher'."
     }
     Copy-Item -LiteralPath $portableLauncher -Destination (Join-Path $portableStaging "Files.exe") -Force
+
+    # Optional payload-free identity package: the launcher registers it on first start so the
+    # portable build gets package identity where unpackaged WinUI 3 loses the IME candidate window.
+    $portableIdentityName = "Files.Internal.Portable.Identity.msix"
+    if (-not $PortableOnly) {
+        $identityBuilder = Join-Path $PSScriptRoot "Build-PortableIdentity.ps1"
+        & $identityBuilder `
+            -PortableRoot $portableStaging `
+            -Version $version `
+            -CertificatePath $certificatePathResolved `
+            -CertificatePassword $CertificatePassword
+        if (-not (Test-Path -LiteralPath (Join-Path $portableStaging $portableIdentityName))) {
+            Fail "The portable identity package was not produced."
+        }
+
+        $installerScript = Join-Path $PSScriptRoot "Install-PortableIdentity.ps1"
+        if (Test-Path -LiteralPath $installerScript) {
+            Copy-Item -LiteralPath $installerScript -Destination (Join-Path $portableStaging "Install-PortableIdentity.ps1") -Force
+        }
+    }
+    else {
+        Write-Host "    Skipping the portable identity package (portable-only build has no signing certificate)."
+    }
 
     $portableExe = Join-Path $portableLib "Files.exe"
     if (-not (Test-Path -LiteralPath $portableExe)) {
@@ -1084,6 +1134,9 @@ try {
         "Built-Utc: $builtUtc"
         "Portable: $zipName"
     )
+    if (-not $PortableOnly) {
+        $releaseInfoLines += "Portable-Identity: $portableIdentityName (optional, registered by the launcher)"
+    }
     if ($PortableOnly) {
         $releaseInfoLines += "MSIX: Not included (portable-only build)"
     }

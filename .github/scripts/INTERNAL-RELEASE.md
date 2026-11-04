@@ -146,6 +146,24 @@ location is expected to fail explicitly instead of falling back to the user
 profile. These runtime behaviors must be verified on a clean target machine using
 the acceptance checklist below; they are not established by the build script.
 
+### Portable identity package
+
+The portable ZIP also contains `Files.Internal.Portable.Identity.msix` (a payload-free identity
+package) and `Install-PortableIdentity.ps1`. On Windows builds where unpackaged WinUI 3
+applications lose the IME candidate window (observed on Windows 11 build 26300), the launcher
+registers this package on first start and then activates the app through the package identity,
+which restores the candidate window. The binaries keep living in the portable folder.
+
+- Registration is per user and only succeeds when the signing certificate is trusted. With a
+  self-signed test certificate, run `Install-PortableIdentity.ps1 -TrustCertificate` once from an
+  elevated shell; with a trusted code-signing certificate the launcher registers silently.
+- Removal: `Install-PortableIdentity.ps1 -Uninstall`. Unregister before deleting the folder,
+  otherwise the registration keeps pointing at a missing external location.
+- Moving the folder changes the external location, so the launcher re-registers on the next start.
+- QA switch: set `FILES_DISABLE_PORTABLE_IDENTITY=1` to compare behavior with and without package
+  identity. The launcher then skips registration and activation.
+- Portable-only builds have no signing certificate and intentionally omit the identity package.
+
 Updates are manual. Replace the package or portable folder with a newer internal
 release. The internal build registers a local no-op update service (source and
 unit-test verified); no live network capture is part of this build. Do not treat

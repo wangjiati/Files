@@ -17,6 +17,12 @@
 #include <vector>
 #include <wil/resource.h>
 
+#include <winrt/base.h>
+#include <winrt/Windows.ApplicationModel.h>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.Management.Deployment.h>
+
 #include "OpenInFolder.h"
 
 // Link additional libraries
@@ -33,10 +39,154 @@ bool OpenInExistingShellWindow(const TCHAR* folderPath);
 bool IsLaunchedByExplorer();
 void WaitForProtocolActivation(HANDLE hProcess);
 void RunFileExplorer(const TCHAR* openDirectory);
+std::wstring EnsurePortableIdentity(const std::wstring& root);
+std::wstring GetIdentityStateValue(const wchar_t* name);
+void SetIdentityStateValue(const wchar_t* name, const std::wstring& value);
 size_t strifind(const std::wstring& strHaystack, const std::wstring& strNeedle);
 bool comparei(std::wstring stringA, std::wstring stringB);
 std::string wstring_to_utf8_hex(const std::wstring& input);
 std::wstring str2wstr(const std::string& str);
+
+std::wstring GetIdentityStateValue(const wchar_t* name)
+{
+	HKEY key = nullptr;
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Files\\PortableIdentity", 0, KEY_READ, &key) != ERROR_SUCCESS)
+		return {};
+
+	WCHAR buffer[1024] = {};
+	DWORD size = sizeof(buffer) - sizeof(WCHAR);
+	DWORD type = 0;
+	LSTATUS status = RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<LPBYTE>(buffer), &size);
+	RegCloseKey(key);
+	return status == ERROR_SUCCESS ? std::wstring(buffer) : std::wstring();
+}
+
+void LauncherLog(const wchar_t* message)
+{
+	WCHAR tempPath[MAX_PATH] = {};
+	if (!GetTempPathW(_countof(tempPath), tempPath))
+		return;
+
+	std::wstring path = std::wstring(tempPath) + L"files-launcher.log";
+	FILE* file = nullptr;
+	if (_wfopen_s(&file, path.c_str(), L"a") != 0 || file == nullptr)
+		return;
+
+	SYSTEMTIME time = {};
+	GetLocalTime(&time);
+	fwprintf(file, L"%04u-%02u-%02u %02u:%02u:%02u %s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, message);
+	fclose(file);
+}
+
+void SetIdentityStateValue(const wchar_t* name, const std::wstring& value)
+{
+	HKEY key = nullptr;
+	if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Files\\PortableIdentity", 0, nullptr, 0, KEY_WRITE, nullptr, &key, nullptr) != ERROR_SUCCESS)
+		return;
+
+	RegSetValueExW(key, name, 0, REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), static_cast<DWORD>((value.size() + 1) * sizeof(WCHAR)));
+	RegCloseKey(key);
+}
+
+// Registers the optional identity package that ships beside the portable launcher and
+// returns its AppUserModelId. On Windows builds where unpackaged WinUI 3 applications lose
+// the IME candidate window, launching through the package identity restores it; when the
+// package is missing or registration fails, the caller falls back to a plain CreateProcess.
+// Registration is a repair step and never blocks startup.
+std::wstring EnsurePortableIdentity(const std::wstring& root)
+{
+	// Diagnostics/QA switch: lets tests compare the build with and without package identity.
+	WCHAR optOut[8] = {};
+	if (GetEnvironmentVariableW(L"FILES_DISABLE_PORTABLE_IDENTITY", optOut, _countof(optOut)) > 0)
+		return {};
+
+	const std::wstring identityPackageName = L"Files.Internal.Portable.Identity";
+	const std::wstring identityApplicationId = L"FilesPortable";
+	const std::wstring identityPath = root + L"\\Files.Internal.Portable.Identity.msix";
+
+	if (GetFileAttributesW(identityPath.c_str()) == INVALID_FILE_ATTRIBUTES)
+	{
+		LauncherLog(L"identity: package file missing beside the launcher");
+		return {};
+	}
+
+	try
+	{
+		winrt::Windows::Management::Deployment::PackageManager manager;
+
+		winrt::hstring installedFullName;
+		winrt::hstring familyName;
+		auto refresh = [&](winrt::Windows::Management::Deployment::PackageManager const& source)
+		{
+			for (auto const& package : source.FindPackagesForUser(L""))
+			{
+				if (_wcsicmp(package.Id().Name().c_str(), identityPackageName.c_str()) != 0)
+					continue;
+
+				installedFullName = package.Id().FullName();
+				familyName = package.Id().FamilyName();
+				break;
+			}
+		};
+
+		refresh(manager);
+
+		const bool registered = !installedFullName.empty();
+		LauncherLog(registered ? L"identity: package already registered" : L"identity: package not registered");
+		if (!registered || _wcsicmp(GetIdentityStateValue(L"Root").c_str(), root.c_str()) != 0)
+		{
+			if (registered)
+				manager.RemovePackageAsync(installedFullName).get();
+
+			winrt::Windows::Management::Deployment::AddPackageOptions options;
+			options.ExternalLocationUri(winrt::Windows::Foundation::Uri(root));
+			options.ForceUpdateFromAnyVersion(true);
+			manager.AddPackageByUriAsync(winrt::Windows::Foundation::Uri(identityPath), options).get();
+			LauncherLog(L"identity: registration completed");
+
+			familyName = {};
+			for (auto const& package : manager.FindPackagesForUser(L"", identityPackageName))
+			{
+				familyName = package.Id().FamilyName();
+				break;
+			}
+
+			SetIdentityStateValue(L"Root", root);
+
+			// The deployment stack publishes the registration asynchronously, and activating a
+			// package before it is visible starts the app without a usable activation context
+			// (AppInstance fails with 0x80040154). Poll briefly for the family name; a fresh
+			// PackageManager is used because an existing instance caches its package list.
+			for (int attempt = 0; attempt < 25 && familyName.empty(); ++attempt)
+			{
+				Sleep(200);
+				winrt::Windows::Management::Deployment::PackageManager probe;
+				refresh(probe);
+			}
+		}
+
+		if (familyName.empty())
+		{
+			LauncherLog(L"identity: family name unavailable after registration");
+			return {};
+		}
+
+		return std::wstring(familyName.c_str()) + L"!" + identityApplicationId;
+	}
+	catch (winrt::hresult_error const& ex)
+	{
+		WCHAR message[512] = {};
+		swprintf_s(message, L"identity: hresult 0x%08X %s", static_cast<uint32_t>(ex.code()), ex.message().c_str());
+		LauncherLog(message);
+		return {};
+	}
+	catch (...)
+	{
+		LauncherLog(L"identity: unknown failure");
+		return {};
+	}
+}
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int cmdShow)
 {
@@ -84,6 +234,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			if (_waccess(appPath, 0) == 0)
 			{
+				std::wstring identityAumid = EnsurePortableIdentity(modulePath);
+
 				SetEnvironmentVariableW(L"FILES_PORTABLE_ROOT", modulePath);
 
 				// Keep every argument the shell passed, including quoted paths.
@@ -104,6 +256,26 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				}
 
 				std::wstring childCommandLine = L"\"" + std::wstring(appPath) + L"\"" + forwardedArguments;
+
+				// Prefer package activation when the identity package is available: the child then
+				// starts with package identity, which the IME candidate UI needs on affected builds.
+				if (!identityAumid.empty())
+				{
+					IApplicationActivationManager* activationManager = nullptr;
+					if (SUCCEEDED(CoCreateInstance(CLSID_ApplicationActivationManager, nullptr, CLSCTX_LOCAL_SERVER, IID_PPV_ARGS(&activationManager))))
+					{
+						DWORD activatedProcessId = 0;
+						HRESULT activationResult = activationManager->ActivateApplication(
+							identityAumid.c_str(),
+							*forwardedArguments ? forwardedArguments : nullptr,
+							AO_NONE,
+							&activatedProcessId);
+						activationManager->Release();
+
+						if (SUCCEEDED(activationResult))
+							return 0;
+					}
+				}
 
 				STARTUPINFOW startupInfo = { sizeof(startupInfo) };
 				PROCESS_INFORMATION processInfo = {};

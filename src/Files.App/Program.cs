@@ -188,7 +188,18 @@ namespace Files.App
 		private static string? ResolvePortableRoot()
 		{
 			var root = Environment.GetEnvironmentVariable("FILES_PORTABLE_ROOT");
-			return string.IsNullOrWhiteSpace(root) ? null : root;
+			if (!string.IsNullOrWhiteSpace(root))
+				return root;
+
+			// Portable layout is <root>\lib\Files.exe. When the launcher did not set the variable
+			// (for example when the binary is started through package activation), use the folder
+			// above lib so the Data directory keeps living next to the launcher.
+			var baseDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			if (string.Equals(Path.GetFileName(baseDirectory), "lib", StringComparison.OrdinalIgnoreCase) &&
+				Path.GetDirectoryName(baseDirectory) is { Length: > 0 } parent)
+				return parent;
+
+			return null;
 		}
 
 		internal static PortableDataLease PreparePortableData()
