@@ -5478,4 +5478,52 @@
   <data name="BatchRenameClipboardFailed" xml:space="preserve">
     <value>无法访问剪贴板。</value>
   </data>
+  <data name="Link" xml:space="preserve">
+    <value>链接</value>
+  </data>
+  <data name="LinkTypeSymbolicLink" xml:space="preserve">
+    <value>符号链接</value>
+  </data>
+  <data name="LinkTypeSymbolicFile" xml:space="preserve">
+    <value>符号链接（文件）</value>
+  </data>
+  <data name="LinkTypeSymbolicFolder" xml:space="preserve">
+    <value>符号链接（文件夹）</value>
+  </data>
+  <data name="LinkTypeJunction" xml:space="preserve">
+    <value>目录联接</value>
+  </data>
+  <data name="LinkTypeHardLink" xml:space="preserve">
+    <value>硬链接</value>
+  </data>
+  <data name="LinkTypeVolumeMountPoint" xml:space="preserve">
+    <value>卷挂载点</value>
+  </data>
+  <data name="LinkPathTypeRelative" xml:space="preserve">
+    <value>相对路径</value>
+  </data>
+  <data name="LinkPathTypeAbsolute" xml:space="preserve">
+    <value>绝对路径</value>
+  </data>
+  <data name="LinkTargetExists" xml:space="preserve">
+    <value>目标存在</value>
+  </data>
+  <data name="LinkTargetMissing" xml:space="preserve">
+    <value>目标不存在</value>
+  </data>
+  <data name="LinkTargetNoAccess" xml:space="preserve">
+    <value>无权访问</value>
+  </data>
+  <data name="LinkOpenTarget" xml:space="preserve">
+    <value>打开目标位置</value>
+  </data>
+  <data name="LinkCopyTarget" xml:space="preserve">
+    <value>复制目标路径</value>
+  </data>
+  <data name="LinkHardLinkCount" xml:space="preserve">
+    <value>链接数</value>
+  </data>
+  <data name="LinkItemAutomation" xml:space="preserve">
+    <value>链接项</value>
+  </data>
 </root>

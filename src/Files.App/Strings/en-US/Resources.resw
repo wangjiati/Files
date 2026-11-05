@@ -5532,4 +5532,52 @@
   <data name="BatchRenameClipboardFailed" xml:space="preserve">
     <value>The clipboard could not be accessed.</value>
   </data>
+  <data name="Link" xml:space="preserve">
+    <value>Link</value>
+  </data>
+  <data name="LinkTypeSymbolicLink" xml:space="preserve">
+    <value>Symbolic link</value>
+  </data>
+  <data name="LinkTypeSymbolicFile" xml:space="preserve">
+    <value>Symbolic link (file)</value>
+  </data>
+  <data name="LinkTypeSymbolicFolder" xml:space="preserve">
+    <value>Symbolic link (folder)</value>
+  </data>
+  <data name="LinkTypeJunction" xml:space="preserve">
+    <value>Junction</value>
+  </data>
+  <data name="LinkTypeHardLink" xml:space="preserve">
+    <value>Hard link</value>
+  </data>
+  <data name="LinkTypeVolumeMountPoint" xml:space="preserve">
+    <value>Volume mount point</value>
+  </data>
+  <data name="LinkPathTypeRelative" xml:space="preserve">
+    <value>Relative</value>
+  </data>
+  <data name="LinkPathTypeAbsolute" xml:space="preserve">
+    <value>Absolute</value>
+  </data>
+  <data name="LinkTargetExists" xml:space="preserve">
+    <value>Target exists</value>
+  </data>
+  <data name="LinkTargetMissing" xml:space="preserve">
+    <value>Target missing</value>
+  </data>
+  <data name="LinkTargetNoAccess" xml:space="preserve">
+    <value>Access denied</value>
+  </data>
+  <data name="LinkOpenTarget" xml:space="preserve">
+    <value>Open target location</value>
+  </data>
+  <data name="LinkCopyTarget" xml:space="preserve">
+    <value>Copy target path</value>
+  </data>
+  <data name="LinkHardLinkCount" xml:space="preserve">
+    <value>Link count</value>
+  </data>
+  <data name="LinkItemAutomation" xml:space="preserve">
+    <value>Link item</value>
+  </data>
 </root>
