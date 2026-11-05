@@ -132,6 +132,35 @@ normal certificate deployment; the build script does not install it. A build
 using an untrusted test certificate reports a non-`Valid` Authenticode status and
 must not be treated as a trusted release.
 
+## Automated tests
+
+Three scripts cover the portable release. They exit with `0` on success, `1` when a check
+fails and `2` when the environment cannot run the check (locked desktop, missing files).
+
+| Script | Purpose |
+| --- | --- |
+| `Test-ReleaseArtifacts.ps1 -ZipPath <zip>` | Extracts the ZIP and verifies payload completeness, the merged resource index, launcher capabilities, `RELEASE-INFO`, plain launch (no identity) and identity launch (package registration + process identity). Works on a locked desktop. |
+| `Test-PortableIme.ps1 -PortableRoot <dir> -Mode Identity\|Plain` | Drives the UI: selects a sample item, presses F2, types `nihao` and reports the composition text and whether an IME candidate window became visible. Needs an unlocked interactive desktop. |
+| `Invoke-SandboxReleaseTest.ps1 -ZipPath <zip> -IncludeUi` | Runs the acceptance test inside Windows Sandbox: maps a payload folder, trusts the test certificate, executes the headless checks and the UI leg, and returns the JSON result. The sandbox has its own desktop, so the UI leg can take the foreground without a user present. |
+
+Typical release check:
+
+```powershell
+# Headless checks on the build host
+.\.github\scripts\Test-ReleaseArtifacts.ps1 -ZipPath .\artifacts\internal\<version>\Files.Internal_<version>_x64-portable.zip
+
+# Full UI checks on an unlocked desktop
+.\.github\scripts\Test-ReleaseArtifacts.ps1 -ZipPath .\artifacts\internal\<version>\Files.Internal_<version>_x64-portable.zip -IncludeUi
+
+# Full UI checks in Windows Sandbox (no user session required)
+.\.github\scripts\Invoke-SandboxReleaseTest.ps1 -ZipPath .\artifacts\internal\<version>\Files.Internal_<version>_x64-portable.zip -IncludeUi
+```
+
+`Test-PortableIme.ps1` asserts the identity mode shows candidates and the plain mode does
+not. On Windows builds that are not affected both modes show candidates; pass
+`-ExpectCandidates Yes` in that case. The JSON reports contain the observed window list, so
+a failing run shows which IME windows existed.
+
 ## Install and run
 
 MSIX, from a normal (non-elevated) PowerShell, after provisioning the Windows App
