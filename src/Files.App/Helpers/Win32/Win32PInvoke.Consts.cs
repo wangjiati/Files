@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2024 Files Community
+// Copyright (c) 2024 Files Community
 // Licensed under the MIT License. See the LICENSE.
 
 namespace Files.App.Helpers
@@ -26,6 +26,7 @@ namespace Files.App.Helpers
 		public const int IOCTL_STORAGE_MEDIA_REMOVAL = 0x002D4804;
 
 		public const uint FILE_APPEND_DATA = 0x0004;
+		public const uint FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
 
 		public const int MNC_CLOSE = 1;
 

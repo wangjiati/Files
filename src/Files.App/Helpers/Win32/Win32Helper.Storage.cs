@@ -1,6 +1,7 @@
 // Copyright (c) 2024 Files Community
 // Licensed under the MIT License. See the LICENSE.
 
+using Files.App.Utils.Storage.Links;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
@@ -727,44 +728,23 @@ namespace Files.App.Helpers
 			return null;
 		}
 
-		// https://github.com/rad1oactive/BetterExplorer/blob/master/Windows%20API%20Code%20Pack%201.1/source/WindowsAPICodePack/Shell/ReparsePoint.cs
-		public static unsafe string? ParseSymLink(string path)
+		public static unsafe ReparsePointInfo? GetReparsePointInfo(string path)
 		{
-			using var handle = OpenFileForRead(path, false, 0x00200000);
-			if (!handle.IsInvalid)
-			{
-				byte[] buffer = new byte[16 * 1024];
-				if (PInvoke.DeviceIoControl(handle, PInvoke.FSCTL_GET_REPARSE_POINT, [], buffer, out uint bytesReturned, null))
-				{
-					uint reparseTag = MemoryMarshal.Read<uint>(buffer);
-					short subsNameOffset = MemoryMarshal.Read<short>(buffer.AsSpan(8));
-					short subsNameLength = MemoryMarshal.Read<short>(buffer.AsSpan(10));
-					short printNameOffset = MemoryMarshal.Read<short>(buffer.AsSpan(12));
-					short printNameLength = MemoryMarshal.Read<short>(buffer.AsSpan(14));
-					string pathBuffer = Encoding.Unicode.GetString(buffer, 20, (int)bytesReturned - 20);
-					var subsString = pathBuffer.Substring(subsNameOffset / 2, subsNameLength / 2);
-					var printString = pathBuffer.Substring(printNameOffset / 2, printNameLength / 2);
-					var normalisedTarget = printString ?? subsString;
-					if (string.IsNullOrEmpty(normalisedTarget))
-					{
-						normalisedTarget = subsString;
-						if (normalisedTarget.StartsWith(@"\??\", StringComparison.Ordinal))
-						{
-							normalisedTarget = normalisedTarget.Substring(4);
-						}
-					}
-					if (reparseTag == PInvoke.IO_REPARSE_TAG_SYMLINK && (normalisedTarget.Length < 2 || normalisedTarget[1] != ':'))
-					{
-						// Target is relative, get the absolute path
-						normalisedTarget = normalisedTarget.TrimStart(Path.DirectorySeparatorChar);
-						path = path.TrimEnd(Path.DirectorySeparatorChar);
-						normalisedTarget = Path.GetFullPath(Path.Combine(path.Substring(0, path.LastIndexOf(Path.DirectorySeparatorChar)), normalisedTarget));
-					}
-					return normalisedTarget;
-				}
-			}
-			return null;
+			using var handle = OpenFileForRead(path, false, Win32PInvoke.FILE_FLAG_OPEN_REPARSE_POINT);
+			if (handle.IsInvalid)
+				return null;
+
+			byte[] buffer = new byte[16 * 1024];
+			if (!PInvoke.DeviceIoControl(handle, PInvoke.FSCTL_GET_REPARSE_POINT, [], buffer, out uint bytesReturned, null))
+				return null;
+
+			return ReparsePointParser.TryParse(buffer.AsSpan(0, (int)bytesReturned), path, out var info)
+				? info
+				: null;
 		}
+
+		public static string? ParseSymLink(string path)
+			=> GetReparsePointInfo(path)?.TargetPath;
 
 		// https://stackoverflow.com/a/7988352
 		public static unsafe IEnumerable<(string Name, long Size)> GetAlternateStreams(string path)
