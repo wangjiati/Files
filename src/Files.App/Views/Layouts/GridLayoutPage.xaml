@@ -130,20 +130,14 @@
 							Source="{x:Bind IconOverlay, Mode=OneWay}"
 							Stretch="Uniform" />
 
-						<Viewbox
-							x:Name="ShortcutGlyphElement"
-							Width="16"
-							Height="16"
+						<uc:LinkBadge
+							Width="18"
+							Height="18"
 							Margin="14"
 							HorizontalAlignment="Left"
 							VerticalAlignment="Bottom"
-							x:Load="{x:Bind IsShortcut}"
-							x:Phase="1">
-							<controls:ThemedIcon
-								Width="12"
-								Height="12"
-								Style="{StaticResource App.ThemedIcons.Shortcut}" />
-						</Viewbox>
+							Kind="{x:Bind LinkKind, Mode=OneWay}"
+							x:Phase="1" />
 
 						<Image
 							x:Name="ShieldOverlay"
@@ -315,15 +309,12 @@
 								x:Load="True"
 								Source="{x:Bind IconOverlay, Mode=OneWay}"
 								Stretch="Uniform" />
-							<Viewbox
-								x:Name="ShortcutGlyphElement"
-								Width="10"
-								Height="10"
+							<uc:LinkBadge
+								Width="14"
+								Height="14"
 								HorizontalAlignment="Left"
 								VerticalAlignment="Bottom"
-								x:Load="{x:Bind IsShortcut}">
-								<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.Shortcut}" />
-							</Viewbox>
+								Kind="{x:Bind LinkKind, Mode=OneWay}" />
 							<Image
 								x:Name="ShieldOverlay"
 								Width="8"
@@ -458,20 +449,14 @@
 								Source="{x:Bind IconOverlay, Mode=OneWay}"
 								Stretch="Uniform" />
 
-							<Viewbox
-								x:Name="ShortcutGlyphElement"
-								Width="16"
-								Height="16"
+							<uc:LinkBadge
+								Width="18"
+								Height="18"
 								Margin="8"
 								HorizontalAlignment="Right"
 								VerticalAlignment="Top"
-								x:Load="{x:Bind IsShortcut}"
-								x:Phase="1">
-								<controls:ThemedIcon
-									Width="12"
-									Height="12"
-									Style="{StaticResource App.ThemedIcons.Shortcut}" />
-							</Viewbox>
+								Kind="{x:Bind LinkKind, Mode=OneWay}"
+								x:Phase="1" />
 
 							<Image
 								x:Name="ShieldOverlay"

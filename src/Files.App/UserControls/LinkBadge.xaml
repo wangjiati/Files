@@ -1,0 +1,49 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<UserControl
+	x:Class="Files.App.UserControls.LinkBadge"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	d:DesignHeight="16"
+	d:DesignWidth="16"
+	mc:Ignorable="d">
+
+	<Grid x:Name="Root">
+		<Border
+			x:Name="BadgeBackground"
+			Background="{x:Bind BadgeBrush, Mode=OneWay}"
+			CornerRadius="3" />
+
+		<Path
+			x:Name="ShortcutGlyph"
+			Data="M3.2,3.2 L12.8,3.2 12.8,12.8 3.2,12.8 Z M6.2,9.8 L9.8,6.2 M6.9,6.2 L9.8,6.2 9.8,9.1"
+			Stroke="{x:Bind GlyphBrush, Mode=OneWay}"
+			Style="{StaticResource LinkBadgeGlyphStyle}"
+			Visibility="Collapsed" />
+		<Path
+			x:Name="SymbolicGlyph"
+			Data="M6.1,9.9 L9.9,6.1 M5,11 A3,3 0 0 1 5,6.8 L6.6,5.2 A3,3 0 0 1 10.8,5.2 M11,5 A3,3 0 0 1 11,9.2 L9.4,10.8 A3,3 0 0 1 5.2,10.8"
+			Stroke="{x:Bind GlyphBrush, Mode=OneWay}"
+			Style="{StaticResource LinkBadgeGlyphStyle}"
+			Visibility="Collapsed" />
+		<Path
+			x:Name="JunctionGlyph"
+			Data="M2,5.3 C2,4.6 2.6,4 3.3,4 L5.4,4 C5.8,4 6.2,4.2 6.5,4.5 L7.3,5.5 L12.7,5.5 C13.4,5.5 14,6.1 14,6.8 L14,12.2 C14,12.9 13.4,13.5 12.7,13.5 L3.3,13.5 C2.6,13.5 2,12.9 2,12.2 Z M6.4,9.2 L10.7,9.2 M9.1,7.6 L10.7,9.2 L9.1,10.8"
+			Stroke="{x:Bind GlyphBrush, Mode=OneWay}"
+			Style="{StaticResource LinkBadgeGlyphStyle}"
+			Visibility="Collapsed" />
+		<Path
+			x:Name="HardLinkGlyph"
+			Data="M2.5,2.5 L9.1,2.5 9.1,11.7 2.5,11.7 Z M6.9,4.3 L13.5,4.3 13.5,13.5 6.9,13.5 Z"
+			Stroke="{x:Bind GlyphBrush, Mode=OneWay}"
+			Style="{StaticResource LinkBadgeGlyphStyle}"
+			Visibility="Collapsed" />
+		<Path
+			x:Name="MountGlyph"
+			Data="M1.8,4 L11,4 11,10 1.8,10 Z M3.5,12.5 L9.3,12.5 M12,6.4 L14,8.2 12,10 M11,8.2 L14,8.2"
+			Stroke="{x:Bind GlyphBrush, Mode=OneWay}"
+			Style="{StaticResource LinkBadgeGlyphStyle}"
+			Visibility="Collapsed" />
+	</Grid>
+</UserControl>

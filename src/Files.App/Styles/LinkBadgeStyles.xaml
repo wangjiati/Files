@@ -1,0 +1,72 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:uc="using:Files.App.UserControls">
+
+	<ResourceDictionary.ThemeDictionaries>
+		<ResourceDictionary x:Key="Light">
+			<SolidColorBrush x:Key="LinkBadgeSymbolicBrush" Color="#0F6CBD" />
+			<SolidColorBrush x:Key="LinkBadgeJunctionBrush" Color="#8764B8" />
+			<SolidColorBrush x:Key="LinkBadgeHardLinkBrush" Color="#9D5D00" />
+			<SolidColorBrush x:Key="LinkBadgeVolumeMountBrush" Color="#038387" />
+			<SolidColorBrush x:Key="LinkBadgeGlyphBrush" Color="#FFFFFF" />
+			<SolidColorBrush x:Key="LinkBadgeShortcutBrush" Color="Transparent" />
+		</ResourceDictionary>
+
+		<ResourceDictionary x:Key="Dark">
+			<SolidColorBrush x:Key="LinkBadgeSymbolicBrush" Color="#4CC2FF" />
+			<SolidColorBrush x:Key="LinkBadgeJunctionBrush" Color="#B49BE0" />
+			<SolidColorBrush x:Key="LinkBadgeHardLinkBrush" Color="#FCE100" />
+			<SolidColorBrush x:Key="LinkBadgeVolumeMountBrush" Color="#4CC2FF" />
+			<SolidColorBrush x:Key="LinkBadgeGlyphBrush" Color="#001E28" />
+			<SolidColorBrush x:Key="LinkBadgeShortcutBrush" Color="Transparent" />
+		</ResourceDictionary>
+
+		<ResourceDictionary x:Key="HighContrast">
+			<SolidColorBrush x:Key="LinkBadgeSymbolicBrush" Color="{StaticResource SystemColorHighlightColor}" />
+			<SolidColorBrush x:Key="LinkBadgeJunctionBrush" Color="{StaticResource SystemColorHighlightColor}" />
+			<SolidColorBrush x:Key="LinkBadgeHardLinkBrush" Color="{StaticResource SystemColorHighlightColor}" />
+			<SolidColorBrush x:Key="LinkBadgeVolumeMountBrush" Color="{StaticResource SystemColorHighlightColor}" />
+			<SolidColorBrush x:Key="LinkBadgeGlyphBrush" Color="{StaticResource SystemColorHighlightTextColor}" />
+			<SolidColorBrush x:Key="LinkBadgeShortcutBrush" Color="Transparent" />
+		</ResourceDictionary>
+	</ResourceDictionary.ThemeDictionaries>
+
+	<Style x:Key="LinkBadgeGlyphStyle" TargetType="Path">
+		<Setter Property="Margin" Value="2" />
+		<Setter Property="HorizontalAlignment" Value="Stretch" />
+		<Setter Property="VerticalAlignment" Value="Stretch" />
+		<Setter Property="Fill" Value="Transparent" />
+		<Setter Property="Stretch" Value="Uniform" />
+		<Setter Property="StrokeEndLineCap" Value="Round" />
+		<Setter Property="StrokeLineJoin" Value="Round" />
+		<Setter Property="StrokeStartLineCap" Value="Round" />
+		<Setter Property="StrokeThickness" Value="1.5" />
+	</Style>
+
+	<Style x:Key="LinkBadgeShortcutStyle" TargetType="uc:LinkBadge">
+		<Setter Property="BadgeBrush" Value="{ThemeResource LinkBadgeShortcutBrush}" />
+		<Setter Property="GlyphBrush" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+	</Style>
+
+	<Style x:Key="LinkBadgeSymbolicStyle" TargetType="uc:LinkBadge">
+		<Setter Property="BadgeBrush" Value="{ThemeResource LinkBadgeSymbolicBrush}" />
+		<Setter Property="GlyphBrush" Value="{ThemeResource LinkBadgeGlyphBrush}" />
+	</Style>
+
+	<Style x:Key="LinkBadgeJunctionStyle" TargetType="uc:LinkBadge">
+		<Setter Property="BadgeBrush" Value="{ThemeResource LinkBadgeJunctionBrush}" />
+		<Setter Property="GlyphBrush" Value="{ThemeResource LinkBadgeGlyphBrush}" />
+	</Style>
+
+	<Style x:Key="LinkBadgeHardLinkStyle" TargetType="uc:LinkBadge">
+		<Setter Property="BadgeBrush" Value="{ThemeResource LinkBadgeHardLinkBrush}" />
+		<Setter Property="GlyphBrush" Value="{ThemeResource LinkBadgeGlyphBrush}" />
+	</Style>
+
+	<Style x:Key="LinkBadgeVolumeMountStyle" TargetType="uc:LinkBadge">
+		<Setter Property="BadgeBrush" Value="{ThemeResource LinkBadgeVolumeMountBrush}" />
+		<Setter Property="GlyphBrush" Value="{ThemeResource LinkBadgeGlyphBrush}" />
+	</Style>
+</ResourceDictionary>

@@ -269,15 +269,12 @@
 										Source="{x:Bind IconOverlay, Mode=OneWay}"
 										Stretch="Uniform" />
 
-									<Viewbox
-										x:Name="ShortcutGlyphElement"
-										Width="10"
-										Height="10"
+									<uc:LinkBadge
+										Width="14"
+										Height="14"
 										HorizontalAlignment="Left"
 										VerticalAlignment="Bottom"
-										Visibility="{x:Bind IsShortcut}">
-										<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.Shortcut}" />
-									</Viewbox>
+										Kind="{x:Bind LinkKind, Mode=OneWay}" />
 									<Image
 										x:Name="ShieldOverlay"
 										Width="8"
