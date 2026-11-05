@@ -3,6 +3,8 @@
 
 using Files.App.ViewModels.Properties;
 using Files.Shared.Helpers;
+using FileAttributes = System.IO.FileAttributes;
+using FileLinkKind = Files.App.Data.Enums.LinkKind;
 using FluentFTP;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -28,6 +30,24 @@ namespace Files.App.Utils
 		public bool IsHiddenItem { get; set; } = false;
 
 		public StorageItemTypes PrimaryItemAttribute { get; set; }
+
+		private FileLinkKind linkKind;
+		public FileLinkKind LinkKind
+		{
+			get => linkKind;
+			set => SetProperty(ref linkKind, value);
+		}
+
+		public string? LinkTargetPath { get; set; }
+
+		public uint? HardLinkCount { get; set; }
+
+		public string? BaseItemType { get; set; }
+
+		public FileAttributes ItemFileAttributes { get; set; }
+
+		public bool IsFileSystemLink
+			=> linkKind is FileLinkKind.SymbolicLink or FileLinkKind.Junction or FileLinkKind.HardLink or FileLinkKind.VolumeMountPoint;
 
 		public byte[]? PreloadedIconData { get; set; }
 
@@ -256,9 +276,9 @@ namespace Files.App.Utils
 			get => itemType;
 			set
 			{
-				if (value is not null)
+				if (value is not null && SetProperty(ref itemType, value))
 				{
-					SetProperty(ref itemType, value);
+					OnPropertyChanged(nameof(ItemTooltipText));
 				}
 			}
 		}
@@ -449,6 +469,10 @@ namespace Files.App.Utils
 			if (IsRecycleBinItem)
 			{
 				suffix = Strings.RecycleBinItemAutomation.GetLocalizedResource();
+			}
+			else if (IsFileSystemLink)
+			{
+				suffix = Strings.LinkItemAutomation.GetLocalizedResource();
 			}
 			else if (IsShortcut)
 			{
