@@ -320,6 +320,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 				std::wstring childCommandLine = L"\"" + std::wstring(appPath) + L"\"" + forwardedArguments;
 
+				// ActivateApplication takes the argument string only, so the separating whitespace
+				// must not be part of it: a leading space makes the app see an invalid path.
+				std::wstring activationArguments = forwardedArguments;
+				size_t firstArgument = activationArguments.find_first_not_of(L" \t");
+				activationArguments = firstArgument == std::wstring::npos ? std::wstring() : activationArguments.substr(firstArgument);
+
 				// Prefer package activation when the identity package is available: the child then
 				// starts with package identity, which the IME candidate UI needs on affected builds.
 				if (!identityAumid.empty())
@@ -330,7 +336,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 						DWORD activatedProcessId = 0;
 						HRESULT activationResult = activationManager->ActivateApplication(
 							identityAumid.c_str(),
-							*forwardedArguments ? forwardedArguments : nullptr,
+							activationArguments.empty() ? nullptr : activationArguments.c_str(),
 							AO_NONE,
 							&activatedProcessId);
 						activationManager->Release();

@@ -145,7 +145,7 @@ namespace Files.App
 					// Package activation without arguments reports an empty string. Treat it as "no argument"
 					// so the app restores the session or opens Home instead of navigating to an empty path,
 					// which leaves the window on a never-ending loading state.
-					var activationArguments = string.IsNullOrWhiteSpace(launchArgs.Arguments) ? null : launchArgs.Arguments;
+					var activationArguments = string.IsNullOrWhiteSpace(launchArgs.Arguments) ? null : launchArgs.Arguments.Trim();
 					var launchArguments = activationArguments is not null
 						? CommandLineParser.SplitArguments(activationArguments, true)
 						: [];
