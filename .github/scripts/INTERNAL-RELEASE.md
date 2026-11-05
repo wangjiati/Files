@@ -44,6 +44,23 @@ The script fails before building when the certificate or password is missing,
 when the certificate has no private key, or when its subject does not match the
 package publisher. It never emits an unsigned package labeled as signed.
 
+If the build host cannot reach `nuget.org` (offline, or behind a proxy that does not
+forward NuGet traffic), restore aborts with `NU1900` while fetching package vulnerability
+data. Disable the audit for that run:
+
+```powershell
+$env:NuGetAudit = 'false'
+```
+
+The same applies when only cached packages are available. It does not change which
+packages are restored.
+
+The script rebuilds `Files.App` and `Files.App.Server` outputs before it starts, and again
+before the portable publish. The two distributions share `obj`/`bin`, and reusing them
+poisons the CsWinRT projection (the Msix build needs `Files.App.Server`) or the merged
+resource index (`Files.pri` loses the WinUI theme resources and the unpackaged app fails at
+startup with `0x802B000A`). Do not remove that cleanup to save build time.
+
 The script rejects a dirty working tree by default. Pass `-AllowDirty` only when
 an uncommitted build is intentional; such artifacts are recorded as `Dirty` and
 are not reproducible from the recorded commit.
