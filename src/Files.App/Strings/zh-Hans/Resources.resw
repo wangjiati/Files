@@ -5526,4 +5526,19 @@
   <data name="LinkItemAutomation" xml:space="preserve">
     <value>链接项</value>
   </data>
+  <data name="PropertiesLinkType.Text" xml:space="preserve">
+    <value>链接类型</value>
+  </data>
+  <data name="PropertiesLinkTarget.Text" xml:space="preserve">
+    <value>目标</value>
+  </data>
+  <data name="PropertiesLinkPathType.Text" xml:space="preserve">
+    <value>路径类型</value>
+  </data>
+  <data name="PropertiesLinkTargetStatus.Text" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="PropertiesLinkHardLinkCount.Text" xml:space="preserve">
+    <value>链接数</value>
+  </data>
 </root>

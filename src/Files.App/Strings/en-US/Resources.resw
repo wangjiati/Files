@@ -5580,4 +5580,19 @@
   <data name="LinkItemAutomation" xml:space="preserve">
     <value>Link item</value>
   </data>
+  <data name="PropertiesLinkType.Text" xml:space="preserve">
+    <value>Link type</value>
+  </data>
+  <data name="PropertiesLinkTarget.Text" xml:space="preserve">
+    <value>Target</value>
+  </data>
+  <data name="PropertiesLinkPathType.Text" xml:space="preserve">
+    <value>Path type</value>
+  </data>
+  <data name="PropertiesLinkTargetStatus.Text" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="PropertiesLinkHardLinkCount.Text" xml:space="preserve">
+    <value>Link count</value>
+  </data>
 </root>

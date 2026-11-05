@@ -20,6 +20,7 @@ namespace Files.App.Data.Factories
 			var securityItem = CreateNavigationItem(PropertiesNavigationViewItemType.Security, Strings.Security.GetLocalizedResource(), "App.ThemedIcons.Properties.Security");
 			var hashesItem = CreateNavigationItem(PropertiesNavigationViewItemType.Hashes, Strings.Hashes.GetLocalizedResource(), "App.ThemedIcons.Properties.Hashes");
 			var shortcutItem = CreateNavigationItem(PropertiesNavigationViewItemType.Shortcut, Strings.Shortcut.GetLocalizedResource(), "App.ThemedIcons.Properties.Shortcut");
+			var linkItem = CreateNavigationItem(PropertiesNavigationViewItemType.Link, Strings.Link.GetLocalizedResource(), "App.ThemedIcons.Shortcut");
 			var libraryItem = CreateNavigationItem(PropertiesNavigationViewItemType.Library, Strings.Library.GetLocalizedResource(), "App.ThemedIcons.Properties.Library");
 			var detailsItem = CreateNavigationItem(PropertiesNavigationViewItemType.Details, Strings.Details.GetLocalizedResource(), "App.ThemedIcons.Properties.Info");
 			var customizationItem = CreateNavigationItem(PropertiesNavigationViewItemType.Customization, Strings.Customization.GetLocalizedResource(), "App.ThemedIcons.Properties.CustomizeFolder");
@@ -31,6 +32,7 @@ namespace Files.App.Data.Factories
 			propertiesNavigationItems.Add(securityItem);
 			propertiesNavigationItems.Add(hashesItem);
 			propertiesNavigationItems.Add(shortcutItem);
+			propertiesNavigationItems.Add(linkItem);
 			propertiesNavigationItems.Add(libraryItem);
 			propertiesNavigationItems.Add(detailsItem);
 			propertiesNavigationItems.Add(customizationItem);
@@ -51,6 +53,7 @@ namespace Files.App.Data.Factories
 
 				propertiesNavigationItems.Remove(libraryItem);
 				propertiesNavigationItems.Remove(shortcutItem);
+				propertiesNavigationItems.Remove(linkItem);
 				propertiesNavigationItems.Remove(securityItem);
 				propertiesNavigationItems.Remove(customizationItem);
 				propertiesNavigationItems.Remove(hashesItem);
@@ -93,6 +96,9 @@ namespace Files.App.Data.Factories
 				if (!isShortcut)
 					propertiesNavigationItems.Remove(shortcutItem);
 
+				if (!listedItem.IsFileSystemLink)
+					propertiesNavigationItems.Remove(linkItem);
+
 				if (!isLibrary)
 					propertiesNavigationItems.Remove(libraryItem);
 
@@ -109,6 +115,7 @@ namespace Files.App.Data.Factories
 			{
 				propertiesNavigationItems.Remove(hashesItem);
 				propertiesNavigationItems.Remove(shortcutItem);
+				propertiesNavigationItems.Remove(linkItem);
 				propertiesNavigationItems.Remove(libraryItem);
 				propertiesNavigationItems.Remove(detailsItem);
 				propertiesNavigationItems.Remove(customizationItem);

@@ -86,6 +86,7 @@ namespace Files.App.ViewModels.Properties
 			{
 				PropertiesNavigationViewItemType.General => typeof(GeneralPage),
 				PropertiesNavigationViewItemType.Shortcut => typeof(ShortcutPage),
+				PropertiesNavigationViewItemType.Link => typeof(LinkPage),
 				PropertiesNavigationViewItemType.Library => typeof(LibraryPage),
 				PropertiesNavigationViewItemType.Details => typeof(DetailsPage),
 				PropertiesNavigationViewItemType.Security => typeof(SecurityPage),

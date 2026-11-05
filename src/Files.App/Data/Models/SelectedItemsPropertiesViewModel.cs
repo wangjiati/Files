@@ -558,6 +558,97 @@ namespace Files.App.Data.Models
 			IsSelectedItemShortcut = (itemExtensions.Count == 1) && (itemExtensions.TrueForAll(itemExtension => FileExtensionHelpers.IsShortcutFile(itemExtension)));
 		}
 
+		private bool isFileSystemLink;
+		public bool IsFileSystemLink
+		{
+			get => isFileSystemLink;
+			set => SetProperty(ref isFileSystemLink, value);
+		}
+
+		private string? linkType;
+		public string? LinkType
+		{
+			get => linkType;
+			set => SetProperty(ref linkType, value);
+		}
+
+		private string? linkTargetPath;
+		public string? LinkTargetPath
+		{
+			get => linkTargetPath;
+			set => SetProperty(ref linkTargetPath, value);
+		}
+
+		private string? linkPathType;
+		public string? LinkPathType
+		{
+			get => linkPathType;
+			set => SetProperty(ref linkPathType, value);
+		}
+
+		private bool isLinkPathTypeVisible;
+		public bool IsLinkPathTypeVisible
+		{
+			get => isLinkPathTypeVisible;
+			set => SetProperty(ref isLinkPathTypeVisible, value);
+		}
+
+		private string? linkTargetStatus;
+		public string? LinkTargetStatus
+		{
+			get => linkTargetStatus;
+			set => SetProperty(ref linkTargetStatus, value);
+		}
+
+		private bool isLinkTargetMissing;
+		public bool IsLinkTargetMissing
+		{
+			get => isLinkTargetMissing;
+			set => SetProperty(ref isLinkTargetMissing, value);
+		}
+
+		private bool isHardLink;
+		public bool IsHardLink
+		{
+			get => isHardLink;
+			set => SetProperty(ref isHardLink, value);
+		}
+
+		private bool isLinkTargetVisible;
+		public bool IsLinkTargetVisible
+		{
+			get => isLinkTargetVisible;
+			set => SetProperty(ref isLinkTargetVisible, value);
+		}
+
+		private uint? linkHardLinkCount;
+		public uint? LinkHardLinkCount
+		{
+			get => linkHardLinkCount;
+			set => SetProperty(ref linkHardLinkCount, value);
+		}
+
+		private string? linkHardLinkCountText;
+		public string? LinkHardLinkCountText
+		{
+			get => linkHardLinkCountText;
+			set => SetProperty(ref linkHardLinkCountText, value);
+		}
+
+		private RelayCommand? openLinkTargetCommand;
+		public RelayCommand? OpenLinkTargetCommand
+		{
+			get => openLinkTargetCommand;
+			set => SetProperty(ref openLinkTargetCommand, value);
+		}
+
+		private RelayCommand? copyLinkTargetCommand;
+		public RelayCommand? CopyLinkTargetCommand
+		{
+			get => copyLinkTargetCommand;
+			set => SetProperty(ref copyLinkTargetCommand, value);
+		}
+
 		private string? shortcutItemType;
 		public string? ShortcutItemType
 		{

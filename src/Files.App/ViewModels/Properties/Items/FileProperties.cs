@@ -1,6 +1,7 @@
 // Copyright(c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Utils.Storage.Links;
 using Files.Shared.Helpers;
 using Microsoft.UI.Dispatching;
 using System.IO;
@@ -33,6 +34,7 @@ namespace Files.App.ViewModels.Properties
 			ViewModel.ItemName = Item.Name;
 			ViewModel.OriginalItemName = Item.Name;
 			ViewModel.ItemType = Item.ItemType;
+			LinkPropertiesHelper.Populate(ViewModel, Item);
 			ViewModel.ItemLocation = (Item as RecycleBinItem)?.ItemOriginalFolder ??
 				(Path.IsPathRooted(itemPath) ? Path.GetDirectoryName(itemPath) : itemPath);
 			ViewModel.ItemModifiedTimestampReal = Item.ItemDateModifiedReal;

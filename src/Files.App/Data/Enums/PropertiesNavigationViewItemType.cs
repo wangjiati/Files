@@ -1,4 +1,4 @@
-﻿// Copyright (c) Files Community
+// Copyright (c) Files Community
 // Licensed under the MIT License.
 
 namespace Files.App.Data.Enums
@@ -37,6 +37,11 @@ namespace Files.App.Data.Enums
 		/// Library page type
 		/// </summary>
 		Library,
+
+		/// <summary>
+		/// Link page type
+		/// </summary>
+		Link,
 
 		/// <summary>
 		/// Security page type
