@@ -1,7 +1,9 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
 using Files.App.Services.SizeProvider;
+using Files.App.Utils.Storage.Links;
 using Files.Shared.Helpers;
 using LibGit2Sharp;
 using Microsoft.Extensions.Logging;
@@ -43,6 +45,9 @@ namespace Files.App.ViewModels
 		private readonly SemaphoreSlim bulkOperationSemaphore;
 		private readonly SemaphoreSlim loadThumbnailSemaphore;
 		private readonly SemaphoreSlim gitPropertiesSemaphore;
+		private readonly SemaphoreSlim hardLinkProbeSemaphore = new(4);
+		private readonly ConcurrentDictionary<string, uint?> hardLinkCache = new(StringComparer.OrdinalIgnoreCase);
+		private readonly ConcurrentDictionary<string, bool> localVolumeCache = new(StringComparer.OrdinalIgnoreCase);
 		private readonly ConcurrentDictionary<string, CancellationTokenSource> thumbnailRetryDebounce;
 		private readonly ConcurrentQueue<(uint Action, string FileName)> operationQueue;
 		private readonly ConcurrentQueue<uint> gitChangesQueue;
@@ -2407,7 +2412,59 @@ namespace Files.App.ViewModels
 
 		public void RefreshItems(string? previousDir, Action? postLoadCallback = null)
 		{
+			hardLinkCache.Clear();
 			_ = RapidAddItemsToCollectionAsync(WorkingDirectory, previousDir, postLoadCallback);
+		}
+
+		public async Task EnsureLinkInfoAsync(ListedItem item)
+		{
+			if (item.LinkKind != LinkKind.None || item.PrimaryItemAttribute != StorageItemTypes.File)
+				return;
+
+			var path = item.ItemPath;
+			if (string.IsNullOrEmpty(path))
+				return;
+
+			if (!HardLinkProbePolicy.ShouldProbe(item.ItemFileAttributes, false, IsLocalNtfsOrReFs(path)))
+				return;
+
+			if (!hardLinkCache.TryGetValue(path, out var linkCount))
+			{
+				await hardLinkProbeSemaphore.WaitAsync();
+				try
+				{
+					if (!hardLinkCache.TryGetValue(path, out linkCount))
+					{
+						linkCount = await Task.Run(() => HardLinkHelper.GetLinkCount(path));
+						hardLinkCache[path] = linkCount;
+					}
+				}
+				finally
+				{
+					hardLinkProbeSemaphore.Release();
+				}
+			}
+
+			if (linkCount is not > 1)
+				return;
+
+			await dispatcherQueue.EnqueueOrInvokeAsync(() =>
+			{
+				item.HardLinkCount = linkCount;
+				item.LinkKind = LinkKind.HardLink;
+				item.ItemType = LinkTypeHelper.Compose(
+					item.BaseItemType ?? item.ItemType,
+					LinkTypeHelper.GetLabel(LinkKind.HardLink, false));
+			});
+		}
+
+		private bool IsLocalNtfsOrReFs(string path)
+		{
+			var root = Path.GetPathRoot(path);
+			if (string.IsNullOrEmpty(root))
+				return false;
+
+			return localVolumeCache.GetOrAdd(root, HardLinkHelper.IsLocalNtfsOrReFs);
 		}
 
 		private async Task RapidAddItemsToCollectionAsync(string? path, string? previousDir, Action? postLoadCallback)

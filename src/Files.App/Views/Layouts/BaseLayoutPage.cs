@@ -3,7 +3,9 @@
 
 using CommunityToolkit.WinUI;
 using Files.App.Controls;
+using Files.App.Data.Enums;
 using Files.App.Helpers.ContextFlyouts;
+using Files.App.Utils.Storage.Links;
 using Files.App.UserControls.Menus;
 using Files.App.ViewModels.Layouts;
 using Microsoft.Extensions.Logging;
@@ -1390,6 +1392,13 @@ namespace Files.App.Views.Layouts
 
 				if (listedItem.PreloadedIconData is not null && listedItem.FileImage is null)
 					EnqueueItemLoad(container, listedItem, shellViewModel => shellViewModel.ApplyCachedThumbnailOrPreloadedIconAsync(listedItem));
+
+				if (listedItem.LinkKind == LinkKind.None &&
+					listedItem.PrimaryItemAttribute == StorageItemTypes.File &&
+					HardLinkProbePolicy.ShouldProbe(listedItem.ItemFileAttributes, false, true))
+				{
+					EnqueueItemLoad(container, listedItem, shellViewModel => shellViewModel.EnsureLinkInfoAsync(listedItem));
+				}
 
 				if (!listedItem.ItemPropertiesInitialized)
 				{
