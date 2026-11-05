@@ -1,7 +1,9 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
 using Files.App.Services.SizeProvider;
+using Files.App.Utils.Storage.Links;
 using Files.Shared.Helpers;
 using System.IO;
 using Windows.Storage;
@@ -191,6 +193,7 @@ namespace Files.App.Utils.Storage
 			}
 
 			var itemPath = Path.Combine(pathRoot, findData.cFileName);
+			var attributes = (FileAttributes)findData.dwFileAttributes;
 
 			string itemName = await fileListCache.GetDisplayName(itemPath, cancellationToken);
 			if (string.IsNullOrEmpty(itemName))
@@ -199,16 +202,72 @@ namespace Files.App.Utils.Storage
 
 				// The shell only reads desktop.ini for folders marked ReadOnly or System, and keeps the raw name for junctions
 				const FileAttributes desktopIniFlags = FileAttributes.ReadOnly | FileAttributes.System;
-				var attributes = (FileAttributes)findData.dwFileAttributes;
 				if ((attributes & desktopIniFlags) != 0 && (attributes & FileAttributes.ReparsePoint) == 0)
 					itemName = Win32Helper.GetLocalizedName(itemPath) ?? itemName;
 			}
 
-			bool isHidden = (((FileAttributes)findData.dwFileAttributes & FileAttributes.Hidden) == FileAttributes.Hidden);
+			bool isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
 			double opacity = 1;
 
 			if (isHidden)
 				opacity = Constants.UI.DimItemOpacity;
+
+			var reparseTag = (attributes & FileAttributes.ReparsePoint) != 0 ? findData.dwReserved0 : 0;
+			if (reparseTag != 0)
+			{
+				var targetPath = reparseTag == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+					? Win32Helper.GetReparsePointInfo(itemPath)?.TargetPath
+					: null;
+
+				var linkKind = LinkClassifier.FromReparseTag(reparseTag, true, targetPath);
+				if (linkKind != LinkKind.None)
+				{
+					var itemType = linkKind == LinkKind.VolumeMountPoint
+						? LinkTypeHelper.GetLabel(linkKind, true)
+						: LinkTypeHelper.Compose(folderTypeTextLocalized, LinkTypeHelper.GetLabel(linkKind, true));
+
+					if (isGitRepo)
+					{
+						return new GitLinkItem(linkKind)
+						{
+							PrimaryItemAttribute = StorageItemTypes.Folder,
+							ItemNameRaw = itemName,
+							ItemDateModifiedReal = itemModifiedDate,
+							ItemDateCreatedReal = itemCreatedDate,
+							ItemType = itemType,
+							BaseItemType = folderTypeTextLocalized,
+							LinkTargetPath = targetPath,
+							ItemFileAttributes = attributes,
+							FileImage = null,
+							IsHiddenItem = isHidden,
+							Opacity = opacity,
+							LoadFileIcon = false,
+							ItemPath = itemPath,
+							FileSize = null,
+							FileSizeBytes = 0,
+						};
+					}
+
+					return new LinkItem(linkKind)
+					{
+						PrimaryItemAttribute = StorageItemTypes.Folder,
+						ItemNameRaw = itemName,
+						ItemDateModifiedReal = itemModifiedDate,
+						ItemDateCreatedReal = itemCreatedDate,
+						ItemType = itemType,
+						BaseItemType = folderTypeTextLocalized,
+						LinkTargetPath = targetPath,
+						ItemFileAttributes = attributes,
+						FileImage = null,
+						IsHiddenItem = isHidden,
+						Opacity = opacity,
+						LoadFileIcon = false,
+						ItemPath = itemPath,
+						FileSize = null,
+						FileSizeBytes = 0,
+					};
+				}
+			}
 
 			if (isGitRepo)
 			{
@@ -219,6 +278,7 @@ namespace Files.App.Utils.Storage
 					ItemDateModifiedReal = itemModifiedDate,
 					ItemDateCreatedReal = itemCreatedDate,
 					ItemType = folderTypeTextLocalized,
+					ItemFileAttributes = attributes,
 					FileImage = null,
 					IsHiddenItem = isHidden,
 					Opacity = opacity,
@@ -237,6 +297,7 @@ namespace Files.App.Utils.Storage
 					ItemDateModifiedReal = itemModifiedDate,
 					ItemDateCreatedReal = itemCreatedDate,
 					ItemType = folderTypeTextLocalized,
+					ItemFileAttributes = attributes,
 					FileImage = null,
 					IsHiddenItem = isHidden,
 					Opacity = opacity,
@@ -298,19 +359,22 @@ namespace Files.App.Utils.Storage
 			if (cancellationToken.IsCancellationRequested)
 				return null;
 
-			bool isHidden = ((FileAttributes)findData.dwFileAttributes & FileAttributes.Hidden) == FileAttributes.Hidden;
+			var attributes = (FileAttributes)findData.dwFileAttributes;
+			bool isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
 			double opacity = isHidden ? Constants.UI.DimItemOpacity : 1;
 
 			// https://learn.microsoft.com/openspecs/windows_protocols/ms-fscc/c8e77b37-3909-4fe6-a4ea-2b9d423b1ee4
-			bool isReparsePoint = ((FileAttributes)findData.dwFileAttributes & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint;
-			bool isSymlink = isReparsePoint && findData.dwReserved0 == Win32PInvoke.IO_REPARSE_TAG_SYMLINK;
+			bool isReparsePoint = (attributes & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint;
+			var reparseTag = isReparsePoint ? findData.dwReserved0 : 0;
 
-			if (isSymlink)
+			if (reparseTag == Win32PInvoke.IO_REPARSE_TAG_SYMLINK)
 			{
-				var targetPath = Win32Helper.ParseSymLink(itemPath);
+				var baseItemType = itemType;
+				var linkItemType = LinkTypeHelper.Compose(baseItemType, LinkTypeHelper.GetLabel(LinkKind.SymbolicLink, false));
+
 				if (isGitRepo)
 				{
-					return new GitShortcutItem()
+					return new GitLinkItem(LinkKind.SymbolicLink)
 					{
 						PrimaryItemAttribute = StorageItemTypes.File,
 						FileExtension = itemFileExtension,
@@ -322,36 +386,34 @@ namespace Files.App.Utils.Storage
 						ItemDateModifiedReal = itemModifiedDate,
 						ItemDateAccessedReal = itemLastAccessDate,
 						ItemDateCreatedReal = itemCreatedDate,
-						ItemType = Strings.Shortcut.GetLocalizedResource(),
+						ItemType = linkItemType,
+						BaseItemType = baseItemType,
 						ItemPath = itemPath,
 						FileSize = itemSize,
 						FileSizeBytes = itemSizeBytes,
-						TargetPath = targetPath,
-						IsSymLink = true,
+						ItemFileAttributes = attributes,
 					};
 				}
-				else
+
+				return new LinkItem(LinkKind.SymbolicLink)
 				{
-					return new ShortcutItem(null)
-					{
-						PrimaryItemAttribute = StorageItemTypes.File,
-						FileExtension = itemFileExtension,
-						IsHiddenItem = isHidden,
-						Opacity = opacity,
-						FileImage = null,
-						LoadFileIcon = itemThumbnailImgVis,
-						ItemNameRaw = itemName,
-						ItemDateModifiedReal = itemModifiedDate,
-						ItemDateAccessedReal = itemLastAccessDate,
-						ItemDateCreatedReal = itemCreatedDate,
-						ItemType = Strings.Shortcut.GetLocalizedResource(),
-						ItemPath = itemPath,
-						FileSize = itemSize,
-						FileSizeBytes = itemSizeBytes,
-						TargetPath = targetPath,
-						IsSymLink = true
-					};
-				}
+					PrimaryItemAttribute = StorageItemTypes.File,
+					FileExtension = itemFileExtension,
+					IsHiddenItem = isHidden,
+					Opacity = opacity,
+					FileImage = null,
+					LoadFileIcon = itemThumbnailImgVis,
+					ItemNameRaw = itemName,
+					ItemDateModifiedReal = itemModifiedDate,
+					ItemDateAccessedReal = itemLastAccessDate,
+					ItemDateCreatedReal = itemCreatedDate,
+					ItemType = linkItemType,
+					BaseItemType = baseItemType,
+					ItemPath = itemPath,
+					FileSize = itemSize,
+					FileSizeBytes = itemSizeBytes,
+					ItemFileAttributes = attributes,
+				};
 			}
 			else if (FileExtensionHelpers.IsShortcutOrUrlFile(findData.cFileName))
 			{
@@ -387,6 +449,8 @@ namespace Files.App.Utils.Storage
 						RunAsAdmin = shInfo.RunAsAdmin,
 						ShowWindowCommand = shInfo.ShowWindowCommand,
 						IsUrl = isUrl,
+						LinkKind = isUrl ? LinkKind.InternetShortcut : LinkKind.ShellShortcut,
+						ItemFileAttributes = attributes,
 					};
 				}
 				else
@@ -413,6 +477,8 @@ namespace Files.App.Utils.Storage
 						RunAsAdmin = shInfo.RunAsAdmin,
 						ShowWindowCommand = shInfo.ShowWindowCommand,
 						IsUrl = isUrl,
+						LinkKind = isUrl ? LinkKind.InternetShortcut : LinkKind.ShellShortcut,
+						ItemFileAttributes = attributes,
 					};
 				}
 			}
@@ -442,6 +508,7 @@ namespace Files.App.Utils.Storage
 						ItemDateAccessedReal = itemLastAccessDate,
 						ItemDateCreatedReal = itemCreatedDate,
 						ItemType = itemType,
+						ItemFileAttributes = attributes,
 						ItemPath = itemPath,
 						FileSize = itemSize,
 						FileSizeBytes = itemSizeBytes
@@ -462,6 +529,7 @@ namespace Files.App.Utils.Storage
 						ItemDateAccessedReal = itemLastAccessDate,
 						ItemDateCreatedReal = itemCreatedDate,
 						ItemType = itemType,
+						ItemFileAttributes = attributes,
 						ItemPath = itemPath,
 						FileSize = itemSize,
 						FileSizeBytes = itemSizeBytes
@@ -482,6 +550,7 @@ namespace Files.App.Utils.Storage
 						ItemDateAccessedReal = itemLastAccessDate,
 						ItemDateCreatedReal = itemCreatedDate,
 						ItemType = itemType,
+						ItemFileAttributes = attributes,
 						ItemPath = itemPath,
 						FileSize = itemSize,
 						FileSizeBytes = itemSizeBytes

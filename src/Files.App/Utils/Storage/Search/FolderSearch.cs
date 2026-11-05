@@ -1,6 +1,8 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
+using Files.App.Utils.Storage.Links;
 using Files.Shared.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
@@ -699,6 +701,8 @@ namespace Files.App.Utils.Storage
 				FileSize = fileSize.ToSizeString(),
 				FileSizeBytes = fileSize,
 				IsUrl = isUrl,
+				LinkKind = isUrl ? LinkKind.InternetShortcut : LinkKind.ShellShortcut,
+				ItemFileAttributes = (FileAttributes)findData.dwFileAttributes,
 			};
 		}
 
@@ -706,22 +710,63 @@ namespace Files.App.Utils.Storage
 		{
 			string fileName = findData.cFileName.ToString();
 			ListedItem? listedItem = null;
-			var isHidden = ((FileAttributes)findData.dwFileAttributes & FileAttributes.Hidden) == FileAttributes.Hidden;
-			var isFolder = ((FileAttributes)findData.dwFileAttributes & FileAttributes.Directory) == FileAttributes.Directory;
+			var attributes = (FileAttributes)findData.dwFileAttributes;
+			var isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
+			var isFolder = (attributes & FileAttributes.Directory) == FileAttributes.Directory;
 			PInvoke.FileTimeToSystemTime(findData.ftLastWriteTime, out SYSTEMTIME systemModifiedTimeOutput);
 			PInvoke.FileTimeToSystemTime(findData.ftCreationTime, out SYSTEMTIME systemCreatedTimeOutput);
 
+			string? itemFileExtension = null;
+			string? itemType = null;
+			long fileSize = 0;
 			if (!isFolder)
 			{
-				string? itemFileExtension = null;
-				string? itemType = null;
-				long fileSize = Win32FindDataExtensions.GetSize(findData);
+				fileSize = Win32FindDataExtensions.GetSize(findData);
 				if (fileName.Contains('.', StringComparison.Ordinal))
 				{
 					itemFileExtension = Path.GetExtension(itemPath);
 					itemType = itemFileExtension!.Trim('.') + " " + itemType;
 				}
+			}
 
+			var reparseTag = (attributes & FileAttributes.ReparsePoint) != 0 ? findData.dwReserved0 : 0;
+			if (reparseTag != 0)
+			{
+				var targetPath = reparseTag == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+					? Win32Helper.GetReparsePointInfo(itemPath)?.TargetPath
+					: null;
+
+				var linkKind = LinkClassifier.FromReparseTag(reparseTag, isFolder, targetPath);
+				if (linkKind != LinkKind.None)
+				{
+					var baseType = isFolder ? folderTypeTextLocalized : (itemType ?? Strings.File.GetLocalizedResource());
+					var linkItemType = linkKind == LinkKind.VolumeMountPoint
+						? LinkTypeHelper.GetLabel(linkKind, isFolder)
+						: LinkTypeHelper.Compose(baseType, LinkTypeHelper.GetLabel(linkKind, isFolder));
+
+					return new LinkItem(linkKind)
+					{
+						PrimaryItemAttribute = isFolder ? StorageItemTypes.Folder : StorageItemTypes.File,
+						ItemNameRaw = fileName,
+						ItemPath = itemPath,
+						ItemDateModifiedReal = systemModifiedTimeOutput.ToDateTime(),
+						ItemDateCreatedReal = systemCreatedTimeOutput.ToDateTime(),
+						IsHiddenItem = isHidden,
+						LoadFileIcon = false,
+						FileExtension = itemFileExtension,
+						ItemType = linkItemType,
+						BaseItemType = baseType,
+						LinkTargetPath = targetPath,
+						ItemFileAttributes = attributes,
+						Opacity = isHidden ? Constants.UI.DimItemOpacity : 1,
+						FileSize = isFolder ? null : fileSize.ToSizeString(),
+						FileSizeBytes = isFolder ? 0 : fileSize,
+					};
+				}
+			}
+
+			if (!isFolder)
+			{
 				listedItem = new ListedItem(null)
 				{
 					PrimaryItemAttribute = StorageItemTypes.File,
@@ -733,6 +778,7 @@ namespace Files.App.Utils.Storage
 					LoadFileIcon = false,
 					FileExtension = itemFileExtension,
 					ItemType = itemType,
+					ItemFileAttributes = attributes,
 					Opacity = isHidden ? Constants.UI.DimItemOpacity : 1,
 					FileSize = fileSize.ToSizeString(),
 					FileSizeBytes = fileSize,
@@ -752,6 +798,7 @@ namespace Files.App.Utils.Storage
 						IsHiddenItem = isHidden,
 						LoadFileIcon = false,
 						ItemType = folderTypeTextLocalized,
+						ItemFileAttributes = attributes,
 						Opacity = isHidden ? Constants.UI.DimItemOpacity : 1
 					};
 				}
@@ -763,6 +810,23 @@ namespace Files.App.Utils.Storage
 		private async Task<ListedItem> GetListedItemAsync(IStorageItem item)
 		{
 			ListedItem? listedItem = null;
+			var attributes = FileAttributes.Normal;
+			var linkKind = LinkKind.None;
+			string? linkTarget = null;
+
+			if (Win32Helper.GetWin32FindDataForPath(item.Path, out var findData) &&
+				((FileAttributes)findData.dwFileAttributes & FileAttributes.ReparsePoint) != 0)
+			{
+				attributes = (FileAttributes)findData.dwFileAttributes;
+				linkTarget = findData.dwReserved0 == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+					? Win32Helper.GetReparsePointInfo(item.Path)?.TargetPath
+					: null;
+				linkKind = LinkClassifier.FromReparseTag(
+					findData.dwReserved0,
+					item.IsOfType(StorageItemTypes.Folder),
+					linkTarget);
+			}
+
 			if (item.IsOfType(StorageItemTypes.Folder))
 			{
 				var folder = item.AsBaseStorageFolder()
@@ -786,6 +850,26 @@ namespace Files.App.Utils.Storage
 						ItemOriginalPath = binFolder.OriginalPath
 					};
 				}
+				else if (linkKind != LinkKind.None)
+				{
+					listedItem = new LinkItem(linkKind)
+					{
+						PrimaryItemAttribute = StorageItemTypes.Folder,
+						ItemNameRaw = folder.DisplayName,
+						ItemPath = folder.Path,
+						ItemDateModifiedReal = props.DateModified,
+						ItemDateCreatedReal = folder.DateCreated,
+						ItemType = linkKind == LinkKind.VolumeMountPoint
+							? LinkTypeHelper.GetLabel(linkKind, true)
+							: LinkTypeHelper.Compose(folderTypeTextLocalized, LinkTypeHelper.GetLabel(linkKind, true)),
+						BaseItemType = folderTypeTextLocalized,
+						LinkTargetPath = linkTarget,
+						ItemFileAttributes = attributes,
+						Opacity = 1,
+						FileSize = null,
+						FileSizeBytes = 0
+					};
+				}
 				else
 				{
 					listedItem = new ListedItem(null)
@@ -796,6 +880,7 @@ namespace Files.App.Utils.Storage
 						ItemDateModifiedReal = props.DateModified,
 						ItemDateCreatedReal = folder.DateCreated,
 						ItemType = folderTypeTextLocalized,
+						ItemFileAttributes = attributes,
 						Opacity = 1
 					};
 				}
@@ -835,6 +920,27 @@ namespace Files.App.Utils.Storage
 						ItemOriginalPath = binFile.OriginalPath
 					};
 				}
+				else if (linkKind != LinkKind.None)
+				{
+					var baseType = itemType ?? Strings.File.GetLocalizedResource();
+					listedItem = new LinkItem(linkKind)
+					{
+						PrimaryItemAttribute = StorageItemTypes.File,
+						ItemNameRaw = file.Name,
+						ItemPath = file.Path,
+						LoadFileIcon = false,
+						FileExtension = itemFileExtension,
+						FileSizeBytes = (long)props.Size,
+						FileSize = itemSize,
+						ItemDateModifiedReal = props.DateModified,
+						ItemDateCreatedReal = file.DateCreated,
+						ItemType = LinkTypeHelper.Compose(baseType, LinkTypeHelper.GetLabel(linkKind, false)),
+						BaseItemType = baseType,
+						LinkTargetPath = linkTarget,
+						ItemFileAttributes = attributes,
+						Opacity = 1
+					};
+				}
 				else if (FileExtensionHelpers.IsShortcutOrUrlFile(file.Path))
 				{
 					var isUrl = FileExtensionHelpers.IsWebLinkFile(file.Path);
@@ -854,6 +960,8 @@ namespace Files.App.Utils.Storage
 						FileSize = itemSize,
 						FileSizeBytes = (long)props.Size,
 						IsUrl = isUrl,
+						LinkKind = isUrl ? LinkKind.InternetShortcut : LinkKind.ShellShortcut,
+						ItemFileAttributes = attributes,
 					};
 					listedItem = shortcutItem;
 				}
@@ -871,6 +979,7 @@ namespace Files.App.Utils.Storage
 						ItemDateModifiedReal = props.DateModified,
 						ItemDateCreatedReal = file.DateCreated,
 						ItemType = itemType,
+						ItemFileAttributes = attributes,
 						Opacity = 1
 					};
 				}
