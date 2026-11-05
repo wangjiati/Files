@@ -16,8 +16,11 @@ Extracts the portable ZIP and verifies, without user interaction:
 
 Add -IncludeUi to also run Test-PortableIme.ps1 for the Plain and Identity modes. That part
 needs an unlocked interactive desktop; the headless checks work on a locked desktop as well.
+On Windows 11 build 26300 and later the plain leg is expected to show no candidate window
+while the identity leg must show one. Older builds expect candidates in both legs.
 
-Exit code 0 = all checks passed, 1 = a check failed, 2 = environment could not run the test.
+Exit code 0 = all checks passed (UI legs included), 1 = a check failed, 2 = environment
+could not run the UI legs (locked desktop) while everything else passed.
 #>
 [CmdletBinding()]
 param(
@@ -52,7 +55,7 @@ function Save-Report([int]$exitCode) {
         WorkDir    = $WorkDirectory
         Checks     = @($checks)
         Ui         = @($uiResults)
-        Passed     = (@($checks | Where-Object { -not $_.Passed }).Count -eq 0) -and (@($uiResults | Where-Object { -not $_.Pass }).Count -eq 0)
+        Passed     = (@($checks | Where-Object { -not $_.Passed }).Count -eq 0) -and (@($uiResults | Where-Object { -not $_.Pass -and -not $_.Skipped }).Count -eq 0)
         ExitCode   = $exitCode
         Timestamp  = (Get-Date).ToString('o')
     }
@@ -225,27 +228,46 @@ else {
 Stop-Files
 
 # --- optional UI run -----------------------------------------------------------------
+# Unpackaged WinUI loses the IME candidate window on Windows 11 build 26300 and later.
+# On older builds both legs are expected to show candidates.
+$osBuild = [Environment]::OSVersion.Version.Build
+$plainExpectation = if ($osBuild -ge 26300) { 'No' } else { 'Yes' }
+
 if ($IncludeUi) {
     $uiScript = Join-Path $PSScriptRoot 'Test-PortableIme.ps1'
     foreach ($mode in @('Plain', 'Identity')) {
         Write-Host ("`n==> UI test: {0}" -f $mode)
-        $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $uiScript -PortableRoot $portable -Mode $mode -ReportPath (Join-Path $WorkDirectory "ui-$mode.json") 2>&1
+        $uiReportPath = Join-Path $WorkDirectory "ui-$mode.json"
+        Remove-Item -LiteralPath $uiReportPath -ErrorAction SilentlyContinue
+        $expectation = if ($mode -eq 'Plain') { $plainExpectation } else { 'Yes' }
+
+        $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $uiScript -PortableRoot $portable -Mode $mode -ExpectCandidates $expectation -ReportPath $uiReportPath 2>&1
         $exit = $LASTEXITCODE
-        $json = $null
-        try { $json = ($out | Where-Object { $_ -match '^\{' } | Select-Object -First 1) } catch { }
+
+        # The child writes its report to disk; reading it avoids parsing the nested stdout JSON.
         $parsed = $null
-        if ($json) { try { $parsed = $json | ConvertFrom-Json } catch { } }
+        if (Test-Path -LiteralPath $uiReportPath) {
+            try { $parsed = Get-Content -LiteralPath $uiReportPath -Raw | ConvertFrom-Json } catch { }
+        }
+
+        $skipped = $exit -eq 2
         [void]$uiResults.Add([ordered]@{
             Mode             = $mode
             ExitCode         = $exit
             Pass             = ($exit -eq 0)
+            Skipped          = $skipped
+            Expectation      = $expectation
             CandidateVisible = if ($parsed) { $parsed.CandidateVisible } else { $null }
             CompositionText  = if ($parsed) { $parsed.CompositionText } else { $null }
+            CommittedText    = if ($parsed) { $parsed.CommittedText } else { $null }
+            NewCandidates    = if ($parsed) { @($parsed.NewCandidateWindows) } else { @() }
             Error            = if ($parsed) { $parsed.Error } else { ($out -join ' ') }
         })
         Write-Host (($out | Select-Object -Last 25) -join "`n")
     }
 }
 
-$failed = @($checks | Where-Object { -not $_.Passed }).Count + @($uiResults | Where-Object { -not $_.Pass }).Count
-Save-Report ($(if ($failed -eq 0) { 0 } else { 1 }))
+$failed = @($checks | Where-Object { -not $_.Passed }).Count + @($uiResults | Where-Object { -not $_.Pass -and -not $_.Skipped }).Count
+$skippedUi = @($uiResults | Where-Object { $_.Skipped }).Count
+$exitCode = if ($failed -gt 0) { 1 } elseif ($skippedUi -gt 0) { 2 } else { 0 }
+Save-Report $exitCode

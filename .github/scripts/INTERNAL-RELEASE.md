@@ -156,10 +156,19 @@ Typical release check:
 .\.github\scripts\Invoke-SandboxReleaseTest.ps1 -ZipPath .\artifacts\internal\<version>\Files.Internal_<version>_x64-portable.zip -IncludeUi
 ```
 
-`Test-PortableIme.ps1` asserts the identity mode shows candidates and the plain mode does
-not. On Windows builds that are not affected both modes show candidates; pass
-`-ExpectCandidates Yes` in that case. The JSON reports contain the observed window list, so
-a failing run shows which IME windows existed.
+`Test-PortableIme.ps1` measures only the rename text box of the sample item and diffs the
+visible candidate windows against a baseline taken before typing, then commits with Space.
+A run therefore reports the composing text, the committed text and the candidate windows
+that newly appeared. It asserts that the identity mode shows candidates and the plain mode
+does not; on Windows builds before 26300 both modes are expected to show candidates, and
+the acceptance script picks that expectation from the OS build number automatically. Pass
+`-ExpectCandidates Yes` when running the script directly on such a build. The JSON reports
+contain the observed window list, so a failing run shows which IME windows existed.
+
+The UI leg refuses to report a result on a locked desktop: `SendInput` would go to the
+Winlogon desktop and the app would never receive the keystrokes. That case exits with `2`
+and the acceptance script then reports exit code `2` as well, so a locked host cannot be
+mistaken for a passing run.
 
 ## Install and run
 
@@ -208,6 +217,10 @@ which restores the candidate window. The binaries keep living in the portable fo
 - Moving the folder changes the external location, so the launcher re-registers on the next start.
 - QA switch: set `FILES_DISABLE_PORTABLE_IDENTITY=1` to compare behavior with and without package
   identity. The launcher then skips registration and activation.
+- Activation arguments must not carry the whitespace that separated them from the launcher path in
+  the command line: `IApplicationActivationManager` hands the string to the app verbatim, and a
+  leading space makes the app treat the folder path as invalid. The launcher trims it, and the app
+  trims the value it receives as a second guard.
 - Portable-only builds have no signing certificate and intentionally omit the identity package.
 
 Updates are manual. Replace the package or portable folder with a newer internal
