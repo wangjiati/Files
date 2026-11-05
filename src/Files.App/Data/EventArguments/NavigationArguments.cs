@@ -28,5 +28,11 @@ namespace Files.App.Data.EventArguments
 		public bool IsLayoutSwitch { get; set; } = false;
 
 		public IEnumerable<string>? SelectItems { get; set; }
+
+		/// <summary>
+		/// Directory filter that was active when this navigation entry was left. Restored when the
+		/// user navigates back or forward to it, the same way Explorer keeps a filtered view.
+		/// </summary>
+		public DirectoryFilterSpec? DirectoryFilter { get; set; }
 	}
 }

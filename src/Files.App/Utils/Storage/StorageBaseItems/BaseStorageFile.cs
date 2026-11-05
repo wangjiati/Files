@@ -177,17 +177,13 @@ namespace Files.App.Utils.Storage
 			using var inputStream = await OpenReadAsync()
 				?? throw new IOException("The file could not be opened for reading.");
 			await using var stream = inputStream.AsStreamForRead();
-			using var dataReader = new StreamReader(stream, true);
-			StringBuilder builder = new();
-			int charsRead, charsToRead;
-			do
-			{
-				charsToRead = maxLength < 0 ? 4096 : Math.Min(maxLength, 4096);
-				var data = new char[charsToRead];
-				charsRead = await dataReader.ReadAsync(data);
-				builder.Append(data, 0, charsRead);
-			} while (charsRead > 0 && stream.Position < stream.Length);
-			return builder.ToString();
+
+			using var buffer = new MemoryStream();
+			await stream.CopyToAsync(buffer);
+
+			var text = TextFileEncoding.Decode(buffer.ToArray());
+
+			return maxLength < 0 ? text : text.Left(maxLength);
 		}
 
 		public async Task WriteTextAsync(string text)

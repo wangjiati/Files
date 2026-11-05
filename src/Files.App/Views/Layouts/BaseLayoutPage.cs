@@ -507,6 +507,16 @@ namespace Files.App.Views.Layouts
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}
 
+		protected override void OnNavigatedFrom(NavigationEventArgs e)
+		{
+			base.OnNavigatedFrom(e);
+
+			// Keep the filter with the navigation entry this page was opened with; going Back
+			// reuses that entry and restores it in OnNavigatedTo.
+			if (navigationArguments is not null && ParentShellPageInstance?.ShellViewModel is { } shellViewModel)
+				navigationArguments.DirectoryFilter = shellViewModel.DirectoryFilter.IsEmpty ? null : shellViewModel.DirectoryFilter;
+		}
+
 		protected override async void OnNavigatedTo(NavigationEventArgs e)
 		{
 			base.OnNavigatedTo(e);
@@ -549,6 +559,11 @@ namespace Files.App.Views.Layouts
 				await shellViewModel.SetWorkingDirectoryAsync(navigationPath);
 				if (isDisposed || navigationArguments != args)
 					return;
+
+				// Restore the filter that was active when this entry was left, so Back and Forward
+				// return to the same filtered view instead of the whole folder.
+				if (args.DirectoryFilter is { IsEmpty: false } restoredFilter)
+					shellViewModel.DirectoryFilter = restoredFilter;
 
 				// pathRoot will be empty on recycle bin path
 				var workingDir = shellViewModel.WorkingDirectory ?? string.Empty;
