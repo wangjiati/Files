@@ -2418,8 +2418,15 @@ namespace Files.App.ViewModels
 
 		public async Task EnsureLinkInfoAsync(ListedItem item)
 		{
-			if (item.LinkKind != LinkKind.None || item.PrimaryItemAttribute != StorageItemTypes.File)
+			if (item.LinkKind != LinkKind.None ||
+				item.PrimaryItemAttribute != StorageItemTypes.File ||
+				item.IsRecycleBinItem ||
+				item.IsAlternateStream ||
+				item.IsArchive ||
+				item.IsFtpItem)
+			{
 				return;
+			}
 
 			var path = item.ItemPath;
 			if (string.IsNullOrEmpty(path))

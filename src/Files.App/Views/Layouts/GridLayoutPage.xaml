@@ -131,12 +131,14 @@
 							Stretch="Uniform" />
 
 						<uc:LinkBadge
+							x:Name="LinkBadgeElement"
 							Width="18"
 							Height="18"
 							Margin="14"
 							HorizontalAlignment="Left"
 							VerticalAlignment="Bottom"
 							Kind="{x:Bind LinkKind, Mode=OneWay}"
+							x:Load="{x:Bind HasLinkBadge, Mode=OneWay}"
 							x:Phase="1" />
 
 						<Image
@@ -310,11 +312,13 @@
 								Source="{x:Bind IconOverlay, Mode=OneWay}"
 								Stretch="Uniform" />
 							<uc:LinkBadge
+								x:Name="LinkBadgeElement"
 								Width="14"
 								Height="14"
 								HorizontalAlignment="Left"
 								VerticalAlignment="Bottom"
-								Kind="{x:Bind LinkKind, Mode=OneWay}" />
+								Kind="{x:Bind LinkKind, Mode=OneWay}"
+								x:Load="{x:Bind HasLinkBadge, Mode=OneWay}" />
 							<Image
 								x:Name="ShieldOverlay"
 								Width="8"
@@ -450,12 +454,14 @@
 								Stretch="Uniform" />
 
 							<uc:LinkBadge
+								x:Name="LinkBadgeElement"
 								Width="18"
 								Height="18"
 								Margin="8"
 								HorizontalAlignment="Right"
 								VerticalAlignment="Top"
 								Kind="{x:Bind LinkKind, Mode=OneWay}"
+								x:Load="{x:Bind HasLinkBadge, Mode=OneWay}"
 								x:Phase="1" />
 
 							<Image

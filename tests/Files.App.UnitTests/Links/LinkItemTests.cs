@@ -33,5 +33,27 @@ namespace Files.App.UnitTests.Links
 			Assert.IsTrue(item.IsFileSystemLink);
 			Assert.IsFalse(item.IsShortcut);
 		}
+
+		[TestMethod]
+		public void LinkItem_ExecutableTarget_IsExecutable()
+		{
+			var item = new LinkItem(LinkKind.SymbolicLink)
+			{
+				LinkTargetPath = @"D:\Tools\tool.exe"
+			};
+
+			Assert.IsTrue(item.IsExecutable);
+		}
+
+		[TestMethod]
+		public void GitLinkItem_ScriptTarget_IsScriptFile()
+		{
+			var item = new GitLinkItem(LinkKind.SymbolicLink)
+			{
+				LinkTargetPath = @"D:\Tools\deploy.ps1"
+			};
+
+			Assert.IsTrue(item.IsScriptFile);
+		}
 	}
 }

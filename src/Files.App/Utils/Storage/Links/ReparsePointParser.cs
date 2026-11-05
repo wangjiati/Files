@@ -16,6 +16,19 @@ namespace Files.App.Utils.Storage.Links
 
 		public static bool TryParse(ReadOnlySpan<byte> buffer, string linkPath, out ReparsePointInfo info)
 		{
+			try
+			{
+				return TryParseCore(buffer, linkPath, out info);
+			}
+			catch
+			{
+				info = default;
+				return false;
+			}
+		}
+
+		private static bool TryParseCore(ReadOnlySpan<byte> buffer, string linkPath, out ReparsePointInfo info)
+		{
 			info = default;
 
 			if (buffer.Length < 16)
@@ -90,6 +103,9 @@ namespace Files.App.Utils.Storage.Links
 		{
 			if (path.StartsWith(@"\??\", StringComparison.Ordinal))
 				path = path[4..];
+
+			if (path.StartsWith(@"UNC\", StringComparison.OrdinalIgnoreCase))
+				return @"\\" + path[4..];
 
 			if (path.StartsWith(@"Volume{", StringComparison.OrdinalIgnoreCase))
 				return @"\\?\" + path;

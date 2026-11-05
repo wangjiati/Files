@@ -215,7 +215,7 @@ namespace Files.App.Utils.Storage
 			var reparseTag = (attributes & FileAttributes.ReparsePoint) != 0 ? findData.dwReserved0 : 0;
 			if (reparseTag != 0)
 			{
-				var targetPath = reparseTag == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+				var targetPath = reparseTag is Win32PInvoke.IO_REPARSE_TAG_SYMLINK or Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
 					? Win32Helper.GetReparsePointInfo(itemPath)?.TargetPath
 					: null;
 
@@ -369,6 +369,7 @@ namespace Files.App.Utils.Storage
 
 			if (reparseTag == Win32PInvoke.IO_REPARSE_TAG_SYMLINK)
 			{
+				var targetPath = Win32Helper.GetReparsePointInfo(itemPath)?.TargetPath;
 				var baseItemType = itemType;
 				var linkItemType = LinkTypeHelper.Compose(baseItemType, LinkTypeHelper.GetLabel(LinkKind.SymbolicLink, false));
 
@@ -388,6 +389,7 @@ namespace Files.App.Utils.Storage
 						ItemDateCreatedReal = itemCreatedDate,
 						ItemType = linkItemType,
 						BaseItemType = baseItemType,
+						LinkTargetPath = targetPath,
 						ItemPath = itemPath,
 						FileSize = itemSize,
 						FileSizeBytes = itemSizeBytes,
@@ -409,6 +411,7 @@ namespace Files.App.Utils.Storage
 					ItemDateCreatedReal = itemCreatedDate,
 					ItemType = linkItemType,
 					BaseItemType = baseItemType,
+					LinkTargetPath = targetPath,
 					ItemPath = itemPath,
 					FileSize = itemSize,
 					FileSizeBytes = itemSizeBytes,

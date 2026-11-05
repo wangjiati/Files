@@ -5568,6 +5568,12 @@
   <data name="LinkTargetNoAccess" xml:space="preserve">
     <value>Access denied</value>
   </data>
+  <data name="LinkTargetNotChecked" xml:space="preserve">
+    <value>Not checked (network)</value>
+  </data>
+  <data name="LinkTarget" xml:space="preserve">
+    <value>Link target</value>
+  </data>
   <data name="LinkOpenTarget" xml:space="preserve">
     <value>Open target location</value>
   </data>

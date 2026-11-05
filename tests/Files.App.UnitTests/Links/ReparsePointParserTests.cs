@@ -90,6 +90,14 @@ namespace Files.App.UnitTests.Links
 		}
 
 		[TestMethod]
+		public void TryParse_RelativeTargetWithNullCharacter_ReturnsFalseWithoutThrowing()
+		{
+			var buffer = BuildBuffer(SymlinkTag, "..\\bad\0file", string.Empty, relative: true);
+
+			Assert.IsFalse(ReparsePointParser.TryParse(buffer, @"D:\Projects\link.txt", out _));
+		}
+
+		[TestMethod]
 		public void TryParse_OutOfRangeOffset_ReturnsFalse()
 		{
 			var buffer = BuildBuffer(SymlinkTag, @"\??\C:\Target", string.Empty, relative: false);

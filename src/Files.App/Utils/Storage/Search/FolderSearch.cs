@@ -732,7 +732,7 @@ namespace Files.App.Utils.Storage
 			var reparseTag = (attributes & FileAttributes.ReparsePoint) != 0 ? findData.dwReserved0 : 0;
 			if (reparseTag != 0)
 			{
-				var targetPath = reparseTag == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+				var targetPath = reparseTag is Win32PInvoke.IO_REPARSE_TAG_SYMLINK or Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
 					? Win32Helper.GetReparsePointInfo(itemPath)?.TargetPath
 					: null;
 
@@ -810,21 +810,23 @@ namespace Files.App.Utils.Storage
 		private async Task<ListedItem> GetListedItemAsync(IStorageItem item)
 		{
 			ListedItem? listedItem = null;
-			var attributes = FileAttributes.Normal;
+			FileAttributes? attributes = null;
 			var linkKind = LinkKind.None;
 			string? linkTarget = null;
 
-			if (Win32Helper.GetWin32FindDataForPath(item.Path, out var findData) &&
-				((FileAttributes)findData.dwFileAttributes & FileAttributes.ReparsePoint) != 0)
+			if (Win32Helper.GetWin32FindDataForPath(item.Path, out var findData))
 			{
 				attributes = (FileAttributes)findData.dwFileAttributes;
-				linkTarget = findData.dwReserved0 == Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
-					? Win32Helper.GetReparsePointInfo(item.Path)?.TargetPath
-					: null;
-				linkKind = LinkClassifier.FromReparseTag(
-					findData.dwReserved0,
-					item.IsOfType(StorageItemTypes.Folder),
-					linkTarget);
+				if ((attributes.Value & FileAttributes.ReparsePoint) != 0)
+				{
+					linkTarget = findData.dwReserved0 is Win32PInvoke.IO_REPARSE_TAG_SYMLINK or Win32PInvoke.IO_REPARSE_TAG_MOUNT_POINT
+						? Win32Helper.GetReparsePointInfo(item.Path)?.TargetPath
+						: null;
+					linkKind = LinkClassifier.FromReparseTag(
+						findData.dwReserved0,
+						item.IsOfType(StorageItemTypes.Folder),
+						linkTarget);
+				}
 			}
 
 			if (item.IsOfType(StorageItemTypes.Folder))

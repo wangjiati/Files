@@ -5514,6 +5514,12 @@
   <data name="LinkTargetNoAccess" xml:space="preserve">
     <value>无权访问</value>
   </data>
+  <data name="LinkTargetNotChecked" xml:space="preserve">
+    <value>未检查（网络）</value>
+  </data>
+  <data name="LinkTarget" xml:space="preserve">
+    <value>链接目标</value>
+  </data>
   <data name="LinkOpenTarget" xml:space="preserve">
     <value>打开目标位置</value>
   </data>

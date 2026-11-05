@@ -51,5 +51,11 @@ namespace Files.App.UnitTests.Links
 		{
 			Assert.IsFalse(HardLinkProbePolicy.ShouldProbe(FileAttributes.Normal, isFolder: false, isLocalNtfsOrReFs: false));
 		}
+
+		[TestMethod]
+		public void ShouldProbe_UnknownAttributes_ReturnsFalse()
+		{
+			Assert.IsFalse(HardLinkProbePolicy.ShouldProbe(null, isFolder: false, isLocalNtfsOrReFs: true));
+		}
 	}
 }

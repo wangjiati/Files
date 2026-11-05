@@ -35,7 +35,14 @@ namespace Files.App.Utils
 		public FileLinkKind LinkKind
 		{
 			get => linkKind;
-			set => SetProperty(ref linkKind, value);
+			set
+			{
+				if (SetProperty(ref linkKind, value))
+				{
+					OnPropertyChanged(nameof(IsFileSystemLink));
+					OnPropertyChanged(nameof(HasLinkBadge));
+				}
+			}
 		}
 
 		public string? LinkTargetPath { get; set; }
@@ -44,7 +51,9 @@ namespace Files.App.Utils
 
 		public string? BaseItemType { get; set; }
 
-		public FileAttributes ItemFileAttributes { get; set; }
+		public FileAttributes? ItemFileAttributes { get; set; }
+
+		public bool HasLinkBadge => linkKind != FileLinkKind.None;
 
 		public bool IsFileSystemLink
 			=> linkKind is FileLinkKind.SymbolicLink or FileLinkKind.Junction or FileLinkKind.HardLink or FileLinkKind.VolumeMountPoint;
@@ -76,6 +85,8 @@ namespace Files.App.Utils
 					tooltipBuilder.Append($"{Environment.NewLine}{Strings.PropertyDuration.GetLocalizedResource()}: {MediaDuration}");
 				if (SyncStatusUI.LoadSyncStatus)
 					tooltipBuilder.Append($"{Environment.NewLine}{Strings.StatusWithColon.GetLocalizedResource()} {SyncStatusUI.SyncStatusString}");
+				if (!string.IsNullOrWhiteSpace(LinkTargetPath))
+					tooltipBuilder.Append($"{Environment.NewLine}{Strings.LinkTarget.GetLocalizedResource()} {LinkTargetPath}");
 
 				return tooltipBuilder.ToString();
 			}

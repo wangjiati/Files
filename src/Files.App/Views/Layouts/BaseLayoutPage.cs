@@ -1397,7 +1397,15 @@ namespace Files.App.Views.Layouts
 					listedItem.PrimaryItemAttribute == StorageItemTypes.File &&
 					HardLinkProbePolicy.ShouldProbe(listedItem.ItemFileAttributes, false, true))
 				{
-					EnqueueItemLoad(container, listedItem, shellViewModel => shellViewModel.EnsureLinkInfoAsync(listedItem));
+					uint callbackPhase = 4;
+					args.RegisterUpdateCallback(callbackPhase, (s, c) => EnqueueItemLoad(container, listedItem, async shellViewModel =>
+					{
+						if (shellViewModel.IsScrollInFlight)
+							return;
+
+						await shellViewModel.EnsureLinkInfoAsync(listedItem);
+						UpdateItemToolTip(container, listedItem.ItemTooltipText);
+					}));
 				}
 
 				if (!listedItem.ItemPropertiesInitialized)

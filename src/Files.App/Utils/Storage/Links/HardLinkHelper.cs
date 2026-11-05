@@ -13,7 +13,7 @@ namespace Files.App.Utils.Storage.Links
 	{
 		public static uint? GetLinkCount(string path)
 		{
-			using var handle = Win32Helper.OpenFileForRead(path);
+			using var handle = Win32Helper.OpenFileForAttributes(path);
 			if (handle.IsInvalid)
 				return null;
 

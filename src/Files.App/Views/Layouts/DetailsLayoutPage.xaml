@@ -1004,11 +1004,13 @@
 												Source="{x:Bind IconOverlay, Mode=OneWay}"
 												Stretch="Uniform" />
 											<uc:LinkBadge
+												x:Name="LinkBadgeElement"
 												Width="14"
 												Height="14"
 												HorizontalAlignment="Left"
 												VerticalAlignment="Bottom"
-												Kind="{x:Bind LinkKind, Mode=OneWay}" />
+												Kind="{x:Bind LinkKind, Mode=OneWay}"
+												x:Load="{x:Bind HasLinkBadge, Mode=OneWay}" />
 											<Image
 												x:Name="ShieldOverlay"
 												Width="8"

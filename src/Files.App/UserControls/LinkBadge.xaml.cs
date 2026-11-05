@@ -3,6 +3,7 @@
 
 using Files.App.Data.Enums;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -66,6 +67,17 @@ namespace Files.App.UserControls
 			}
 
 			Visibility = Visibility.Visible;
+
+			AutomationProperties.SetName(this, Kind switch
+			{
+				LinkKind.ShellShortcut => Strings.Shortcut.GetLocalizedResource(),
+				LinkKind.InternetShortcut => Strings.ShortcutWebLinkFileType.GetLocalizedResource(),
+				LinkKind.SymbolicLink => Strings.LinkTypeSymbolicLink.GetLocalizedResource(),
+				LinkKind.Junction => Strings.LinkTypeJunction.GetLocalizedResource(),
+				LinkKind.HardLink => Strings.LinkTypeHardLink.GetLocalizedResource(),
+				LinkKind.VolumeMountPoint => Strings.LinkTypeVolumeMountPoint.GetLocalizedResource(),
+				_ => string.Empty
+			});
 
 			switch (Kind)
 			{

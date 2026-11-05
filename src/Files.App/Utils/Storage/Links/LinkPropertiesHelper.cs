@@ -18,7 +18,9 @@ namespace Files.App.Utils.Storage.Links
 
 			viewModel.IsFileSystemLink = true;
 
-			var info = Win32Helper.GetReparsePointInfo(item.ItemPath ?? string.Empty);
+			var info = item.LinkKind == LinkKind.HardLink
+				? null
+				: Win32Helper.GetReparsePointInfo(item.ItemPath ?? string.Empty);
 			var targetPath = item.LinkTargetPath ?? info?.TargetPath;
 
 			viewModel.LinkType = LinkTypeHelper.GetLabel(item.LinkKind, item.IsFolder);
@@ -38,7 +40,7 @@ namespace Files.App.Utils.Storage.Links
 			viewModel.LinkHardLinkCountText = item.HardLinkCount?.ToString();
 			viewModel.IsLinkTargetVisible = !isHardLink;
 
-			viewModel.LinkTargetStatus = GetTargetStatus(targetPath, item.LinkKind, out var missing);
+			viewModel.LinkTargetStatus = GetTargetStatus(targetPath, out var missing);
 			viewModel.IsLinkTargetMissing = missing;
 
 			viewModel.OpenLinkTargetCommand = new RelayCommand(async () =>
@@ -46,7 +48,9 @@ namespace Files.App.Utils.Storage.Links
 				if (string.IsNullOrEmpty(targetPath) || missing)
 					return;
 
-				var pathToOpen = Directory.Exists(targetPath)
+				var isDirectory = Win32Helper.GetFileAttributes(targetPath)
+					.HasFlag(System.IO.FileAttributes.Directory);
+				var pathToOpen = isDirectory
 					? targetPath
 					: Path.GetDirectoryName(targetPath);
 
@@ -65,7 +69,7 @@ namespace Files.App.Utils.Storage.Links
 			});
 		}
 
-		private static string GetTargetStatus(string? targetPath, LinkKind linkKind, out bool missing)
+		private static string GetTargetStatus(string? targetPath, out bool missing)
 		{
 			if (string.IsNullOrEmpty(targetPath))
 			{
@@ -73,21 +77,27 @@ namespace Files.App.Utils.Storage.Links
 				return Strings.LinkTargetMissing.GetLocalizedResource();
 			}
 
+			if (DriveHelpers.IsNetworkPath(targetPath))
+			{
+				missing = false;
+				return Strings.LinkTargetNotChecked.GetLocalizedResource();
+			}
+
 			try
 			{
-				if (Directory.Exists(targetPath) || File.Exists(targetPath) || linkKind == LinkKind.VolumeMountPoint)
-				{
-					missing = false;
-					return Strings.LinkTargetExists.GetLocalizedResource();
-				}
-
-				missing = true;
-				return Strings.LinkTargetMissing.GetLocalizedResource();
+				System.IO.File.GetAttributes(targetPath);
+				missing = false;
+				return Strings.LinkTargetExists.GetLocalizedResource();
 			}
-			catch
+			catch (UnauthorizedAccessException)
 			{
 				missing = true;
 				return Strings.LinkTargetNoAccess.GetLocalizedResource();
+			}
+			catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or ArgumentException)
+			{
+				missing = true;
+				return Strings.LinkTargetMissing.GetLocalizedResource();
 			}
 		}
 	}

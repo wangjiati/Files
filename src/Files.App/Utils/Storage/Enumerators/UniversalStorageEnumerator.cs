@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
 using Files.App.Services.SizeProvider;
 using Files.Shared.Helpers;
 using Microsoft.Extensions.Logging;
@@ -224,7 +225,8 @@ namespace Files.App.Utils.Storage
 						Arguments = linkFolder.Arguments,
 						WorkingDirectory = linkFolder.WorkingDirectory,
 						RunAsAdmin = linkFolder.RunAsAdmin,
-						ShowWindowCommand = linkFolder.ShowWindowCommand
+						ShowWindowCommand = linkFolder.ShowWindowCommand,
+						LinkKind = LinkKind.ShellShortcut
 					};
 				}
 				else if (folder is BinStorageFolder binFolder)
@@ -326,6 +328,7 @@ namespace Files.App.Utils.Storage
 						RunAsAdmin = linkFile.RunAsAdmin,
 						ShowWindowCommand = linkFile.ShowWindowCommand,
 						IsUrl = isUrl,
+						LinkKind = isUrl ? LinkKind.InternetShortcut : LinkKind.ShellShortcut,
 					};
 				}
 				else if (file is BinStorageFile binFile)
