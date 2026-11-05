@@ -93,6 +93,41 @@ void SetIdentityStateValue(const wchar_t* name, const std::wstring& value)
 // the IME candidate window, launching through the package identity restores it; when the
 // package is missing or registration fails, the caller falls back to a plain CreateProcess.
 // Registration is a repair step and never blocks startup.
+// Reads the package family name from the per-user package repository. Some machines do not
+// report a freshly registered package through PackageManager for a while (observed on an
+// office Windows 11 build), so the repository is used as a fallback before giving up on
+// package activation.
+std::wstring ResolveFamilyNameFromRepository(const std::wstring& packageName)
+{
+	const wchar_t* repository = L"Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages";
+
+	HKEY key = nullptr;
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, repository, 0, KEY_READ, &key) != ERROR_SUCCESS)
+		return {};
+
+	const std::wstring prefix = packageName + L"_";
+	std::wstring family;
+
+	WCHAR name[512] = {};
+	for (DWORD index = 0; RegEnumKeyW(key, index, name, _countof(name)) == ERROR_SUCCESS; ++index)
+	{
+		std::wstring fullName = name;
+		if (fullName.size() <= prefix.size() || _wcsnicmp(fullName.c_str(), prefix.c_str(), prefix.size()) != 0)
+			continue;
+
+		auto lastSeparator = fullName.find_last_of(L'_');
+		if (lastSeparator == std::wstring::npos || lastSeparator + 1 >= fullName.size())
+			continue;
+
+		// PackageFullName is Name_Version_Architecture[_ResourceId]_PublisherId.
+		family = packageName + L"_" + fullName.substr(lastSeparator + 1);
+		break;
+	}
+
+	RegCloseKey(key);
+	return family;
+}
+
 std::wstring EnsurePortableIdentity(const std::wstring& root)
 {
 	// Diagnostics/QA switch: lets tests compare the build with and without package identity.
@@ -125,17 +160,46 @@ std::wstring EnsurePortableIdentity(const std::wstring& root)
 
 				installedFullName = package.Id().FullName();
 				familyName = package.Id().FamilyName();
-				break;
+				return;
+			}
+
+			try
+			{
+				for (auto const& package : source.FindPackages())
+				{
+					if (_wcsicmp(package.Id().Name().c_str(), identityPackageName.c_str()) != 0)
+						continue;
+
+					installedFullName = package.Id().FullName();
+					familyName = package.Id().FamilyName();
+					return;
+				}
+			}
+			catch (...)
+			{
 			}
 		};
 
-		refresh(manager);
+		auto resolveFromRepository = [&]()
+		{
+			auto repositoryFamily = ResolveFamilyNameFromRepository(identityPackageName);
+			if (repositoryFamily.empty())
+				return false;
 
-		const bool registered = !installedFullName.empty();
+			familyName = winrt::hstring(repositoryFamily);
+			LauncherLog(L"identity: family name resolved from the package repository");
+			return true;
+		};
+
+		refresh(manager);
+		if (familyName.empty())
+			resolveFromRepository();
+
+		const bool registered = !familyName.empty();
 		LauncherLog(registered ? L"identity: package already registered" : L"identity: package not registered");
 		if (!registered || _wcsicmp(GetIdentityStateValue(L"Root").c_str(), root.c_str()) != 0)
 		{
-			if (registered)
+			if (!installedFullName.empty())
 				manager.RemovePackageAsync(installedFullName).get();
 
 			winrt::Windows::Management::Deployment::AddPackageOptions options;
@@ -145,11 +209,7 @@ std::wstring EnsurePortableIdentity(const std::wstring& root)
 			LauncherLog(L"identity: registration completed");
 
 			familyName = {};
-			for (auto const& package : manager.FindPackagesForUser(L"", identityPackageName))
-			{
-				familyName = package.Id().FamilyName();
-				break;
-			}
+			installedFullName = {};
 
 			SetIdentityStateValue(L"Root", root);
 
@@ -163,6 +223,9 @@ std::wstring EnsurePortableIdentity(const std::wstring& root)
 				winrt::Windows::Management::Deployment::PackageManager probe;
 				refresh(probe);
 			}
+
+			if (familyName.empty())
+				resolveFromRepository();
 		}
 
 		if (familyName.empty())
