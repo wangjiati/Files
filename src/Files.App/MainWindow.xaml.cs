@@ -142,21 +142,25 @@ namespace Files.App
 			switch (activatedEventArgs)
 			{
 				case ILaunchActivatedEventArgs launchArgs:
-					var launchArguments = launchArgs.Arguments is not null
-						? CommandLineParser.SplitArguments(launchArgs.Arguments, true)
+					// Package activation without arguments reports an empty string. Treat it as "no argument"
+					// so the app restores the session or opens Home instead of navigating to an empty path,
+					// which leaves the window on a never-ending loading state.
+					var activationArguments = string.IsNullOrWhiteSpace(launchArgs.Arguments) ? null : launchArgs.Arguments;
+					var launchArguments = activationArguments is not null
+						? CommandLineParser.SplitArguments(activationArguments, true)
 						: [];
 					var newWindowArgumentIndex = Array.IndexOf(launchArguments, AppProcessLauncher.NewWindowArgument);
 					if (newWindowArgumentIndex >= 0 && newWindowArgumentIndex + 1 < launchArguments.Length)
 					{
 						await InitializeFromProtocolAsync(rootFrame, new Uri(launchArguments[newWindowArgumentIndex + 1]));
 					}
-					else if (launchArgs.Arguments is not null && launchArguments.Length > 0 &&
+					else if (activationArguments is not null && launchArguments.Length > 0 &&
 						(launchArguments[0].EndsWith($"{AppProcessLauncher.ProtocolScheme}.exe", StringComparison.OrdinalIgnoreCase)
 						|| launchArguments[0].EndsWith(AppProcessLauncher.ProtocolScheme, StringComparison.OrdinalIgnoreCase)
 						|| launchArguments[0].Equals(Environment.ProcessPath, StringComparison.OrdinalIgnoreCase)))
 					{
 						// WINUI3: When launching from commandline the argument is not ICommandLineActivatedEventArgs (#10370)
-						var ppm = CommandLineParser.ParseUntrustedCommands(launchArgs.Arguments);
+						var ppm = CommandLineParser.ParseUntrustedCommands(activationArguments);
 						if (ppm.IsEmpty())
 							rootFrame.Navigate(typeof(MainPage), null, new SuppressNavigationTransitionInfo());
 						else
@@ -166,14 +170,14 @@ namespace Files.App
 					{
 						// When the navigation stack isn't restored navigate to the first page,
 						// configuring the new page by passing required information as a navigation parameter
-						rootFrame.Navigate(typeof(MainPage), launchArgs.Arguments, new SuppressNavigationTransitionInfo());
+						rootFrame.Navigate(typeof(MainPage), activationArguments, new SuppressNavigationTransitionInfo());
 					}
-					else if (!(string.IsNullOrEmpty(launchArgs.Arguments) && MainPageViewModel.AppInstances.Count > 0))
+					else if (!(string.IsNullOrEmpty(activationArguments) && MainPageViewModel.AppInstances.Count > 0))
 					{
 						// Bring to foreground (#14730)
 						Win32Helper.BringToForegroundEx(new(WindowHandle));
 
-						await NavigationHelpers.AddNewTabByPathAsync(typeof(ShellPanesPage), launchArgs.Arguments, true);
+						await NavigationHelpers.AddNewTabByPathAsync(typeof(ShellPanesPage), activationArguments!, true);
 					}
 					else
 					{
