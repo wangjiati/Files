@@ -478,7 +478,9 @@ namespace Files.App.Views.Layouts
 						SearchPathParam = args.SearchPathParam,
 						SearchQuery = args.SearchQuery,
 						IsLayoutSwitch = true,
-						AssociatedTabInstance = parentShellPage
+						AssociatedTabInstance = parentShellPage,
+						DirectoryFilter = shellViewModel.DirectoryFilter.IsEmpty ? null : shellViewModel.DirectoryFilter,
+						ViewOverrides = folderSettings.GetTransientOverrides() is { IsEmpty: false } viewOverrides ? viewOverrides : null,
 					});
 
 					// Remove old layout from back stack
@@ -593,10 +595,13 @@ namespace Files.App.Views.Layouts
 				parentShellPage.InstanceViewModel.IsPageTypeSettings = false;
 				parentShellPage.ToolbarViewModel.PathControlDisplayText = navigationPath;
 
-				if (folderSettings.DirectorySortOption == SortOption.Path)
+				var transientOverrides = folderSettings.GetTransientOverrides();
+
+				if (transientOverrides.SortOption is null && folderSettings.DirectorySortOption == SortOption.Path)
 					folderSettings.DirectorySortOption = SortOption.Name;
 
-				if (folderSettings.DirectoryGroupOption == GroupOption.FolderPath &&
+				if (transientOverrides.GroupOption is null &&
+					folderSettings.DirectoryGroupOption == GroupOption.FolderPath &&
 					!parentShellPage.InstanceViewModel.IsPageTypeLibrary)
 					folderSettings.DirectoryGroupOption = GroupOption.None;
 

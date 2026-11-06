@@ -646,7 +646,12 @@ namespace Files.App.ViewModels.UserControls
 				};
 			}
 
-			if (!folder.IsAdaptiveLayoutEnabled &&
+			var transientLayout = folder.GetTransientOverrides().LayoutMode;
+			if (transientLayout is { } appliedLayout && appliedLayout != FolderLayoutModes.Adaptive)
+			{
+				overrides = overrides with { LayoutMode = appliedLayout };
+			}
+			else if (!folder.IsAdaptiveLayoutEnabled &&
 				folder.LayoutMode != defaults.DefaultLayoutMode &&
 				folder.LayoutMode != FolderLayoutModes.Adaptive)
 			{

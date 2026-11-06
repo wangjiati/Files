@@ -132,6 +132,40 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void RoundTrip_SizeBoundaries()
+		{
+			foreach (var bytes in new[] { 1500L, 1_048_575L, 1_059_062L })
+			{
+				var filter = new DirectoryFilterSpec
+				{
+					Columns = [new DirectoryColumnFilter { Column = DirectoryColumnKind.Size, MinSize = bytes, MaxSize = bytes }],
+				};
+
+				var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
+				Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), error.ToString());
+				Assert.AreEqual(bytes, parsed.Filter.Columns[0].MinSize, text);
+				Assert.AreEqual(bytes, parsed.Filter.Columns[0].MaxSize, text);
+			}
+		}
+
+		[TestMethod]
+		public void TryParse_FtpPathWithQuestionMark_IsTreatedAsPlainPath()
+		{
+			const string path = "ftp://host/My ?filter=files";
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(path, out var address, out _));
+			Assert.AreEqual(path, address.Path);
+			Assert.IsTrue(address.Filter.IsEmpty);
+			Assert.AreEqual(path, DirectoryAddressCodec.GetPathPart(path));
+		}
+
+		[TestMethod]
+		public void TryParse_EmptyNameValue_ReturnsError()
+		{
+			Assert.IsFalse(DirectoryAddressCodec.TryParse(@"C:\Work ?filter=name contains """"", out _, out var error));
+			Assert.AreEqual(DirectoryAddressError.MissingValue, error);
+		}
+
+		[TestMethod]
 		public void GetPathPart_StripsParameters()
 		{
 			Assert.AreEqual(@"C:\Work", DirectoryAddressCodec.GetPathPart(@"C:\Work ?filter=name contains ""a"""));

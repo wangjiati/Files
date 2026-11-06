@@ -48,6 +48,10 @@ namespace Files.App.Utils.Storage
 			error = DirectoryAddressError.None;
 			address = new DirectoryAddress(text, DirectoryFilterSpec.Empty, DirectoryViewOverrides.Empty);
 
+			// FTP paths may legally contain a space followed by '?'; never split them.
+			if (IsFtpPath(text))
+				return true;
+
 			var separatorIndex = text.IndexOf(ParameterPrefix, StringComparison.Ordinal);
 			if (separatorIndex < 0)
 				return true;
@@ -166,6 +170,9 @@ namespace Files.App.Utils.Storage
 		public static string GetPathPart(string? text)
 		{
 			text ??= string.Empty;
+			if (IsFtpPath(text))
+				return text;
+
 			var separatorIndex = text.IndexOf(ParameterPrefix, StringComparison.Ordinal);
 			if (separatorIndex < 0)
 				return text;
@@ -247,6 +254,12 @@ namespace Files.App.Utils.Storage
 						if (!TryUnquote(valueToken, out var text))
 						{
 							error = DirectoryAddressError.InvalidQuotes;
+							return false;
+						}
+
+						if (text.Length == 0)
+						{
+							error = DirectoryAddressError.MissingValue;
 							return false;
 						}
 
@@ -690,6 +703,11 @@ namespace Files.App.Utils.Storage
 			return true;
 		}
 
+		private static bool IsFtpPath(string text)
+			=> text.StartsWith("ftp://", StringComparison.OrdinalIgnoreCase) ||
+			   text.StartsWith("ftps://", StringComparison.OrdinalIgnoreCase) ||
+			   text.StartsWith("ftpes://", StringComparison.OrdinalIgnoreCase);
+
 		private static bool HasKnownParameter(string parameters)
 		{
 			foreach (var segment in parameters.Split('&'))
@@ -814,6 +832,14 @@ namespace Files.App.Utils.Storage
 		}
 
 		private static string FormatSize(long bytes)
+		{
+			var formatted = FormatSizeCore(bytes);
+			return TryParseSize(formatted, out var roundTrip) && roundTrip == bytes
+				? formatted
+				: bytes.ToString(CultureInfo.InvariantCulture) + "B";
+		}
+
+		private static string FormatSizeCore(long bytes)
 		{
 			const long kilo = 1024;
 			const long mega = kilo * 1024;

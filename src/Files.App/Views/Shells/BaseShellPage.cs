@@ -210,6 +210,7 @@ namespace Files.App.Views.Shells
 		{
 			InstanceViewModel = instanceViewModel;
 			InstanceViewModel.FolderSettings.LayoutPreferencesUpdateRequired += FolderSettings_LayoutPreferencesUpdateRequired;
+			InstanceViewModel.FolderSettings.PropertyChanged += FolderSettings_PropertyChanged;
 			cancellationTokenSource = new CancellationTokenSource();
 			FilesystemHelpers = new FilesystemHelpers(this, cancellationTokenSource.Token);
 			StorageHistoryHelpers = new StorageHistoryHelpers(new StorageHistoryOperations(this, cancellationTokenSource.Token));
@@ -598,8 +599,6 @@ namespace Files.App.Views.Shells
 		public void NavigateToPath(string navigationPath, NavigationArguments? navArgs = null)
 		{
 			var viewOverrides = navArgs?.ViewOverrides ?? DirectoryViewOverrides.Empty;
-			FolderSettings.ApplyTransientOverrides(viewOverrides);
-
 			var layout = FolderSettings.GetLayoutType(navigationPath, viewOverrides);
 
 			// Don't use Columns Layout for displaying tags
@@ -817,6 +816,15 @@ namespace Files.App.Views.Shells
 				AdaptiveLayoutHelpers.ApplyAdaptativeLayout(InstanceViewModel.FolderSettings, ShellViewModel.FilesAndFolders.ToList());
 		}
 
+		private void FolderSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName is "DirectorySortOption" or "DirectorySortDirection" or
+				"DirectoryGroupOption" or "DirectoryGroupDirection" or "DirectoryGroupByDateUnit" or "LayoutMode")
+			{
+				ToolbarViewModel?.RefreshAddressSuffix();
+			}
+		}
+
 		protected virtual void ViewModel_WorkingDirectoryModified(object? sender, WorkingDirectoryModifiedEventArgs e)
 		{
 		}
@@ -1003,6 +1011,7 @@ namespace Files.App.Views.Shells
 			ToolbarViewModel.Dispose();
 
 			InstanceViewModel.FolderSettings.LayoutPreferencesUpdateRequired -= FolderSettings_LayoutPreferencesUpdateRequired;
+			InstanceViewModel.FolderSettings.PropertyChanged -= FolderSettings_PropertyChanged;
 			InstanceViewModel.FolderSettings.SortDirectionPreferenceUpdated -= AppSettings_SortDirectionPreferenceUpdated;
 			InstanceViewModel.FolderSettings.SortOptionPreferenceUpdated -= AppSettings_SortOptionPreferenceUpdated;
 			InstanceViewModel.FolderSettings.SortDirectoriesAlongsideFilesPreferenceUpdated -= AppSettings_SortDirectoriesAlongsideFilesPreferenceUpdated;

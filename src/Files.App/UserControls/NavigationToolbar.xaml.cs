@@ -432,6 +432,8 @@ namespace Files.App.UserControls
 			if (ViewModel is not { } viewModel)
 				return;
 
+			Omnibar.IsCustomPasteEnabled = e.NewMode == OmnibarPathMode;
+
 			var pendingText = TakePendingOmnibarText(e.NewMode);
 
 			if (e.NewMode == OmnibarPathMode)
@@ -480,7 +482,7 @@ namespace Files.App.UserControls
 					var pendingText = TakePendingOmnibarText(OmnibarPathMode);
 					viewModel.PathText = pendingText ?? GetDefaultPathText();
 					if (pendingText is null)
-					SchedulePathSelection(viewModel);
+						SchedulePathSelection(viewModel);
 
 					await DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
 				}
@@ -564,10 +566,9 @@ namespace Files.App.UserControls
 			}
 			else
 			{
-				// Replace the whole editor: pasting into the address bar usually means "go here",
-				// and keeping the old suffix would concatenate two parameter segments.
-				viewModel.PathText = args.Text;
-				Omnibar.SelectTextRange(0, args.Text.Length);
+				// Plain text keeps the native insert-at-caret behavior; the control already
+				// canceled the default paste so it can hand us the clipboard text.
+				Omnibar.ReplaceSelection(args.Text);
 			}
 
 			await viewModel.PopulateOmnibarSuggestionsForPathMode();

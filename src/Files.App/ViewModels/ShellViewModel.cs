@@ -1172,6 +1172,8 @@ namespace Files.App.ViewModels
 					OnPropertyChanged(nameof(FilesAndFoldersFilter));
 				}
 
+				OnPropertyChanged(nameof(DirectoryFilter));
+
 				ResetQueryView();
 				ScheduleFilterProjection(0);
 			}

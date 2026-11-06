@@ -179,6 +179,9 @@ namespace Files.App.Controls
 
 		private async void AutoSuggestBox_Paste(object sender, TextControlPasteEventArgs e)
 		{
+			if (!IsCustomPasteEnabled)
+				return;
+
 			e.Handled = true;
 
 			string? text = null;

@@ -137,6 +137,23 @@ namespace Files.App.Controls
 		}
 
 		/// <summary>
+		/// When false, the omnibar lets the TextBox handle paste natively. The path mode sets this
+		/// to true so a pasted view address can replace the whole editor.
+		/// </summary>
+		public bool IsCustomPasteEnabled { get; set; } = true;
+
+		/// <summary>
+		/// Replaces the current selection with the given text, preserving native caret behavior.
+		/// </summary>
+		public void ReplaceSelection(string text)
+		{
+			if (_textBox is null)
+				return;
+
+			_textBox.SelectedText = text;
+		}
+
+		/// <summary>
 		/// Selects a range in the editor. The host uses this to keep only the path selected when
 		/// the omnibar shows a full view address.
 		/// </summary>
