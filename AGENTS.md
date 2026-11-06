@@ -93,6 +93,15 @@ msbuild -restore src/Files.App/Files.App.csproj -p:Configuration=Debug -p:Platfo
 
 We currently don't have a suitable set of tests for AI agents. Just make sure that the builds succeed.
 
+## Completion
+
+A statement that development work is complete must include a freshly packaged release artifact, not only a successful Debug build.
+
+- Commit the change before packaging so `RELEASE-INFO.txt` records the right commit.
+- Run `.github/scripts/Build-Internal.ps1` to produce the latest release. Add `-PortableOnly` when a signed MSIX is not required. Report the output directory and artifact paths (for example `artifacts/internal/<version>/Files.Internal_<version>_x64-portable.zip`).
+- The script runs the full unit test suite and aborts on failure. If packaging cannot run in the current environment, report the blocker and do not claim completion.
+- Never substitute a hand-rolled publish for the script; see [Build](#build).
+
 ## Commit & Push
 
 When asked to commit, run these commands beforehand:
