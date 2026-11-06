@@ -214,4 +214,14 @@
             <AppxPackagePayload Include="@(_FilesAppServerPackageFile)" TargetPath="Files.App.Server\%(RecursiveDir)%(Filename)%(Extension)" />
         </ItemGroup>
     </Target>
+    <!-- Request reproducible PE metadata for the Native AOT image. The ILC output
+         itself is not bit-reproducible with the current toolchain, so only the
+         PE timestamp and PDB signature are stabilized here. -->
+    <Target Name="ConfigureDeterministicNativeAot"
+            BeforeTargets="LinkNative"
+            Condition="'$(PublishAot)' == 'true' And '$(Deterministic)' == 'true'">
+        <ItemGroup>
+            <LinkerArg Include="/Brepro" Condition="'$(_targetOS)' == 'win'" />
+        </ItemGroup>
+    </Target>
 </Project>
