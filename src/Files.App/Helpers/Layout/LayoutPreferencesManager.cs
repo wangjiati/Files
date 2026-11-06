@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Utils.Storage;
 using Windows.Win32;
 
 namespace Files.App.Helpers
@@ -21,6 +22,9 @@ namespace Files.App.Helpers
 
 		private readonly FolderLayoutModes? _rootLayoutMode;
 
+		// Transient values supplied by a view address. They overlay the saved item but are never persisted.
+		private DirectoryViewOverrides transientOverrides = DirectoryViewOverrides.Empty;
+
 		// Properties
 		public bool IsLayoutModeFixed
 			=> _rootLayoutMode is not null;
@@ -37,9 +41,10 @@ namespace Files.App.Helpers
 
 		public FolderLayoutModes LayoutMode
 		{
-			get => _rootLayoutMode ?? LayoutPreferencesItem.LayoutMode;
+			get => _rootLayoutMode ?? transientOverrides.LayoutMode ?? LayoutPreferencesItem.LayoutMode;
 			set
 			{
+				ClearTransientOverride(item => item with { LayoutMode = null }, nameof(LayoutMode), null);
 				if (SetProperty(item => item.LayoutMode, item => item.LayoutMode = value, nameof(LayoutMode)))
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
 			}
@@ -47,9 +52,11 @@ namespace Files.App.Helpers
 
 		public SortOption DirectorySortOption
 		{
-			get => LayoutPreferencesItem.DirectorySortOption;
+			get => transientOverrides.SortOption ?? LayoutPreferencesItem.DirectorySortOption;
 			set
 			{
+				ClearTransientOverride(item => item with { SortOption = null }, nameof(DirectorySortOption),
+					() => SortOptionPreferenceUpdated?.Invoke(this, DirectorySortOption));
 				if (SetProperty(item => item.DirectorySortOption, item => item.DirectorySortOption = value, nameof(DirectorySortOption)))
 				{
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
@@ -60,9 +67,11 @@ namespace Files.App.Helpers
 
 		public GroupOption DirectoryGroupOption
 		{
-			get => LayoutPreferencesItem.DirectoryGroupOption;
+			get => transientOverrides.GroupOption ?? LayoutPreferencesItem.DirectoryGroupOption;
 			set
 			{
+				ClearTransientOverride(item => item with { GroupOption = null }, nameof(DirectoryGroupOption),
+					() => GroupOptionPreferenceUpdated?.Invoke(this, DirectoryGroupOption));
 				if (SetProperty(item => item.DirectoryGroupOption, item => item.DirectoryGroupOption = value, nameof(DirectoryGroupOption)))
 				{
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
@@ -73,9 +82,11 @@ namespace Files.App.Helpers
 
 		public SortDirection DirectorySortDirection
 		{
-			get => LayoutPreferencesItem.DirectorySortDirection;
+			get => transientOverrides.SortDirection ?? LayoutPreferencesItem.DirectorySortDirection;
 			set
 			{
+				ClearTransientOverride(item => item with { SortDirection = null }, nameof(DirectorySortDirection),
+					() => SortDirectionPreferenceUpdated?.Invoke(this, DirectorySortDirection));
 				if (SetProperty(item => item.DirectorySortDirection, item => item.DirectorySortDirection = value, nameof(DirectorySortDirection)))
 				{
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
@@ -86,9 +97,11 @@ namespace Files.App.Helpers
 
 		public SortDirection DirectoryGroupDirection
 		{
-			get => LayoutPreferencesItem.DirectoryGroupDirection;
+			get => transientOverrides.GroupDirection ?? LayoutPreferencesItem.DirectoryGroupDirection;
 			set
 			{
+				ClearTransientOverride(item => item with { GroupDirection = null }, nameof(DirectoryGroupDirection),
+					() => GroupDirectionPreferenceUpdated?.Invoke(this, DirectoryGroupDirection));
 				if (SetProperty(item => item.DirectoryGroupDirection, item => item.DirectoryGroupDirection = value, nameof(DirectoryGroupDirection)))
 				{
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
@@ -99,9 +112,11 @@ namespace Files.App.Helpers
 
 		public GroupByDateUnit DirectoryGroupByDateUnit
 		{
-			get => LayoutPreferencesItem.DirectoryGroupByDateUnit;
+			get => transientOverrides.GroupByDateUnit ?? LayoutPreferencesItem.DirectoryGroupByDateUnit;
 			set
 			{
+				ClearTransientOverride(item => item with { GroupByDateUnit = null }, nameof(DirectoryGroupByDateUnit),
+					() => GroupByDateUnitPreferenceUpdated?.Invoke(this, DirectoryGroupByDateUnit));
 				if (SetProperty(item => item.DirectoryGroupByDateUnit, item => item.DirectoryGroupByDateUnit = value, nameof(DirectoryGroupByDateUnit)))
 				{
 					LayoutPreferencesUpdateRequired?.Invoke(this, new LayoutPreferenceEventArgs(LayoutPreferencesItem));
@@ -205,14 +220,55 @@ namespace Files.App.Helpers
 
 		// Methods
 
-		public Type GetLayoutType(string? path, bool changeLayoutMode = true)
+		public DirectoryViewOverrides GetTransientOverrides()
+			=> transientOverrides;
+
+		/// <summary>
+		/// Applies view values carried by an address. This intentionally does not raise
+		/// <see cref="LayoutPreferencesUpdateRequired"/>, so nothing is written to disk.
+		/// </summary>
+		public void ApplyTransientOverrides(DirectoryViewOverrides? overrides)
+		{
+			transientOverrides = overrides ?? DirectoryViewOverrides.Empty;
+
+			OnPropertyChanged(nameof(LayoutMode));
+			OnPropertyChanged(nameof(DirectorySortOption));
+			OnPropertyChanged(nameof(DirectorySortDirection));
+			OnPropertyChanged(nameof(DirectoryGroupOption));
+			OnPropertyChanged(nameof(DirectoryGroupDirection));
+			OnPropertyChanged(nameof(DirectoryGroupByDateUnit));
+
+			SortOptionPreferenceUpdated?.Invoke(this, DirectorySortOption);
+			SortDirectionPreferenceUpdated?.Invoke(this, DirectorySortDirection);
+			GroupOptionPreferenceUpdated?.Invoke(this, DirectoryGroupOption);
+			GroupDirectionPreferenceUpdated?.Invoke(this, DirectoryGroupDirection);
+			GroupByDateUnitPreferenceUpdated?.Invoke(this, DirectoryGroupByDateUnit);
+		}
+
+		private void ClearTransientOverride(
+			Func<DirectoryViewOverrides, DirectoryViewOverrides> update,
+			string propertyName,
+			Action? notify)
+		{
+			var next = update(transientOverrides);
+			if (next == transientOverrides)
+				return;
+
+			transientOverrides = next;
+			OnPropertyChanged(propertyName);
+			notify?.Invoke();
+		}
+
+		public Type GetLayoutType(string? path, DirectoryViewOverrides? viewOverrides = null, bool changeLayoutMode = true)
 		{
 			var preferencesItem = GetLayoutPreferencesForPath(path, out var isDefaultLayout);
 			if (preferencesItem is null)
 				return typeof(DetailsLayoutPage);
 
-			// Predicting the adaptive decision at navigation time avoids a post-enumeration page switch
-			if (IsAdaptiveLayoutEnabled && !preferencesItem.IsAdaptiveLayoutOverridden &&
+			// Predicting the adaptive decision at navigation time avoids a post-enumeration page switch.
+			// An explicit layout override wins over the adaptive policy.
+			if (viewOverrides?.LayoutMode is null &&
+				IsAdaptiveLayoutEnabled && !preferencesItem.IsAdaptiveLayoutOverridden &&
 				isDefaultLayout is not false &&
 				AdaptiveLayoutHelpers.TryPredictLayout(path, out var resolvedLayout) &&
 				(isDefaultLayout ?? IsPathUsingDefaultLayout(path)))
@@ -220,13 +276,15 @@ namespace Files.App.Helpers
 				preferencesItem.LayoutMode = resolvedLayout;
 			}
 
+			var layoutMode = viewOverrides?.LayoutMode ?? preferencesItem.LayoutMode;
+
 			if (changeLayoutMode)
 			{
-				IsLayoutModeChanging = LayoutPreferencesItem.LayoutMode != preferencesItem.LayoutMode;
+				IsLayoutModeChanging = LayoutPreferencesItem.LayoutMode != layoutMode;
 				LayoutPreferencesItem = preferencesItem;
 			}
 
-			return (preferencesItem.LayoutMode) switch
+			return layoutMode switch
 			{
 				FolderLayoutModes.DetailsView => typeof(DetailsLayoutPage),
 				FolderLayoutModes.ListView => typeof(GridLayoutPage),
@@ -241,6 +299,8 @@ namespace Files.App.Helpers
 		{
 			if (string.IsNullOrWhiteSpace(path))
 				return;
+
+			transientOverrides = DirectoryViewOverrides.Empty;
 
 			var preferencesItem = GetLayoutPreferencesForPath(path, out _);
 			if (preferencesItem is null)

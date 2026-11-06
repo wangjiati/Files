@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using Files.App.Utils.Storage;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Foundation.Metadata;
@@ -573,7 +574,10 @@ namespace Files.App.Views.Shells
 
 		public void NavigateToPath(string navigationPath, NavigationArguments? navArgs = null)
 		{
-			var layout = FolderSettings.GetLayoutType(navigationPath);
+			var viewOverrides = navArgs?.ViewOverrides ?? DirectoryViewOverrides.Empty;
+			FolderSettings.ApplyTransientOverrides(viewOverrides);
+
+			var layout = FolderSettings.GetLayoutType(navigationPath, viewOverrides);
 
 			// Don't use Columns Layout for displaying tags
 			if (navigationPath.StartsWith("tag:") && layout == typeof(ColumnsLayoutPage))
@@ -664,7 +668,7 @@ namespace Files.App.Views.Shells
 					args.NavPathParam is not null and not "ReleaseNotes" &&
 					args.NavPathParam is not null and not "Settings")
 				{
-					var correctPageType = FolderSettings.GetLayoutType(args.NavPathParam, false);
+					var correctPageType = FolderSettings.GetLayoutType(args.NavPathParam, args.ViewOverrides, false);
 					if (!entry.SourcePageType.Equals(correctPageType))
 					{
 						int index = ItemDisplay.BackStack.IndexOf(entry);
@@ -682,7 +686,7 @@ namespace Files.App.Views.Shells
 					args.NavPathParam is not null and not "ReleaseNotes" &&
 					args.NavPathParam is not null and not "Settings")
 				{
-					var correctPageType = FolderSettings.GetLayoutType(args.NavPathParam, false);
+					var correctPageType = FolderSettings.GetLayoutType(args.NavPathParam, args.ViewOverrides, false);
 					if (!entry.SourcePageType.Equals(correctPageType))
 					{
 						int index = ItemDisplay.ForwardStack.IndexOf(entry);

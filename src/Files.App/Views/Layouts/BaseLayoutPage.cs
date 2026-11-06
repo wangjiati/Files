@@ -5,6 +5,7 @@ using CommunityToolkit.WinUI;
 using Files.App.Controls;
 using Files.App.Data.Enums;
 using Files.App.Helpers.ContextFlyouts;
+using Files.App.Utils.Storage;
 using Files.App.Utils.Storage.Links;
 using Files.App.UserControls.Menus;
 using Files.App.ViewModels.Layouts;
@@ -514,7 +515,12 @@ namespace Files.App.Views.Layouts
 			// Keep the filter with the navigation entry this page was opened with; going Back
 			// reuses that entry and restores it in OnNavigatedTo.
 			if (navigationArguments is not null && ParentShellPageInstance?.ShellViewModel is { } shellViewModel)
+			{
 				navigationArguments.DirectoryFilter = shellViewModel.DirectoryFilter.IsEmpty ? null : shellViewModel.DirectoryFilter;
+				navigationArguments.ViewOverrides = ParentShellPageInstance.InstanceViewModel.FolderSettings.GetTransientOverrides() is { IsEmpty: false } viewOverrides
+					? viewOverrides
+					: null;
+			}
 		}
 
 		protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -564,6 +570,9 @@ namespace Files.App.Views.Layouts
 				// return to the same filtered view instead of the whole folder.
 				if (args.DirectoryFilter is { IsEmpty: false } restoredFilter)
 					shellViewModel.DirectoryFilter = restoredFilter;
+
+				parentShellPage.InstanceViewModel.FolderSettings.ApplyTransientOverrides(
+					args.ViewOverrides ?? DirectoryViewOverrides.Empty);
 
 				// pathRoot will be empty on recycle bin path
 				var workingDir = shellViewModel.WorkingDirectory ?? string.Empty;
