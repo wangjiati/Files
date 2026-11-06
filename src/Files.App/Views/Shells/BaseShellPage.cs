@@ -75,7 +75,28 @@ namespace Files.App.Views.Shells
 
 		public virtual IList<PageStackEntry> BackwardStack => ItemDisplay.BackStack;
 
-		public ShellViewModel? ShellViewModel { get; protected set; }
+		public ShellViewModel? ShellViewModel
+		{
+			get => _shellViewModel;
+			protected set
+			{
+				if (_shellViewModel is not null)
+					_shellViewModel.PropertyChanged -= ShellViewModel_PropertyChanged;
+
+				_shellViewModel = value;
+
+				if (_shellViewModel is not null)
+					_shellViewModel.PropertyChanged += ShellViewModel_PropertyChanged;
+			}
+		}
+
+		private ShellViewModel? _shellViewModel;
+
+		private void ShellViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName is "DirectoryFilter" or "FilesAndFoldersFilter")
+				ToolbarViewModel?.RefreshAddressSuffix();
+		}
 
 		public CurrentInstanceViewModel InstanceViewModel { get; }
 
@@ -542,6 +563,8 @@ namespace Files.App.Views.Shells
 				{
 				}
 			}
+
+			ToolbarViewModel?.RefreshAddressSuffix();
 		}
 
 		public void SubmitSearch(string query)

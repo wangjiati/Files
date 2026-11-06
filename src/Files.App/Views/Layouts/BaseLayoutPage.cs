@@ -573,6 +573,7 @@ namespace Files.App.Views.Layouts
 
 				parentShellPage.InstanceViewModel.FolderSettings.ApplyTransientOverrides(
 					args.ViewOverrides ?? DirectoryViewOverrides.Empty);
+				ParentShellPageInstance?.ToolbarViewModel.RefreshAddressSuffix();
 
 				// pathRoot will be empty on recycle bin path
 				var workingDir = shellViewModel.WorkingDirectory ?? string.Empty;
