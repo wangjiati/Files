@@ -5373,6 +5373,12 @@
   <data name="BatchRenameColumnNew" xml:space="preserve">
     <value>改后（双击可手改）</value>
   </data>
+  <data name="BatchRenameColumnResizeAutomationName" xml:space="preserve">
+    <value>调整名称列宽</value>
+  </data>
+  <data name="BatchRenameRulePanelResizeAutomationName" xml:space="preserve">
+    <value>调整规则面板宽度</value>
+  </data>
   <data name="BatchRenameGroupCurrentFolder" xml:space="preserve">
     <value>当前文件夹</value>
   </data>

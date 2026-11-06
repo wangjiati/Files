@@ -24,5 +24,26 @@ namespace Files.App.Services.Settings
 			get => Get(string.Empty) ?? string.Empty;
 			set => Set(value);
 		}
+
+		/// <inheritdoc/>
+		public double RulePanelWidth
+		{
+			get => Get(320d);
+			set => Set(value);
+		}
+
+		/// <inheritdoc/>
+		public double PositionColumnWidth
+		{
+			get => Get(130d);
+			set => Set(value);
+		}
+
+		/// <inheritdoc/>
+		public double PreviewOriginalColumnRatio
+		{
+			get => Get(0.5d);
+			set => Set(value);
+		}
 	}
 }

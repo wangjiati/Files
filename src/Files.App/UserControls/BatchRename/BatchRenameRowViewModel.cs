@@ -23,6 +23,9 @@ namespace Files.App.UserControls
 
 		public RenamePreviewRow Source { get; }
 
+		/// <summary>The overlay-wide column widths shared by the header and every row.</summary>
+		public BatchRenameColumnLayout ColumnLayout { get; }
+
 		public string GroupHeader { get; }
 
 		public string PositionText { get; }
@@ -38,12 +41,13 @@ namespace Files.App.UserControls
 		public string NewSuffix { get; }
 		public bool ShowDiff { get; }
 
-		public BatchRenameRowViewModel(RenamePreviewRow source, string groupHeader, string positionText, bool showPosition, Action onRowStateChanged)
+		public BatchRenameRowViewModel(RenamePreviewRow source, string groupHeader, string positionText, bool showPosition, BatchRenameColumnLayout columnLayout, Action onRowStateChanged)
 		{
 			Source = source;
 			GroupHeader = groupHeader;
 			PositionText = positionText;
 			ShowPosition = showPosition;
+			ColumnLayout = columnLayout;
 			this.onRowStateChanged = onRowStateChanged;
 
 			string original = source.Target.Name;

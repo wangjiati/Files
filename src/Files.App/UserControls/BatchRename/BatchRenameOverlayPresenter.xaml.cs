@@ -2,9 +2,11 @@
 // Licensed under the MIT License.
 
 using CommunityToolkit.WinUI;
+using Files.App.Controls;
 using Files.App.Utils.Rename;
 using Files.App.ViewModels.Dialogs;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -45,6 +47,12 @@ namespace Files.App.UserControls
 		/// <summary>Smallest dialog size that keeps the rule panel and the preview readable.</summary>
 		private const double DialogMinHeight = 480;
 
+		/// <summary>Smallest width the rules panel can be resized to.</summary>
+		private const double RulePanelMinWidth = 280;
+
+		/// <summary>Smallest width the preview keeps when the rules panel grows.</summary>
+		private const double PreviewMinWidth = 320;
+
 		public static BatchRenameOverlayPresenter? Instance { get; private set; }
 
 		public bool IsOpen { get; private set; }
@@ -65,8 +73,18 @@ namespace Files.App.UserControls
 		private bool isApplying;
 		private bool isSyncingControls;
 
+		/// <summary>Header separator currently being dragged, if any.</summary>
+		private Border? activeColumnSplitter;
+		private double columnDragStartX;
+		private double columnDragStartOriginal;
+		private double columnDragStartNew;
+		private double columnDragStartPosition;
+
 		/// <summary>Exposed for x:Bind paths rooted at the active view model.</summary>
 		public BatchRenameViewModel? Vm => vm;
+
+		/// <summary>Column widths shared by the column header and every preview row.</summary>
+		public BatchRenameColumnLayout ColumnLayout { get; } = new();
 
 		public BatchRenameOverlayPresenter()
 		{
@@ -137,7 +155,10 @@ namespace Files.App.UserControls
 			SyncControlsFromVm();
 			ResetSessionUi();
 			RebuildRows();
-			ApplyDockState(Ioc.Default.GetRequiredService<IUserSettingsService>().BatchRenameSettingsService.RulePanelDockedLeft);
+
+			var settings = Ioc.Default.GetRequiredService<IUserSettingsService>().BatchRenameSettingsService;
+			ColumnLayout.Apply(settings.PositionColumnWidth, settings.PreviewOriginalColumnRatio);
+			ApplyDockState(settings.RulePanelDockedLeft);
 			VisualStateManager.GoToState(this, "NormalSizeState", true);
 			_ = LoadPresetsAsync();
 
@@ -264,7 +285,7 @@ namespace Files.App.UserControls
 			foreach (RenamePreviewRow row in vm.Rows)
 			{
 				(string group, string position) = ComputeGroupAndPosition(row, rootPath, withSubfolders);
-				BatchRenameRowViewModel wrapper = new(row, group, position, withSubfolders, OnRowStateChanged);
+				BatchRenameRowViewModel wrapper = new(row, group, position, withSubfolders, ColumnLayout, OnRowStateChanged);
 				wrappers.Add(wrapper);
 				wrapperByRow[row] = wrapper;
 			}
@@ -368,6 +389,7 @@ namespace Files.App.UserControls
 
 			bool withSubfolders = vm.Scope == RenameScopeOption.CurrentFolderWithSubfolders;
 			HeaderPositionCell.Visibility = withSubfolders ? Visibility.Visible : Visibility.Collapsed;
+			HeaderPositionSplitter.Visibility = withSubfolders ? Visibility.Visible : Visibility.Collapsed;
 			DepthPanel.Visibility = withSubfolders ? Visibility.Visible : Visibility.Collapsed;
 
 			ResolvingRing.IsActive = vm.IsResolving;
@@ -970,7 +992,123 @@ namespace Files.App.UserControls
 			VisualStateManager.GoToState(this, effective ? "DockLeftState" : "DockRightState", true);
 			DockIcon.Glyph = effective ? "\uE90C" : "\uE90D";
 			DockLabel.Text = (effective ? Strings.BatchRenameDockLeftLabel : Strings.BatchRenameDockRightLabel).GetLocalizedResource();
+			ApplyRulePanelWidth(effective);
+			UpdateDialogSize();
 			return effective;
+		}
+
+		/// <summary>
+		/// Keeps the rules panel at its persisted width and lets the preview take the rest,
+		/// independent of which side the panel is docked to.
+		/// </summary>
+		private void ApplyRulePanelWidth(bool dockedLeft)
+		{
+			double width = Ioc.Default.GetRequiredService<IUserSettingsService>().BatchRenameSettingsService.RulePanelWidth;
+			GridLength panelWidth = new(Math.Clamp(width, RulePanelMinWidth, 640), GridUnitType.Pixel);
+			GridLength remainingWidth = new(1, GridUnitType.Star);
+
+			// The panels swap grid cells when docked left, so the fixed width must follow the cell
+			// that currently holds the rules panel.
+			PreviewColumn.Width = dockedLeft ? panelWidth : remainingWidth;
+			RulesColumn.Width = dockedLeft ? remainingWidth : panelWidth;
+			PreviewColumn.MinWidth = dockedLeft ? RulePanelMinWidth : PreviewMinWidth;
+			RulesColumn.MinWidth = dockedLeft ? PreviewMinWidth : RulePanelMinWidth;
+		}
+
+		private void RulesPanelSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
+		{
+			if (RulesPanel.ActualWidth > 0)
+				Ioc.Default.GetRequiredService<IUserSettingsService>().BatchRenameSettingsService.RulePanelWidth = RulesPanel.ActualWidth;
+		}
+
+		// Preview column resizing
+
+		private void ColumnSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+		{
+			if (sender is not Border splitter)
+				return;
+
+			activeColumnSplitter = splitter;
+			columnDragStartX = e.GetCurrentPoint(RootGrid).Position.X;
+			columnDragStartOriginal = HeaderOriginalColumn.ActualWidth;
+			columnDragStartNew = HeaderNewColumn.ActualWidth;
+			columnDragStartPosition = ColumnLayout.PositionWidth;
+			splitter.CapturePointer(e.Pointer);
+			e.Handled = true;
+		}
+
+		private void ColumnSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+		{
+			if (activeColumnSplitter is null || !ReferenceEquals(sender, activeColumnSplitter))
+				return;
+
+			double delta = e.GetCurrentPoint(RootGrid).Position.X - columnDragStartX;
+
+			if (string.Equals(activeColumnSplitter.Tag as string, "Position", StringComparison.Ordinal))
+			{
+				double maxWidth = ColumnHeaderGrid.ActualWidth - 28 - 2 - 40 - (2 * BatchRenameColumnLayout.MinNameColumnWidth);
+				ColumnLayout.PositionWidth = Math.Clamp(
+					columnDragStartPosition + delta,
+					BatchRenameColumnLayout.MinPositionColumnWidth,
+					Math.Max(BatchRenameColumnLayout.MinPositionColumnWidth, maxWidth));
+			}
+			else
+			{
+				double total = columnDragStartOriginal + columnDragStartNew;
+				if (total <= 0)
+					return;
+
+				double original = Math.Clamp(
+					columnDragStartOriginal + delta,
+					BatchRenameColumnLayout.MinNameColumnWidth,
+					total - BatchRenameColumnLayout.MinNameColumnWidth);
+				ColumnLayout.OriginalWidth = new GridLength(original, GridUnitType.Star);
+				ColumnLayout.NewWidth = new GridLength(total - original, GridUnitType.Star);
+			}
+
+			e.Handled = true;
+		}
+
+		private void ColumnSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+		{
+			if (!ReferenceEquals(sender, activeColumnSplitter))
+				return;
+
+			EndColumnDrag();
+			e.Handled = true;
+		}
+
+		private void ColumnSplitter_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+		{
+			if (ReferenceEquals(sender, activeColumnSplitter))
+				EndColumnDrag();
+		}
+
+		private void ColumnSplitter_PointerEntered(object sender, PointerRoutedEventArgs e)
+		{
+			if (sender is UIElement element)
+				element.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
+		}
+
+		private void ColumnSplitter_PointerExited(object sender, PointerRoutedEventArgs e)
+		{
+			if (activeColumnSplitter is null && sender is UIElement element)
+				element.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.Arrow));
+		}
+
+		private void EndColumnDrag()
+		{
+			if (activeColumnSplitter is null)
+				return;
+
+			Border splitter = activeColumnSplitter;
+			activeColumnSplitter = null;
+			splitter.ReleasePointerCaptures();
+			splitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.Arrow));
+
+			var settings = Ioc.Default.GetRequiredService<IUserSettingsService>().BatchRenameSettingsService;
+			settings.PositionColumnWidth = ColumnLayout.PositionWidth;
+			settings.PreviewOriginalColumnRatio = ColumnLayout.OriginalRatio;
 		}
 
 		private void MaximizeButton_Click(object sender, RoutedEventArgs e)
@@ -1010,6 +1148,24 @@ namespace Files.App.UserControls
 			DialogBorder.Height = maximized
 				? RootGrid.ActualHeight
 				: Math.Clamp(height, DialogMinHeight, Math.Max(DialogMinHeight, RootGrid.ActualHeight - 32));
+
+			// Keep the fixed rules panel from squeezing the preview below its minimum.
+			bool dockedLeft = VisualStateManager.GetVisualStateGroups(RootGrid)
+				.First(group => group.Name == "DockStates").CurrentState?.Name == "DockLeftState";
+			if (dockedLeft)
+			{
+				RulesColumn.MaxWidth = double.PositiveInfinity;
+				PreviewColumn.MaxWidth = Math.Max(
+					PreviewColumn.MinWidth,
+					DialogBorder.Width - RulesColumn.MinWidth - 16);
+			}
+			else
+			{
+				PreviewColumn.MaxWidth = double.PositiveInfinity;
+				RulesColumn.MaxWidth = Math.Max(
+					RulesColumn.MinWidth,
+					DialogBorder.Width - PreviewColumn.MinWidth - 16);
+			}
 		}
 
 		private void CloseButton_Click(object sender, RoutedEventArgs e)

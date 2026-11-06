@@ -362,9 +362,11 @@
 			Subtitle="{helpers:ResourceString Name=SponsorSubtitle}" />
 
 		<!--  Batch Rename Overlay  -->
+		<!--  Starts below the title bar so the maximized overlay keeps the window chrome reachable.  -->
 		<uc:BatchRenameOverlayPresenter
 			x:Name="BatchRenameOverlay"
-			Grid.RowSpan="3"
+			Grid.Row="1"
+			Grid.RowSpan="2"
 			Visibility="Collapsed" />
 
 		<VisualStateManager.VisualStateGroups>

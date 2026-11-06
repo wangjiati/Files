@@ -14,5 +14,20 @@ namespace Files.App.Data.Contracts
 		/// Gets or sets the name of the batch rename preset that was applied last.
 		/// </summary>
 		string LastPresetName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the width of the batch rename rules panel in pixels.
+		/// </summary>
+		double RulePanelWidth { get; set; }
+
+		/// <summary>
+		/// Gets or sets the width of the preview's location column in pixels.
+		/// </summary>
+		double PositionColumnWidth { get; set; }
+
+		/// <summary>
+		/// Gets or sets the original-name column's share of the two name columns.
+		/// </summary>
+		double PreviewOriginalColumnRatio { get; set; }
 	}
 }

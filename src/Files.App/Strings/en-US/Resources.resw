@@ -5427,6 +5427,12 @@
   <data name="BatchRenameColumnNew" xml:space="preserve">
     <value>New (double-click to edit)</value>
   </data>
+  <data name="BatchRenameColumnResizeAutomationName" xml:space="preserve">
+    <value>Resize the name columns</value>
+  </data>
+  <data name="BatchRenameRulePanelResizeAutomationName" xml:space="preserve">
+    <value>Resize the rules panel</value>
+  </data>
   <data name="BatchRenameGroupCurrentFolder" xml:space="preserve">
     <value>Current folder</value>
   </data>
