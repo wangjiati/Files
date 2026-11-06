@@ -339,12 +339,12 @@ function Assert-ZipHasNoPrivateKeyFiles([string]$ZipPath, [string]$Description) 
     }
 }
 
-function New-PortableZip([string]$PortableRoot, [string]$ZipPath) {
+function New-PortableZip([string]$PortableRoot, [string]$ZipPath, [DateTimeOffset]$EntryTimestamp) {
     $zipStream = [System.IO.File]::Open($ZipPath, [System.IO.FileMode]::CreateNew)
     try {
         $zipWriter = New-Object System.IO.Compression.ZipArchive($zipStream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
         try {
-            $portableFiles = @(Get-ChildItem -LiteralPath $PortableRoot -Recurse -File -Force -ErrorAction Stop)
+            $portableFiles = @(Get-ChildItem -LiteralPath $PortableRoot -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName)
             foreach ($portableFile in $portableFiles) {
                 if ($excludedArchiveExtensions -contains $portableFile.Extension.ToLowerInvariant()) {
                     continue
@@ -352,6 +352,7 @@ function New-PortableZip([string]$PortableRoot, [string]$ZipPath) {
 
                 $entryName = $portableFile.FullName.Substring($PortableRoot.Length).TrimStart("\", "/").Replace("\", "/")
                 $entry = $zipWriter.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+                $entry.LastWriteTime = $EntryTimestamp
                 $entryStream = $entry.Open()
                 $fileStream = [System.IO.File]::OpenRead($portableFile.FullName)
                 try {
@@ -809,7 +810,9 @@ try {
     $msbuildPath = Find-MSBuild
     $env:PackageCertificatePassword = $CertificatePassword
 
-    $builtUtc = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $commitTimestamp = Get-GitOutput @("show", "-s", "--format=%cI", $commit)
+    $builtUtc = ([DateTimeOffset]::Parse($commitTimestamp, [System.Globalization.CultureInfo]::InvariantCulture)).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $zipEntryTimestamp = [DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
     $dependencySummary = @()
     $authenticodeStatus = "NotApplicable"
     $msixSourcePath = $null
@@ -891,6 +894,8 @@ try {
         "-p:Configuration=Debug",
         "-p:Platform=$platform",
         "-p:Distribution=Portable",
+        "-p:Deterministic=true",
+        "-p:ContinuousIntegrationBuild=true",
         "-p:RuntimeIdentifier=$runtimeIdentifier",
         "-m:1",
         "-nr:false",
@@ -1047,6 +1052,8 @@ try {
         "-p:Configuration=$configuration",
         "-p:Platform=$platform",
         "-p:Distribution=Portable",
+        "-p:Deterministic=true",
+        "-p:ContinuousIntegrationBuild=true",
         "-p:RuntimeIdentifier=$runtimeIdentifier",
         "-p:PublishProfile=$portablePublishProfile",
         "-p:PublishDir=$portableStaging\",
@@ -1153,7 +1160,7 @@ try {
     Write-Utf8File (Join-Path $portableStaging $releaseInfoName) ($releaseInfo + "`r`n")
 
     $zipSourcePath = Join-Path $tempRoot $zipName
-    New-PortableZip $portableStaging $zipSourcePath
+    New-PortableZip $portableStaging $zipSourcePath $zipEntryTimestamp
     Assert-PortableZip $zipSourcePath $portableStaging $releaseInfoName
     Assert-ZipHasNoPrivateKeyFiles $zipSourcePath "The portable ZIP"
 
