@@ -100,6 +100,7 @@ A statement that development work is complete must include a freshly packaged re
 - Commit the change before packaging so `RELEASE-INFO.txt` records the right commit.
 - Run `.github/scripts/Build-Internal.ps1` to produce the latest release. Add `-PortableOnly` when a signed MSIX is not required. Report the output directory and artifact paths (for example `artifacts/internal/<version>/Files.Internal_<version>_x64-portable.zip`).
 - The script runs the full unit test suite and aborts on failure. If packaging cannot run in the current environment, report the blocker and do not claim completion.
+- Launch the packaged build and smoke-test the affected UI before declaring completion. A green package build does not prove the UI loads.
 - Never substitute a hand-rolled publish for the script; see [Build](#build).
 
 ## Commit & Push
