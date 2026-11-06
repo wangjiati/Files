@@ -293,16 +293,16 @@
 						</controls:BreadcrumbBar>
 
 						<TextBlock
-							x:Name="PathSuffixSummary"
-							x:Load="{x:Bind ViewModel.HasPathSuffixSummary, Mode=OneWay}"
+							x:Name="PathSuffixText"
+							x:Load="{x:Bind ViewModel.HasPathSuffixText, Mode=OneWay}"
 							Grid.Column="1"
-							MaxWidth="220"
+							MaxWidth="480"
 							Margin="8,0,12,0"
 							VerticalAlignment="Center"
 							Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-							Text="{x:Bind ViewModel.PathSuffixSummary, Mode=OneWay}"
+							Text="{x:Bind ViewModel.PathSuffixText, Mode=OneWay}"
 							TextTrimming="CharacterEllipsis"
-							ToolTipService.ToolTip="{x:Bind ViewModel.PathSuffixSummary, Mode=OneWay}" />
+							ToolTipService.ToolTip="{x:Bind ViewModel.PathSuffixText, Mode=OneWay}" />
 					</Grid>
 				</controls:OmnibarMode.ContentOnInactive>
 				<controls:OmnibarMode.ItemTemplate>

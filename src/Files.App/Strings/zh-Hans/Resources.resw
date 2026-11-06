@@ -1856,12 +1856,6 @@
   <data name="FilterAddressErrorContent" xml:space="preserve">
     <value>地址中的筛选或视图参数无法解析。请修正，或删除空格和问号之后的全部内容。</value>
   </data>
-  <data name="FilterAddressSummary" xml:space="preserve">
-    <value>已筛选</value>
-  </data>
-  <data name="ViewAddressSummary" xml:space="preserve">
-    <value>自定义视图</value>
-  </data>
   <data name="FilterContains" xml:space="preserve">
     <value>包含</value>
   </data>

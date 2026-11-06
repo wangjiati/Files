@@ -212,18 +212,18 @@ namespace Files.App.ViewModels.UserControls
 			}
 		}
 
-		private string _PathSuffixSummary = string.Empty;
-		public string PathSuffixSummary
+		private string _PathSuffixText = string.Empty;
+		public string PathSuffixText
 		{
-			get => _PathSuffixSummary;
+			get => _PathSuffixText;
 			set
 			{
-				if (SetProperty(ref _PathSuffixSummary, value))
-					OnPropertyChanged(nameof(HasPathSuffixSummary));
+				if (SetProperty(ref _PathSuffixText, value))
+					OnPropertyChanged(nameof(HasPathSuffixText));
 			}
 		}
 
-		public bool HasPathSuffixSummary => _PathSuffixSummary.Length > 0;
+		public bool HasPathSuffixText => _PathSuffixText.Length > 0;
 
 		// Workaround to ensure Omnibar is only loaded after the ViewModel is initialized
 		public bool LoadOmnibar =>
@@ -667,17 +667,13 @@ namespace Files.App.ViewModels.UserControls
 			var shellViewModel = shellPage?.ShellViewModel;
 			if (shellPage is null || shellViewModel is null)
 			{
-				PathSuffixSummary = string.Empty;
+				PathSuffixText = string.Empty;
 				return;
 			}
 
-			var parts = new List<string>(2);
-			if (!shellViewModel.DirectoryFilter.IsEmpty)
-				parts.Add(Strings.FilterAddressSummary.GetLocalizedResource());
-			if (!GetViewOverrides(shellPage).IsEmpty)
-				parts.Add(Strings.ViewAddressSummary.GetLocalizedResource());
-
-			PathSuffixSummary = string.Join(" · ", parts);
+			PathSuffixText = DirectoryAddressCodec.FormatSuffix(
+				shellViewModel.DirectoryFilter,
+				GetViewOverrides(shellPage));
 		}
 
 		private async Task<bool> HandleItemNavigationAsync(string path, DirectoryFilterSpec filter, DirectoryViewOverrides view)
