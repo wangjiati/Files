@@ -51,8 +51,6 @@ namespace Files.App.UserControls
 		public NavigationToolbar()
 		{
 			InitializeComponent();
-
-			Omnibar.PasteRequested += Omnibar_PasteRequested;
 		}
 
 		// Methods

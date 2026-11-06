@@ -237,6 +237,7 @@
 			FocusRedirectRequested="Omnibar_FocusRedirectRequested"
 			IsFocusedChanged="Omnibar_IsFocusedChanged"
 			ModeChanged="Omnibar_ModeChanged"
+			PasteRequested="Omnibar_PasteRequested"
 			PreviewKeyDown="Omnibar_PreviewKeyDown"
 			QuerySubmitted="Omnibar_QuerySubmitted"
 			TextChanged="Omnibar_TextChanged">
