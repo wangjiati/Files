@@ -45,6 +45,12 @@ namespace Files.App.Controls
 		public event TypedEventHandler<Omnibar, OmnibarModeChangedEventArgs>? ModeChanged;
 		public event TypedEventHandler<Omnibar, OmnibarIsFocusedChangedEventArgs>? IsFocusedChanged;
 
+		/// <summary>
+		/// Raised instead of the default paste so the host can decide whether the pasted text is a
+		/// full view address that must replace the whole editor content.
+		/// </summary>
+		public event EventHandler<OmnibarPasteRequestedEventArgs>? PasteRequested;
+
 		// Raised when the window reactivates and restores focus to the TextBox; the host moves focus elsewhere so the omnibar doesn't get stuck in edit mode
 		public event TypedEventHandler<Omnibar, System.EventArgs>? FocusRedirectRequested;
 
@@ -90,6 +96,7 @@ namespace Files.App.Controls
 			_textBox.LosingFocus += AutoSuggestBox_LosingFocus;
 			_textBox.LostFocus += AutoSuggestBox_LostFocus;
 			_textBox.KeyDown += AutoSuggestBox_KeyDown;
+			_textBox.Paste += AutoSuggestBox_Paste;
 			_textBox.TextChanged += AutoSuggestBox_TextChanged;
 			_textBoxSuggestionsPopup.GettingFocus += AutoSuggestBoxSuggestionsPopup_GettingFocus;
 			_textBoxSuggestionsPopup.Opened += AutoSuggestBoxSuggestionsPopup_Opened;
@@ -127,6 +134,21 @@ namespace Files.App.Controls
 				_modesHostGrid.Children.Add(mode);
 				mode.SetOwner(this);
 			}
+		}
+
+		/// <summary>
+		/// Selects a range in the editor. The host uses this to keep only the path selected when
+		/// the omnibar shows a full view address.
+		/// </summary>
+		public void SelectTextRange(int start, int length)
+		{
+			if (_textBox is null)
+				return;
+
+			var textLength = _textBox.Text.Length;
+			start = Math.Clamp(start, 0, textLength);
+			length = Math.Clamp(length, 0, textLength - start);
+			_textBox.Select(start, length);
 		}
 
 		[DynamicWindowsRuntimeCast(typeof(FrameworkElement))]
@@ -318,5 +340,13 @@ namespace Files.App.Controls
 
 			ChangeTextBoxText(_userInput ?? "");
 		}
+	}
+
+	/// <summary>
+	/// Text read from the clipboard when the user pastes into the omnibar.
+	/// </summary>
+	public sealed class OmnibarPasteRequestedEventArgs(string text) : System.EventArgs
+	{
+		public string Text { get; } = text;
 	}
 }

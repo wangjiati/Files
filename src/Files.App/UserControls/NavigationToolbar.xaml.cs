@@ -3,6 +3,7 @@
 
 using CommunityToolkit.WinUI;
 using Files.App.Controls;
+using Files.App.Utils.Storage;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -50,6 +51,8 @@ namespace Files.App.UserControls
 		public NavigationToolbar()
 		{
 			InitializeComponent();
+
+			Omnibar.PasteRequested += Omnibar_PasteRequested;
 		}
 
 		// Methods
@@ -190,7 +193,15 @@ namespace Files.App.UserControls
 			if (mode == OmnibarPathMode)
 			{
 				var submittedText = args.Text;
-				if (!await viewModel.HandleItemNavigationAsync(submittedText))
+				if (!DirectoryAddressCodec.TryParse(submittedText, out var address, out _))
+				{
+					await DialogDisplayHelper.ShowDialogAsync(
+						Strings.FilterAddressErrorTitle.GetLocalizedResource(),
+						Strings.FilterAddressErrorContent.GetLocalizedResource());
+					return;
+				}
+
+				if (!await viewModel.HandleItemNavigationAsync(address))
 				{
 					RestoreOmnibarText(viewModel, OmnibarPathMode, submittedText);
 					return;
@@ -427,6 +438,8 @@ namespace Files.App.UserControls
 			{
 				// Initialize with current working directory or fallback to home path
 				viewModel.PathText = pendingText ?? GetDefaultPathText();
+				if (pendingText is null)
+					SelectPathPortion(viewModel);
 
 				await DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
 			}
@@ -464,7 +477,10 @@ namespace Files.App.UserControls
 				// Path Mode needs special handling when gaining focus since it has an unfocused state
 				if (Omnibar.CurrentSelectedMode == OmnibarPathMode)
 				{
-					viewModel.PathText = TakePendingOmnibarText(OmnibarPathMode) ?? GetDefaultPathText();
+					var pendingText = TakePendingOmnibarText(OmnibarPathMode);
+					viewModel.PathText = pendingText ?? GetDefaultPathText();
+					if (pendingText is null)
+						SelectPathPortion(viewModel);
 
 					await DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
 				}
@@ -506,10 +522,48 @@ namespace Files.App.UserControls
 
 		private string GetDefaultPathText()
 		{
-			var workingDirectory = ContentPageContext.ShellPage?.ShellViewModel?.WorkingDirectory;
-			return string.IsNullOrEmpty(workingDirectory)
+			var shellPage = ContentPageContext.ShellPage;
+			var shellViewModel = shellPage?.ShellViewModel;
+			if (shellPage is null || shellViewModel is null)
+				return Constants.UserEnvironmentPaths.HomePath;
+
+			var path = string.IsNullOrEmpty(shellViewModel.WorkingDirectory)
 				? Constants.UserEnvironmentPaths.HomePath
-				: workingDirectory;
+				: shellViewModel.WorkingDirectory;
+
+			// Pseudo pages don't accept view parameters; keep their address clean.
+			if (path is "Home" or "ReleaseNotes" or "Settings")
+				return path;
+
+			var viewOverrides = ViewModel?.GetViewOverrides(shellPage) ?? DirectoryViewOverrides.Empty;
+			return DirectoryAddressCodec.Format(path, shellViewModel.DirectoryFilter, viewOverrides);
+		}
+
+		private void SelectPathPortion(NavigationToolbarViewModel viewModel)
+		{
+			var pathLength = DirectoryAddressCodec.GetPathPart(viewModel.PathText).Length;
+			Omnibar.SelectTextRange(0, pathLength);
+		}
+
+		private async void Omnibar_PasteRequested(object? sender, OmnibarPasteRequestedEventArgs args)
+		{
+			if (ViewModel is not { } viewModel)
+				return;
+
+			if (DirectoryAddressCodec.TryParse(args.Text, out var pasted, out _) && pasted.HasParameters)
+			{
+				viewModel.PathText = DirectoryAddressCodec.Format(pasted.Path, pasted.Filter, pasted.View);
+				Omnibar.SelectTextRange(0, pasted.Path.Length);
+			}
+			else
+			{
+				// Replace the whole editor: pasting into the address bar usually means "go here",
+				// and keeping the old suffix would concatenate two parameter segments.
+				viewModel.PathText = args.Text;
+				Omnibar.SelectTextRange(0, args.Text.Length);
+			}
+
+			await viewModel.PopulateOmnibarSuggestionsForPathMode();
 		}
 
 		private void Omnibar_FocusRedirectRequested(Omnibar sender, EventArgs args)

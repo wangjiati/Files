@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using Microsoft.UI.Xaml.Input;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation.Collections;
 using Windows.System;
 using WinRT;
@@ -174,6 +175,26 @@ namespace Files.App.Controls
 
 			// Reset
 			_textChangeReason = OmnibarTextChangeReason.None;
+		}
+
+		private async void AutoSuggestBox_Paste(object sender, TextControlPasteEventArgs e)
+		{
+			e.Handled = true;
+
+			string? text = null;
+			try
+			{
+				var content = Clipboard.GetContent();
+				if (content.Contains(StandardDataFormats.Text))
+					text = await content.GetTextAsync();
+			}
+			catch
+			{
+				return;
+			}
+
+			if (text is not null)
+				PasteRequested?.Invoke(this, new OmnibarPasteRequestedEventArgs(text));
 		}
 
 		private void AutoSuggestBoxSuggestionsPopup_GettingFocus(UIElement sender, GettingFocusEventArgs args)

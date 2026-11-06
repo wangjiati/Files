@@ -1859,6 +1859,12 @@
   <data name="Filter" xml:space="preserve">
     <value>Filter</value>
   </data>
+  <data name="FilterAddressErrorTitle" xml:space="preserve">
+    <value>Invalid address</value>
+  </data>
+  <data name="FilterAddressErrorContent" xml:space="preserve">
+    <value>The filter or view part of this address is not valid. Fix it or remove everything after the space and question mark.</value>
+  </data>
   <data name="FilterContains" xml:space="preserve">
     <value>Contains</value>
   </data>

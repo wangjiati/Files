@@ -34,5 +34,10 @@ namespace Files.App.Data.EventArguments
 		/// user navigates back or forward to it, the same way Explorer keeps a filtered view.
 		/// </summary>
 		public DirectoryFilterSpec? DirectoryFilter { get; set; }
+
+		/// <summary>
+		/// Transient group, sort and layout values carried by a view address. Never persisted.
+		/// </summary>
+		public DirectoryViewOverrides? ViewOverrides { get; set; }
 	}
 }

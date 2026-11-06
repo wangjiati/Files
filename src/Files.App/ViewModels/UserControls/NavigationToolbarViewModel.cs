@@ -3,6 +3,7 @@
 
 using CommunityToolkit.WinUI;
 using Files.App.Controls;
+using Files.App.Utils.Storage;
 using Files.App.ViewModels.Settings;
 using Files.Shared.Helpers;
 using Microsoft.Extensions.Logging;
@@ -595,7 +596,55 @@ namespace Files.App.ViewModels.UserControls
 			ToolbarPathItemInvoked?.Invoke(this, new() { ItemPath = path });
 		}
 
-		public async Task<bool> HandleItemNavigationAsync(string path)
+		public Task<bool> HandleItemNavigationAsync(string path)
+			=> HandleItemNavigationAsync(path, DirectoryFilterSpec.Empty, DirectoryViewOverrides.Empty);
+
+		public Task<bool> HandleItemNavigationAsync(DirectoryAddress address)
+			=> HandleItemNavigationAsync(address.Path, address.Filter, address.View);
+
+		/// <summary>
+		/// Builds the transient view overrides shown in the address: group, sort and layout are
+		/// included only when they differ from the user's global defaults.
+		/// </summary>
+		public DirectoryViewOverrides GetViewOverrides(IShellPage shellPage)
+		{
+			var folder = shellPage.InstanceViewModel.FolderSettings;
+			var defaults = UserSettingsService.LayoutSettingsService;
+			var overrides = DirectoryViewOverrides.Empty;
+
+			if (folder.DirectoryGroupOption != defaults.DefaultGroupOption ||
+				folder.DirectoryGroupDirection != defaults.DefaultDirectoryGroupDirection ||
+				folder.DirectoryGroupByDateUnit != defaults.DefaultGroupByDateUnit)
+			{
+				overrides = overrides with
+				{
+					GroupOption = folder.DirectoryGroupOption,
+					GroupDirection = folder.DirectoryGroupDirection,
+					GroupByDateUnit = folder.DirectoryGroupByDateUnit,
+				};
+			}
+
+			if (folder.DirectorySortOption != defaults.DefaultSortOption ||
+				folder.DirectorySortDirection != defaults.DefaultDirectorySortDirection)
+			{
+				overrides = overrides with
+				{
+					SortOption = folder.DirectorySortOption,
+					SortDirection = folder.DirectorySortDirection,
+				};
+			}
+
+			if (!folder.IsAdaptiveLayoutEnabled &&
+				folder.LayoutMode != defaults.DefaultLayoutMode &&
+				folder.LayoutMode != FolderLayoutModes.Adaptive)
+			{
+				overrides = overrides with { LayoutMode = folder.LayoutMode };
+			}
+
+			return overrides;
+		}
+
+		private async Task<bool> HandleItemNavigationAsync(string path, DirectoryFilterSpec filter, DirectoryViewOverrides view)
 		{
 			var shellPage = ContentPageContext.ShellPage;
 			if (shellPage is null)
@@ -607,14 +656,29 @@ namespace Files.App.ViewModels.UserControls
 			var currentPath = PathComponents.LastOrDefault()?.Path;
 			var isFtp = FtpHelpers.IsFtpPath(path);
 			var normalizedInput = NormalizePathInput(path, isFtp);
-			if (currentPath is not null && currentPath.Equals(normalizedInput, StringComparison.OrdinalIgnoreCase) ||
-				string.IsNullOrWhiteSpace(normalizedInput))
+			var hasOverrides = !filter.IsEmpty || !view.IsEmpty;
+
+			if (string.IsNullOrWhiteSpace(normalizedInput))
 				return true;
 
-			if (normalizedInput.Equals(shellViewModel.WorkingDirectory) &&
+			if (!hasOverrides &&
+				currentPath is not null &&
+				currentPath.Equals(normalizedInput, StringComparison.OrdinalIgnoreCase))
+				return true;
+
+			if (!hasOverrides &&
+				normalizedInput.Equals(shellViewModel.WorkingDirectory) &&
 				shellPage.CurrentPageType != typeof(HomePage) &&
 				!shellViewModel.IsSearchResults)
 				return true;
+
+			NavigationArguments CreateNavigationArguments(string navigationPath) => new()
+			{
+				NavPathParam = navigationPath,
+				AssociatedTabInstance = shellPage,
+				DirectoryFilter = filter.IsEmpty ? null : filter,
+				ViewOverrides = view.IsEmpty ? null : view,
+			};
 
 			if (normalizedInput.Equals("Home", StringComparison.OrdinalIgnoreCase) ||
 				normalizedInput.Equals(Strings.Home.GetLocalizedResource(), StringComparison.OrdinalIgnoreCase))
@@ -637,7 +701,9 @@ namespace Files.App.ViewModels.UserControls
 			else
 			{
 				normalizedInput = StorageFileExtensions.GetResolvedPath(normalizedInput, isFtp);
-				if (currentPath is not null && currentPath.Equals(normalizedInput, StringComparison.OrdinalIgnoreCase))
+				if (!hasOverrides &&
+					currentPath is not null &&
+					currentPath.Equals(normalizedInput, StringComparison.OrdinalIgnoreCase))
 					return true;
 
 				var item = await FilesystemTasks.Wrap(() => DriveHelpers.GetRootFromPathAsync(normalizedInput));
@@ -662,12 +728,12 @@ namespace Files.App.ViewModels.UserControls
 
 					var pathToNavigate = resFolder.Result?.Path ?? normalizedInput;
 					SavePathToHistory(pathToNavigate);
-					shellPage.NavigateToPath(pathToNavigate);
+					shellPage.NavigateToPath(pathToNavigate, CreateNavigationArguments(pathToNavigate));
 				}
 				else if (isFtp)
 				{
 					SavePathToHistory(normalizedInput);
-					shellPage.NavigateToPath(normalizedInput);
+					shellPage.NavigateToPath(normalizedInput, CreateNavigationArguments(normalizedInput));
 				}
 				else // Not a folder or inaccessible
 				{
@@ -691,8 +757,9 @@ namespace Files.App.ViewModels.UserControls
 							shellPage.CurrentPageType == typeof(HomePage)
 								? Constants.UserEnvironmentPaths.HomePath
 								: shellViewModel.WorkingDirectory;
-						var pathText = PathText
-							?? throw new InvalidOperationException("The navigation path has not been initialized.");
+						var pathText = DirectoryAddressCodec.GetPathPart(PathText);
+						if (string.IsNullOrEmpty(pathText))
+							throw new InvalidOperationException("The navigation path has not been initialized.");
 
 						if (await LaunchApplicationFromPath(pathText, workingDir))
 							return true;
@@ -1051,7 +1118,7 @@ namespace Files.App.ViewModels.UserControls
 			var result = await SafetyExtensions.IgnoreExceptions((Func<Task<bool>>)(async () =>
 			{
 				List<OmnibarPathModeSuggestionModel> newSuggestions = [];
-				var pathText = this.PathText;
+				var pathText = DirectoryAddressCodec.GetPathPart(this.PathText);
 
 				// If the current input is special, populate navigation history instead.
 				if (string.IsNullOrWhiteSpace(pathText) ||
