@@ -439,7 +439,7 @@ namespace Files.App.UserControls
 				// Initialize with current working directory or fallback to home path
 				viewModel.PathText = pendingText ?? GetDefaultPathText();
 				if (pendingText is null)
-					SelectPathPortion(viewModel);
+					SchedulePathSelection(viewModel);
 
 				await DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
 			}
@@ -480,7 +480,7 @@ namespace Files.App.UserControls
 					var pendingText = TakePendingOmnibarText(OmnibarPathMode);
 					viewModel.PathText = pendingText ?? GetDefaultPathText();
 					if (pendingText is null)
-						SelectPathPortion(viewModel);
+					SchedulePathSelection(viewModel);
 
 					await DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
 				}
@@ -543,6 +543,13 @@ namespace Files.App.UserControls
 		{
 			var pathLength = DirectoryAddressCodec.GetPathPart(viewModel.PathText).Length;
 			Omnibar.SelectTextRange(0, pathLength);
+		}
+
+		private void SchedulePathSelection(NavigationToolbarViewModel viewModel)
+		{
+			// The omnibar selects all after raising its focus event, so defer this so the
+			// path-only selection wins without changing the focus/caret behavior.
+			DispatcherQueue.TryEnqueue(() => SelectPathPortion(viewModel));
 		}
 
 		private async void Omnibar_PasteRequested(object? sender, OmnibarPasteRequestedEventArgs args)
