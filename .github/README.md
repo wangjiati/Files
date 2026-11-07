@@ -2,97 +2,38 @@
   <img alt="Files hero image" src="./assets/ReadmeHero.png" />
 </p>
 
-<p align="center">
-  <a style="text-decoration:none" href="https://files.community/">
-    <img src="https://img.shields.io/badge/Files-Website-F9B81F" alt="Files Website" /></a>
-  <a style="text-decoration:none" href="https://github.com/files-community/Files/actions/workflows/ci.yml">
-    <img src="https://github.com/files-community/Files/actions/workflows/ci.yml/badge.svg" alt="Files CI Status" /></a>
-  <a style="text-decoration:none" href="https://crowdin.com/project/files-app">
-    <img src="https://badges.crowdin.net/files-app/localized.svg" alt="Files Localization Status" /></a>
-  <a style="text-decoration:none" href="https://discord.gg/files">
-    <img src="https://img.shields.io/discord/725513575971684472?label=Discord&color=7289da" alt="Files Discord" /></a>
-</p>
+Files 是一个现代文件管理器，目标是打造 Windows 上最好用的文件管理器。项目由开源社区公开构建，功能与问题反馈共同塑造它的方向。
 
-Files is a modern file manager that helps users organize their files and folders. Our mission with Files is to build the best file manager for Windows, and we’re proud to be building it out in the open so everyone can participate. User feedback helps shape the features we work on, & the bug reports on GitHub help to make Files more reliable. Built and maintained by the open-source community, Files features robust multitasking experiences, file tags, deep integrations, and an intuitive design.
+## 本 Fork
 
-## 本 Fork 与原版的区别
+本仓库 fork 自 [files-community/Files](https://github.com/files-community/Files)，已同步上游至 `d8eb92f66`。在保留上游文件管理能力的基础上，本分支主要增加了：
 
-本仓库 fork 自 [files-community/Files](https://github.com/files-community/Files)，已同步上游至 `d8eb92f66`。在保留原版文件管理能力的基础上，本 Fork 增加了以下差异。便携版安装包请从 [Releases](https://github.com/wangjiati/Files/releases) 下载。
+- 完整目录便携版：解压即用，自带运行时，数据随目录迁移
+- 全局、按列、按目录的时间格式
+- 详细信息视图列头筛选、正则匹配与可复制的视图地址
+- 只读 SQL 查询工作台与 12 列 CSV / Excel 导出
+- 带预览、变量、子文件夹深度和整批撤销的批量重命名
+- 新建文件夹命名方案、文件系统链接可视化
 
-### 功能对比
-
-| 领域 | 上游原版 | 本 Fork |
-| --- | --- | --- |
-| 分发方式 | MSIX 与经典安装包 | 新增 `Distribution=Msix` 与 `Distribution=Portable`；提供完整目录便携 ZIP |
-| 数据位置 | 包数据或用户目录 | 便携版必要数据位于程序目录 `Data`，可随目录复制和移动 |
-| 运行依赖 | 依赖已安装的运行时 | 便携版自带 .NET 与 Windows App SDK，采用 Native AOT，无需额外安装或管理员权限 |
-| 系统集成 | 安装后提供文件关联、协议、Shell/COM 等集成 | 便携版不注册这些集成；本 Fork 的 MSIX 版默认不接管，显式开启后显示状态，并可恢复原值 |
-| 更新方式 | 官方更新源 | 手动更新，不访问官方更新源，不依赖后台更新服务 |
-| 时间格式 | 全局日期格式预设 | 支持全局、按列、按目录及递归目录规则，支持自定义格式、秒、毫秒和实时预览 |
-| 目录筛选 | 名称包含过滤 | 列头筛选（名称、类型、扩展名、标签、大小、修改/创建日期）及安全正则匹配 |
-| SQL 查询 | 无 | 只读 SQLite SQL 工作台，支持 CTE、窗口函数、连接和聚合，文件与表格双结果视图 |
-| 导出文件列表 | 无 | 工具栏一键导出当前文件夹清单：可选仅导出当前筛选结果、可选递归包含所有子文件夹、12 列自由勾选，导出 CSV 或 Excel (.xlsx) |
-| 批量重命名 | 多选仅"统一名称+自动去重" | 大尺寸可最大化弹窗：查找替换（文本/通配符/正则）、开头/结尾追加模板、作用域与子文件夹深度限制、计数器/日期/文件夹名变量、逐项手改、冲突策略（加序号/跳过/覆盖）、预设与剪贴板名称导入导出、整批一次撤销；四入口（多选 F2 / 选中右键 / 空白右键 / 工具栏） |
-| 新建文件夹命名 | 固定默认名称 | 命名方案（名称、日期、时间、年月、顺序、分隔符及预设） |
-| 本地化 | 上游语言包 | 补充简体中文与繁体中文的命名方案、批量重命名等界面文本 |
-
-### 界面截图
-
-#### 时间格式设置
-
-![时间格式设置](./assets/fork/time-format-settings.png)
-
-#### 列头筛选
-
-![列头筛选](./assets/fork/date-column-filter.png)
-
-#### SQL 查询工作台
-
-![SQL 查询工作台](./assets/fork/sql-workbench.png)
-
-#### 新建文件夹命名方案
-
-![新建文件夹命名方案](./assets/fork/new-folder-naming.png)
-
-#### 批量重命名
-
-![批量重命名](./assets/fork/batch-rename.png)
-
-### 便携版特性
-
-- 解压整个 ZIP 后运行 `Files.exe`，支持含空格或中文的路径。
-- 设置、标签、布局、日志和缓存位于程序目录的 `Data` 文件夹。
-- 同一 `Data` 目录默认只允许一个实例；数据目录不可写时会明确报错，不会静默回退到用户目录。
-- 便携版与本 Fork 的 MSIX 版、原版 Files 的数据默认隔离。
-- 首版仅提供 Windows x64 完整目录便携包，不提供单文件版本。
-
-### 高级功能说明
-
-- **时间格式**：优先级为目录列规则 > 目录默认 > 全局列规则 > 全局默认；目录规则可选择应用到子目录。排序和筛选始终使用原始时间值。
-- **筛选与正则**：只作用于当前已加载目录，不递归扫描磁盘；支持大小写选项、匹配超时和取消，非法或超时正则不会导致应用崩溃。
-- **SQL 工作台**：仅允许只读 `SELECT`，禁止写入、DDL、多语句、`ATTACH`、扩展和文件访问；查询在私有内存快照上执行。
-- **导出文件列表**：导出数据为机器友好的真实值（字节级大小、完整路径、`yyyy-MM-dd HH:mm:ss` 日期、含扩展名的原始名称、标签显示名称）；文件夹大小留空而非 0；递归枚举不跟随目录联接（junction），不可访问项自动跳过并在完成卡片中计数；Excel 文件由内置零依赖 OpenXML 写入器生成，超过工作表行上限时明确报错而不会产出损坏文件；CSV 为 UTF-8 带 BOM，Excel 直接打开不乱码。
-- **批量重命名**：互斥选项（模式、应用范围、作用域）使用分段控件，可叠加选项使用复选框；正则带 250ms 匹配超时与行级错误提示，坏模式不会崩溃或挂死；预览为改前/改后对照并高亮差异，行级非法名只阻止该行不阻塞整批；覆盖策略将被覆盖文件移入回收站且不可通过撤销还原（应用前二次确认）；手改名、粘贴名同样做合法性与同批重名校验；撤销为整批单条历史，一次 Ctrl+Z 完整还原。
-- **MSIX 版**：使用独立包身份 `Files.Internal` 和独立证书签名，默认不接管原版系统集成；不支持通过官方渠道自动更新。
+完整的功能对照、使用方式、限制与界面截图见 **[功能差异说明](https://wangjiati.github.io/Files/)**。
 
 ## 下载与安装
 
 本 Fork 仅通过 [GitHub Releases](https://github.com/wangjiati/Files/releases) 分发。
 
-- 便携版：下载 `Files.Internal_<version>_x64-portable.zip`，解压后运行 `Files.exe`。
-- 设置、标签和布局数据保存在程序目录的 `Data` 文件夹中，可随目录移动。
+- **便携版**：下载 `Files.Internal_<version>_x64-portable.zip`，解压后运行 `Files.exe`。
+- **MSIX**：在 Releases 中下载安装包，并按发布说明信任内部证书。
 
-## Building from source
+便携版的数据位于程序目录的 `Data` 文件夹，可随目录复制和移动。升级为手动操作，不访问官方更新源，也不自动接管原版 Files 的系统集成。
 
-Instructions for building the source code can be found on our [documentation site](https://files.community/docs/contributing/building-from-source).
+## 从源码构建
 
+构建说明见上游文档站：[Building from source](https://files.community/docs/contributing/building-from-source)。
 
-## Contributing to Files
+## 贡献
 
-Want to contribute to this project? Let us know with an [issue](https://github.com/files-community/Files/issues) that communicates your intent to create a [pull request](https://github.com/files-community/Files/pulls). Also, view our [contributing guidelines](https://github.com/files-community/Files/blob/main/.github/CONTRIBUTING.md) to make sure you're up to date on the coding conventions.
+欢迎通过 [Issues](https://github.com/wangjiati/Files/issues) 反馈问题或提出建议。提交 PR 前请阅读 [贡献指南](https://github.com/wangjiati/Files/blob/main/.github/CONTRIBUTING.md)。
 
-Looking for a place to start? Check out the [task board](https://github.com/orgs/files-community/projects/3/views/2), where you can sort tasks by size and priority.
+## 许可
 
-## Screenshots
-
-![Files](./assets/FilesScreenshot.png)
+Files 原项目采用 [MIT](https://github.com/wangjiati/Files/blob/main/LICENSE-MIT) 许可证；部分组件与资源遵循仓库中的 [MPL](https://github.com/wangjiati/Files/blob/main/LICENSE-MPL) 双许可说明。本分支保留原项目的版权与许可声明。
