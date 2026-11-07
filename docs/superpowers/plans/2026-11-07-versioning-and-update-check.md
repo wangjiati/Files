@@ -35,7 +35,7 @@
 ### 任务 1：版本号解析与比较
 
 **文件：**
-- 创建：`src/Files.App/Services/App/Update/UpdateVersionHelper.cs`
+- 创建：`src/Files.App/Services/Update/UpdateVersionHelper.cs`
 - 测试：`tests/Files.App.UnitTests/Update/UpdateVersionHelperTests.cs`
 
 - [ ] **步骤 1：写失败测试**
@@ -106,15 +106,15 @@ public static bool IsNewer(Version candidate, Version current);
 - [ ] **步骤 5：Commit**
 
 ```powershell
-git add src/Files.App/Services/App/Update/UpdateVersionHelper.cs tests/Files.App.UnitTests/Update/UpdateVersionHelperTests.cs
+git add src/Files.App/Services/Update/UpdateVersionHelper.cs tests/Files.App.UnitTests/Update/UpdateVersionHelperTests.cs
 git commit -m "Add update version parsing"
 ```
 
 ### 任务 2：Release JSON 解析与说明截断
 
 **文件：**
-- 创建：`src/Files.App/Services/App/Update/GitHubReleaseParser.cs`
-- 创建：`src/Files.App/Services/App/Update/UpdateNotesFormatter.cs`
+- 创建：`src/Files.App/Services/Update/GitHubReleaseParser.cs`
+- 创建：`src/Files.App/Services/Update/UpdateNotesFormatter.cs`
 - 测试：`tests/Files.App.UnitTests/Update/GitHubReleaseParserTests.cs`
 
 - [ ] **步骤 1：写失败测试**
@@ -204,14 +204,14 @@ public static string ToPreview(string? notes, int maxLength = 1500);
 - [ ] **步骤 5：Commit**
 
 ```powershell
-git add src/Files.App/Services/App/Update/GitHubReleaseParser.cs src/Files.App/Services/App/Update/UpdateNotesFormatter.cs tests/Files.App.UnitTests/Update/GitHubReleaseParserTests.cs
+git add src/Files.App/Services/Update/GitHubReleaseParser.cs src/Files.App/Services/Update/UpdateNotesFormatter.cs tests/Files.App.UnitTests/Update/GitHubReleaseParserTests.cs
 git commit -m "Add GitHub release parsing"
 ```
 
 ### 任务 3：每日检查与跳过策略
 
 **文件：**
-- 创建：`src/Files.App/Services/App/Update/UpdateCheckPolicy.cs`
+- 创建：`src/Files.App/Services/Update/UpdateCheckPolicy.cs`
 - 测试：`tests/Files.App.UnitTests/Update/UpdateCheckPolicyTests.cs`
 
 - [ ] **步骤 1：写失败测试**
@@ -269,7 +269,7 @@ public static bool IsSkipped(Version available, string? skippedVersion);
 - [ ] **步骤 5：Commit**
 
 ```powershell
-git add src/Files.App/Services/App/Update/UpdateCheckPolicy.cs tests/Files.App.UnitTests/Update/UpdateCheckPolicyTests.cs
+git add src/Files.App/Services/Update/UpdateCheckPolicy.cs tests/Files.App.UnitTests/Update/UpdateCheckPolicyTests.cs
 git commit -m "Add update check policy"
 ```
 
