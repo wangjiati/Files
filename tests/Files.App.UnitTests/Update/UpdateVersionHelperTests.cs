@@ -43,6 +43,7 @@ namespace Files.App.UnitTests.Update
 		public void IsNewer_ComparesNumerically()
 		{
 			Assert.IsTrue(UpdateVersionHelper.IsNewer(new Version(4, 3, 1, 7), new Version(4, 3, 1, 0)));
+			Assert.IsTrue(UpdateVersionHelper.IsNewer(new Version(4, 3, 1, 1), new Version(4, 3, 1, 0)));
 			Assert.IsTrue(UpdateVersionHelper.IsNewer(new Version(4, 4, 0, 1), new Version(4, 3, 1, 99)));
 			Assert.IsFalse(UpdateVersionHelper.IsNewer(new Version(4, 3, 1, 0), new Version(4, 3, 1, 0)));
 		}

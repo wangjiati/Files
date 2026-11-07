@@ -99,7 +99,15 @@ internal sealed partial class GitHubUpdateService : ObservableObject, IUpdateSer
 		if (!force && !UpdateCheckPolicy.ShouldCheckToday(_localState.GetString(LastUpdateCheckDateKey), today))
 			return;
 
-		_localState.SetString(LastUpdateCheckDateKey, today.ToString(UpdateCheckPolicy.DateFormat, CultureInfo.InvariantCulture));
+		try
+		{
+			_localState.SetString(LastUpdateCheckDateKey, today.ToString(UpdateCheckPolicy.DateFormat, CultureInfo.InvariantCulture));
+		}
+		catch (Exception ex)
+		{
+			// A read-only or locked portable data directory must not disable update checks.
+			App.Logger?.LogWarning(ex, "Failed to record the update check date.");
+		}
 
 		try
 		{

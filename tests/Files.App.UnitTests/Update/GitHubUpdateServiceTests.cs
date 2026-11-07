@@ -7,6 +7,7 @@ using Files.App.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -110,7 +111,90 @@ namespace Files.App.UnitTests.Update
 			Assert.AreEqual(1, handler.Requests);
 		}
 
-		private static GitHubUpdateService CreateService(FakeSettings settings, FakeLocalState state, HttpMessageHandler handler, Version currentVersion)
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_RequestThrows_SetsFailedAndRecordsAttempt()
+		{
+			var state = new FakeLocalState();
+			var service = CreateService(
+				new FakeSettings(),
+				state,
+				new ThrowingHandler(new HttpRequestException("offline")),
+				new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(UpdateCheckResult.Failed, service.LastResult);
+			Assert.AreEqual(DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd"), state.GetString(GitHubUpdateService.LastUpdateCheckDateKey));
+		}
+
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_TooManyRequests_SetsFailed()
+		{
+			var service = CreateService(
+				new FakeSettings(),
+				new FakeLocalState(),
+				new StubHandler(HttpStatusCode.TooManyRequests, string.Empty),
+				new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(UpdateCheckResult.Failed, service.LastResult);
+		}
+
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_ServerError_SetsFailed()
+		{
+			var service = CreateService(
+				new FakeSettings(),
+				new FakeLocalState(),
+				new StubHandler(HttpStatusCode.InternalServerError, string.Empty),
+				new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(UpdateCheckResult.Failed, service.LastResult);
+		}
+
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_InvalidJson_SetsFailed()
+		{
+			var service = CreateService(
+				new FakeSettings(),
+				new FakeLocalState(),
+				new StubHandler(HttpStatusCode.OK, "{ not json"),
+				new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(UpdateCheckResult.Failed, service.LastResult);
+		}
+
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_NewerVersionAfterSkip_SetsUpdateAvailable()
+		{
+			var settings = new FakeSettings { SkippedVersion = "4.3.1.7" };
+			var handler = new StubHandler(HttpStatusCode.OK, NewerJson.Replace("v4.3.1.7", "v4.3.1.8"));
+			var service = CreateService(settings, new FakeLocalState(), handler, new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(UpdateCheckResult.UpdateAvailable, service.LastResult);
+			Assert.AreEqual(new Version(4, 3, 1, 8), service.AvailableVersion);
+		}
+
+		[TestMethod]
+		public async Task CheckForUpdatesAsync_LocalStateWriteThrows_StillRequests()
+		{
+			var handler = new StubHandler(HttpStatusCode.OK, NewerJson);
+			var service = CreateService(new FakeSettings(), new ThrowingLocalState(), handler, new Version(4, 3, 1, 0));
+
+			await service.CheckForUpdatesAsync();
+
+			Assert.AreEqual(1, handler.Requests);
+			Assert.AreEqual(UpdateCheckResult.UpdateAvailable, service.LastResult);
+		}
+
+		private static GitHubUpdateService CreateService(FakeSettings settings, ILocalStateStore state, HttpMessageHandler handler, Version currentVersion)
 			=> new(settings, state, new HttpClient(handler), () => currentVersion);
 
 		private sealed class FakeSettings : IApplicationSettingsService
@@ -176,6 +260,40 @@ namespace Files.App.UnitTests.Update
 					Content = new StringContent(_body),
 				});
 			}
+		}
+
+		private sealed class ThrowingHandler : HttpMessageHandler
+		{
+			private readonly Exception _exception;
+
+			public ThrowingHandler(Exception exception)
+			{
+				_exception = exception;
+			}
+
+			protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+				=> Task.FromException<HttpResponseMessage>(_exception);
+		}
+
+		private sealed class ThrowingLocalState : ILocalStateStore
+		{
+			public bool GetBoolean(string key, bool defaultValue = false) => defaultValue;
+
+			public void SetBoolean(string key, bool value) => throw new IOException("read-only");
+
+			public int GetInt32(string key, int defaultValue = 0) => defaultValue;
+
+			public void SetInt32(string key, int value) => throw new IOException("read-only");
+
+			public double GetDouble(string key, double defaultValue = 0d) => defaultValue;
+
+			public void SetDouble(string key, double value) => throw new IOException("read-only");
+
+			public string? GetString(string key, string? defaultValue = null) => defaultValue;
+
+			public void SetString(string key, string value) => throw new IOException("read-only");
+
+			public void Remove(string key) => throw new IOException("read-only");
 		}
 	}
 }
