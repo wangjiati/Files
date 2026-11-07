@@ -3,6 +3,24 @@
 This branch ships two x64 artifacts. Both are built from the same commit and must
 be published together with their SHA-256 manifest.
 
+## Versioning
+
+Versions are four numeric parts: `<upstreamMajor>.<upstreamMinor>.<upstreamBuild>.<forkIteration>`.
+
+- The first three parts match the upstream version the branch is synced to.
+- The fourth part is the internal iteration. It starts at 1 and increases with
+  every internal release; reset it to 1 when the upstream version changes.
+- The first release using this scheme is `4.3.1.1`.
+- Change both `Files.App.csproj` and `Package.appxmanifest`; the existing
+  `Portable_VersionMatchesThePackageManifest` test fails if they drift.
+- The GitHub tag is `v<version>` (for example `v4.3.1.1`) and no longer includes
+  the distribution.
+- The GitHub release title is `Files Internal <version>`.
+- The release body must contain `## 本版变化`; this section is shown in the
+  client update dialog.
+- Upload the MSIX, the portable ZIP, `SHA256SUMS.txt`, and `RELEASE-INFO.txt`.
+- Mark preview builds as `prerelease` so `releases/latest` ignores them.
+
 ## Requirements
 
 - Windows x64 build host.
