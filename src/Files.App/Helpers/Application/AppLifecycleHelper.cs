@@ -402,7 +402,9 @@ namespace Files.App.Helpers
 					.AddSingleton<LibraryManager>()
 					.AddSingleton(appModel);
 
-			services.AddSingleton<IUpdateService, ManualUpdateService>();
+			services.AddSingleton<IUpdateService>(sp => new GitHubUpdateService(
+				sp.GetRequiredService<IApplicationSettingsService>(),
+				AppRuntime.LocalState));
 			if (AppRuntime.Current.SupportsSystemIntegration)
 			{
 				services.AddSingleton<IWindowsJumpListService, WindowsJumpListService>();

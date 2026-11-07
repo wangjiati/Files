@@ -1,5 +1,7 @@
-﻿// Copyright (c) Files Community
+// Copyright (c) Files Community
 // Licensed under the MIT License.
+
+using Files.App.Data.Enums;
 
 namespace Files.App.Data.Contracts
 {
@@ -30,11 +32,31 @@ namespace Files.App.Data.Contracts
 		/// </summary>
 		bool AreReleaseNotesAvailable { get; }
 
+		/// <summary>
+		/// Gets the version that is available for download, if any.
+		/// </summary>
+		Version? AvailableVersion { get; }
+
+		/// <summary>
+		/// Gets the release notes of the available version, if any.
+		/// </summary>
+		string? AvailableReleaseNotes { get; }
+
+		/// <summary>
+		/// Gets the page where the available version can be downloaded.
+		/// </summary>
+		Uri? ReleasePageUrl { get; }
+
+		/// <summary>
+		/// Gets the result of the last update check.
+		/// </summary>
+		UpdateCheckResult LastResult { get; }
+
 		Task DownloadUpdatesAsync();
 
 		Task DownloadMandatoryUpdatesAsync();
 
-		Task CheckForUpdatesAsync();
+		Task CheckForUpdatesAsync(bool force = false);
 
 		Task CheckForReleaseNotesAsync();
 

@@ -1,4 +1,5 @@
-﻿
+
+using Files.App.Data.Enums;
 using System.Net.Http;
 
 namespace Files.App.Services
@@ -22,12 +23,20 @@ namespace Files.App.Services
 
 		public new event PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
 
+		public Version? AvailableVersion => null;
+
+		public string? AvailableReleaseNotes => null;
+
+		public Uri? ReleasePageUrl => null;
+
+		public UpdateCheckResult LastResult => UpdateCheckResult.NotChecked;
+
 		public Task CheckAndUpdateFilesLauncherAsync()
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task CheckForUpdatesAsync()
+		public Task CheckForUpdatesAsync(bool force = false)
 		{
 			return Task.CompletedTask;
 		}

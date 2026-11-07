@@ -29,6 +29,18 @@ namespace Files.App.Services.Settings
 			set => Set(value);
 		}
 
+		public bool CheckForUpdates
+		{
+			get => Get(true);
+			set => Set(value);
+		}
+
+		public string? SkippedVersion
+		{
+			get => Get<string?>(null);
+			set => Set(value);
+		}
+
 		public ApplicationSettingsService(ISettingsSharingContext settingsSharingContext)
 		{
 			RegisterSettingsContext(settingsSharingContext);
