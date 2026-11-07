@@ -26,6 +26,7 @@
 
 - 四段版本号同时表达上游版本和内部迭代号。
 - 设置页同时显示两者。
+- 关于页提供项目主页入口：`https://wangjiati.github.io/Files`。
 - 启动时每日最多检查一次；发现新版弹窗展示更新内容。
 - 用户可选择"下载更新"或"以后再说"；跳过该版本后不再主动提醒。
 - 设置中可关闭检查，也可手动检查。
@@ -178,6 +179,8 @@ Task CheckForUpdatesAsync(bool force = false);
   - `Button`：`立即检查`，调用 `CheckForUpdatesAsync(force: true)`。
   - 一行状态文本：`已是最新版本` / `发现新版本 4.3.1.7` / `检查失败，稍后再试` / `已跳过 4.3.1.7`。
 - 总开关关闭时禁用"立即检查"并说明，此时不发起任何请求。
+- 新增"主页"设置卡片，打开 `https://wangjiati.github.io/Files`。
+- 顺带修正明显指向上游的链接：`Constants.ExternalUrl.GitHubRepoUrl` 改为 `https://github.com/wangjiati/Files`，`DocumentationUrl` 改为项目主页。社区和赞助链接本次不动。
 
 ### 7.3 工具栏
 
@@ -249,6 +252,7 @@ Task CheckForUpdatesAsync(bool force = false);
 | 本机状态 | `ILocalStateStore` |
 | 对话框写法 | `src/Files.App/Dialogs/*.xaml` 的 `ContentDialog` 模式 |
 | 打开链接 | 现有 `Launcher` / URL 打开写法 |
+| 外部链接常量 | `Constants.ExternalUrl` |
 | 发布产物与校验 | `.github/scripts/Build-Internal.ps1` 现有输出 |
 | 版本一致性校验 | `Build-Internal.ps1` 现有清单/便携 exe 比对 |
 
