@@ -5559,4 +5559,16 @@
   <data name="PropertiesLinkHardLinkCount.Text" xml:space="preserve">
     <value>链接数</value>
   </data>
+  <data name="UpdateAvailableTitle" xml:space="preserve">
+    <value>发现新版本 {0}</value>
+  </data>
+  <data name="UpdateAvailableSubtitle" xml:space="preserve">
+    <value>基于上游 {0}.{1}.{2} · 内部迭代 {3}</value>
+  </data>
+  <data name="DownloadUpdate" xml:space="preserve">
+    <value>下载更新</value>
+  </data>
+  <data name="RemindMeLater" xml:space="preserve">
+    <value>以后再说</value>
+  </data>
 </root>

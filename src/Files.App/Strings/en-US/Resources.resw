@@ -5613,4 +5613,16 @@
   <data name="PropertiesLinkHardLinkCount.Text" xml:space="preserve">
     <value>Link count</value>
   </data>
+  <data name="UpdateAvailableTitle" xml:space="preserve">
+    <value>New version {0} available</value>
+  </data>
+  <data name="UpdateAvailableSubtitle" xml:space="preserve">
+    <value>Based on upstream {0}.{1}.{2} · internal build {3}</value>
+  </data>
+  <data name="DownloadUpdate" xml:space="preserve">
+    <value>Download update</value>
+  </data>
+  <data name="RemindMeLater" xml:space="preserve">
+    <value>Remind me later</value>
+  </data>
 </root>

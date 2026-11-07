@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
 using Files.App.Helpers.Application;
 using Files.App.Services.Git;
 using Files.App.Services.SizeProvider;
@@ -199,7 +200,22 @@ namespace Files.App.Helpers
 				});
 			}
 
+#if !DEBUG
 			await updateService.CheckForUpdatesAsync();
+
+			if (updateService.LastResult is UpdateCheckResult.UpdateAvailable)
+			{
+				_ = Task.Run(async () =>
+				{
+					await MainPageViewModel.StartupTabsLoadedTask;
+
+					await MainWindow.Instance.DispatcherQueue.EnqueueOrInvokeAsync(async () =>
+					{
+						await UpdateAvailableDialog.ShowAsync(updateService);
+					});
+				});
+			}
+#endif
 			await updateService.DownloadMandatoryUpdatesAsync();
 
 			if (IsAppUpdated)
