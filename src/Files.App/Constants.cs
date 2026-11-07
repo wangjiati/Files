@@ -174,8 +174,9 @@ namespace Files.App
 
 		public static class ExternalUrl
 		{
-			public const string GitHubRepoUrl = @"https://github.com/files-community/Files";
-			public const string DocumentationUrl = @"https://files.community/docs";
+			public const string HomepageUrl = @"https://wangjiati.github.io/Files";
+			public const string GitHubRepoUrl = @"https://github.com/wangjiati/Files";
+			public const string DocumentationUrl = HomepageUrl;
 			public const string DiscordUrl = @"https://discord.gg/files";
 			public const string FeatureRequestUrl = @"https://discord.gg/files";
 			public const string BugReportUrl = @"https://github.com/files-community/Files/issues/new?labels=bug&template=bug_report.yml";

@@ -5571,4 +5571,37 @@
   <data name="RemindMeLater" xml:space="preserve">
     <value>以后再说</value>
   </data>
+  <data name="SettingsAboutVersionFormat" xml:space="preserve">
+    <value>版本 {0}.{1}.{2}（内部迭代 {3}）</value>
+  </data>
+  <data name="SettingsAboutUpstreamFormat" xml:space="preserve">
+    <value>基于上游 {0}.{1}.{2}</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
+  <data name="CheckForUpdatesDescription" xml:space="preserve">
+    <value>启动时每日检查一次</value>
+  </data>
+  <data name="CheckNow" xml:space="preserve">
+    <value>立即检查</value>
+  </data>
+  <data name="Homepage" xml:space="preserve">
+    <value>主页</value>
+  </data>
+  <data name="UpdateStatusUpToDate" xml:space="preserve">
+    <value>已是最新版本</value>
+  </data>
+  <data name="UpdateStatusFailed" xml:space="preserve">
+    <value>检查失败，稍后再试</value>
+  </data>
+  <data name="UpdateStatusSkipped" xml:space="preserve">
+    <value>已跳过 {0}</value>
+  </data>
+  <data name="UpdateStatusAvailable" xml:space="preserve">
+    <value>发现新版本 {0}</value>
+  </data>
+  <data name="UpdateStatusDisabled" xml:space="preserve">
+    <value>检查更新已关闭</value>
+  </data>
 </root>

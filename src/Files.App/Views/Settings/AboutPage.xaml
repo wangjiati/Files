@@ -31,7 +31,7 @@
 			<!--  App Info  -->
 			<wctcontrols:SettingsCard
 				HorizontalAlignment="Stretch"
-				Description="{x:Bind ViewModel.Version}"
+				Description="{x:Bind ViewModel.VersionWithUpstream}"
 				Header="{x:Bind ViewModel.AppName}">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xE946;" />
@@ -45,6 +45,31 @@
 						</MenuFlyout>
 					</Button.Flyout>
 				</Button>
+			</wctcontrols:SettingsCard>
+
+			<!--  Updates  -->
+			<wctcontrols:SettingsCard
+				HorizontalAlignment="Stretch"
+				Description="{helpers:ResourceString Name=CheckForUpdatesDescription}"
+				Header="{helpers:ResourceString Name=CheckForUpdates}">
+				<wctcontrols:SettingsCard.HeaderIcon>
+					<FontIcon Glyph="&#xE895;" />
+				</wctcontrols:SettingsCard.HeaderIcon>
+
+				<StackPanel Spacing="4">
+					<StackPanel Orientation="Horizontal" Spacing="8">
+						<ToggleSwitch
+							AutomationProperties.Name="{helpers:ResourceString Name=CheckForUpdates}"
+							IsOn="{x:Bind ViewModel.CheckForUpdates, Mode=TwoWay}" />
+						<Button
+							Command="{x:Bind ViewModel.CheckForUpdatesCommand}"
+							Content="{helpers:ResourceString Name=CheckNow}"
+							IsEnabled="{x:Bind ViewModel.IsCheckForUpdatesEnabled, Mode=OneWay}" />
+					</StackPanel>
+					<TextBlock
+						Style="{StaticResource App.Theme.CaptionTextBlockStyle}"
+						Text="{x:Bind ViewModel.UpdateStatus, Mode=OneWay}" />
+				</StackPanel>
 			</wctcontrols:SettingsCard>
 
 			<!--  GitHub Sponsor  -->
@@ -68,6 +93,21 @@
 				FontSize="16"
 				FontWeight="Medium"
 				Text="{helpers:ResourceString Name=HelpAndSupport}" />
+
+			<!--  Homepage  -->
+			<wctcontrols:SettingsCard
+				HorizontalAlignment="Stretch"
+				Command="{x:Bind ViewModel.OpenHomepageCommand}"
+				Header="{helpers:ResourceString Name=Homepage}"
+				IsClickEnabled="True">
+				<wctcontrols:SettingsCard.HeaderIcon>
+					<FontIcon Glyph="&#xE80F;" />
+				</wctcontrols:SettingsCard.HeaderIcon>
+
+				<wctcontrols:SettingsCard.ActionIcon>
+					<FontIcon Glyph="&#xE8A7;" />
+				</wctcontrols:SettingsCard.ActionIcon>
+			</wctcontrols:SettingsCard>
 
 			<!--  Documentation  -->
 			<wctcontrols:SettingsCard

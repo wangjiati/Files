@@ -5625,4 +5625,37 @@
   <data name="RemindMeLater" xml:space="preserve">
     <value>Remind me later</value>
   </data>
+  <data name="SettingsAboutVersionFormat" xml:space="preserve">
+    <value>Version {0}.{1}.{2} (internal build {3})</value>
+  </data>
+  <data name="SettingsAboutUpstreamFormat" xml:space="preserve">
+    <value>Based on upstream {0}.{1}.{2}</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="CheckForUpdatesDescription" xml:space="preserve">
+    <value>Check once a day at startup</value>
+  </data>
+  <data name="CheckNow" xml:space="preserve">
+    <value>Check now</value>
+  </data>
+  <data name="Homepage" xml:space="preserve">
+    <value>Homepage</value>
+  </data>
+  <data name="UpdateStatusUpToDate" xml:space="preserve">
+    <value>You're up to date</value>
+  </data>
+  <data name="UpdateStatusFailed" xml:space="preserve">
+    <value>Couldn't check for updates</value>
+  </data>
+  <data name="UpdateStatusSkipped" xml:space="preserve">
+    <value>Version {0} skipped</value>
+  </data>
+  <data name="UpdateStatusAvailable" xml:space="preserve">
+    <value>Version {0} is available</value>
+  </data>
+  <data name="UpdateStatusDisabled" xml:space="preserve">
+    <value>Update checks are turned off</value>
+  </data>
 </root>

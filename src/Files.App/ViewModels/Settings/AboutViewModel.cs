@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Data.Enums;
 using Microsoft.Win32;
 using System.Windows.Input;
 using Windows.ApplicationModel.DataTransfer;
@@ -17,12 +18,59 @@ namespace Files.App.ViewModels.Settings
 		// Dependency injections
 
 		private IGeneralSettingsService GeneralSettingsService { get; } = Ioc.Default.GetRequiredService<IGeneralSettingsService>();
+		private IApplicationSettingsService ApplicationSettingsService { get; } = Ioc.Default.GetRequiredService<IApplicationSettingsService>();
+		private IUpdateService UpdateService { get; } = Ioc.Default.GetRequiredService<IUpdateService>();
 
 
 		// Properties
 
 		public string Version
-			=> string.Format($"{Strings.SettingsAboutVersionTitle.GetLocalizedResource()} {AppVersion.Major}.{AppVersion.Minor}.{AppVersion.Build}.{AppVersion.Revision}");
+			=> string.Format(
+				Strings.SettingsAboutVersionFormat.GetLocalizedResource(),
+				AppVersion.Major,
+				AppVersion.Minor,
+				AppVersion.Build,
+				AppVersion.Revision);
+
+		public string UpstreamVersion
+			=> string.Format(
+				Strings.SettingsAboutUpstreamFormat.GetLocalizedResource(),
+				AppVersion.Major,
+				AppVersion.Minor,
+				AppVersion.Build);
+
+		public string VersionWithUpstream => $"{Version}\n{UpstreamVersion}";
+
+		public bool CheckForUpdates
+		{
+			get => ApplicationSettingsService.CheckForUpdates;
+			set
+			{
+				if (ApplicationSettingsService.CheckForUpdates == value)
+					return;
+
+				ApplicationSettingsService.CheckForUpdates = value;
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(IsCheckForUpdatesEnabled));
+			}
+		}
+
+		public bool IsCheckForUpdatesEnabled => CheckForUpdates;
+
+		public string UpdateStatus => UpdateService.LastResult switch
+		{
+			UpdateCheckResult.UpToDate
+				=> Strings.UpdateStatusUpToDate.GetLocalizedResource(),
+			UpdateCheckResult.UpdateAvailable when UpdateService.AvailableVersion is { } availableVersion
+				=> string.Format(Strings.UpdateStatusAvailable.GetLocalizedResource(), availableVersion),
+			UpdateCheckResult.Skipped when UpdateService.AvailableVersion is { } skippedVersion
+				=> string.Format(Strings.UpdateStatusSkipped.GetLocalizedResource(), skippedVersion),
+			UpdateCheckResult.Failed
+				=> Strings.UpdateStatusFailed.GetLocalizedResource(),
+			UpdateCheckResult.Disabled
+				=> Strings.UpdateStatusDisabled.GetLocalizedResource(),
+			_ => string.Empty,
+		};
 
 		public string AppName
 			=> AppRuntime.Current.DisplayName;
@@ -46,6 +94,8 @@ namespace Files.App.ViewModels.Settings
 		public ICommand OpenGitHubRepoCommand { get; }
 		public ICommand OpenPrivacyPolicyCommand { get; }
 		public ICommand OpenCrowdinCommand { get; }
+		public ICommand CheckForUpdatesCommand { get; }
+		public ICommand OpenHomepageCommand { get; }
 
 		// Constructor
 
@@ -90,6 +140,8 @@ namespace Files.App.ViewModels.Settings
 			OpenPrivacyPolicyCommand = new AsyncRelayCommand(DoOpenPrivacyPolicy);
 			OpenLogLocationCommand = new AsyncRelayCommand(OpenLogLocation);
 			OpenCrowdinCommand = new AsyncRelayCommand(DoOpenCrowdin);
+			CheckForUpdatesCommand = new AsyncRelayCommand(CheckForUpdatesNowAsync);
+			OpenHomepageCommand = new AsyncRelayCommand(DoOpenHomepage);
 		}
 
 		// Methods
@@ -109,6 +161,17 @@ namespace Files.App.ViewModels.Settings
 				UIHelpers.CloseAllDialogs();
 
 			return true;
+		}
+
+		private async Task CheckForUpdatesNowAsync()
+		{
+			await UpdateService.CheckForUpdatesAsync(force: true);
+			OnPropertyChanged(nameof(UpdateStatus));
+		}
+
+		public Task DoOpenHomepage()
+		{
+			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.HomepageUrl)).AsTask();
 		}
 
 		public Task DoOpenDocumentation()
