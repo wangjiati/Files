@@ -18,7 +18,7 @@
     <Identity
         Name="Files.Internal"
         Publisher="CN=Files"
-        Version="4.3.1.1" />
+        Version="4.3.1.2" />
 
     <Properties>
         <DisplayName>Files - Internal</DisplayName>

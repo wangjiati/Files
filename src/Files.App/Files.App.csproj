@@ -4,10 +4,10 @@
     <PropertyGroup>
         <Distribution Condition="'$(Distribution)' == ''">Msix</Distribution>
         <EnableMsixTooling>true</EnableMsixTooling>
-        <Version>4.3.1.1</Version>
-        <AssemblyVersion>4.3.1.1</AssemblyVersion>
-        <FileVersion>4.3.1.1</FileVersion>
-        <InformationalVersion>4.3.1.1</InformationalVersion>
+        <Version>4.3.1.2</Version>
+        <AssemblyVersion>4.3.1.2</AssemblyVersion>
+        <FileVersion>4.3.1.2</FileVersion>
+        <InformationalVersion>4.3.1.2</InformationalVersion>
         <PublishProfile>Properties\PublishProfiles\win-$(Platform).pubxml</PublishProfile>
         <TargetFramework>$(WindowsTargetFramework)</TargetFramework>
         <OutputType>WinExe</OutputType>
