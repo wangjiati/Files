@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <Page
 	x:Class="Files.App.Views.MainPage"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -348,18 +348,6 @@
 			CloseButtonContent="{helpers:ResourceString Name=Dismiss}"
 			IsOpen="{x:Bind ViewModel.ShowReviewPrompt, Mode=OneWay}"
 			Subtitle="{helpers:ResourceString Name=ReviewFilesSubtitle}" />
-
-		<!--  Sponsor Prompt  -->
-		<TeachingTip
-			Title="{helpers:ResourceString Name=Hello}"
-			Grid.RowSpan="3"
-			HorizontalAlignment="Center"
-			VerticalAlignment="Bottom"
-			ActionButtonCommand="{x:Bind ViewModel.SponsorCommand}"
-			ActionButtonContent="{helpers:ResourceString Name=Sponsor}"
-			CloseButtonContent="{helpers:ResourceString Name=Dismiss}"
-			IsOpen="{x:Bind ViewModel.ShowSponsorPrompt, Mode=OneWay}"
-			Subtitle="{helpers:ResourceString Name=SponsorSubtitle}" />
 
 		<!--  Batch Rename Overlay  -->
 		<!--  Starts below the title bar so the maximized overlay keeps the window chrome reachable.  -->

@@ -1,4 +1,4 @@
-﻿using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 
 namespace Files.App.Helpers.Application
@@ -12,7 +12,7 @@ namespace Files.App.Helpers.Application
 					.AddText(Strings.ExceptionNotificationBody.GetLocalizedResource())
 					.SetAppLogoOverride(new Uri("ms-appx:///Assets/error.png"))
 					.AddButton(new AppNotificationButton(Strings.ExceptionNotificationReportButton.GetLocalizedResource())
-						.SetInvokeUri(new Uri(Constants.ExternalUrl.BugReportUrl)))
+						.SetInvokeUri(new Uri(Constants.ExternalUrl.FeedbackUrl)))
 					.BuildNotification();
 			AppNotificationManager.Default.Show(toastContent);
 		}

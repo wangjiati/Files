@@ -175,15 +175,10 @@ namespace Files.App
 		public static class ExternalUrl
 		{
 			public const string HomepageUrl = @"https://wangjiati.github.io/Files";
+			public const string FeedbackUrl = @"https://wangjiati.github.io/Files#community";
 			public const string GitHubRepoUrl = @"https://github.com/wangjiati/Files";
 			public const string DocumentationUrl = HomepageUrl;
-			public const string DiscordUrl = @"https://discord.gg/files";
-			public const string FeatureRequestUrl = @"https://discord.gg/files";
-			public const string BugReportUrl = @"https://github.com/files-community/Files/issues/new?labels=bug&template=bug_report.yml";
-			public const string PrivacyPolicyUrl = @"https://files.community/privacy";
-			public const string SupportUsUrl = @"https://files.community/sponsor";
-			public const string CrowdinUrl = @"https://crowdin.com/project/files-app";
-			public static readonly string ReleaseNotesUrl = $"https://files.community/blog/posts/v{AppRuntime.Current.Version.Major}-{AppRuntime.Current.Version.Minor}-{AppRuntime.Current.Version.Build}?minimal";
+			public static readonly string ReleaseNotesUrl = @"https://github.com/wangjiati/Files/releases";
 		}
 
 		public static class DocsPath

@@ -200,7 +200,6 @@ namespace Files.App.UnitTests.Update
 		private sealed class FakeSettings : IApplicationSettingsService
 		{
 			public bool HasClickedReviewPrompt { get; set; }
-			public bool HasClickedSponsorPrompt { get; set; }
 			public bool ShowRunningAsAdminPrompt { get; set; }
 			public bool ShowDataStreamsAreHiddenPrompt { get; set; }
 			public bool CheckForUpdates { get; set; } = true;

@@ -11,12 +11,6 @@ namespace Files.App.Services.Settings
 			set => Set(value);
 		}
 
-		public bool HasClickedSponsorPrompt
-		{
-			get => Get(false);
-			set => Set(value);
-		}
-
 		public bool ShowRunningAsAdminPrompt
 		{
 			get => Get(true);

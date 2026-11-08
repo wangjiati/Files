@@ -11,11 +11,6 @@ namespace Files.App.Data.Contracts
 		bool HasClickedReviewPrompt { get; set; }
 
 		/// <summary>
-		/// Gets or sets a value indicating whether or not the user clicked the 'sponsor' prompt.
-		/// </summary>
-		bool HasClickedSponsorPrompt { get; set; }
-
-		/// <summary>
 		/// Gets or sets a value indicating whether or not to display a prompt when running the app as administrator.
 		/// </summary>
 		bool ShowRunningAsAdminPrompt { get; set; }

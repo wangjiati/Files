@@ -72,21 +72,6 @@
 				</StackPanel>
 			</wctcontrols:SettingsCard>
 
-			<!--  GitHub Sponsor  -->
-			<wctcontrols:SettingsCard
-				Command="{x:Bind ViewModel.SupportUsCommand}"
-				Header="{helpers:ResourceString Name=SponsorUsOnGitHub}"
-				IsClickEnabled="True">
-				<wctcontrols:SettingsCard.HeaderIcon>
-					<FontIcon Glyph="&#xEB51;" />
-				</wctcontrols:SettingsCard.HeaderIcon>
-
-				<wctcontrols:SettingsCard.ActionIcon>
-					<FontIcon Glyph="&#xE8A7;" />
-				</wctcontrols:SettingsCard.ActionIcon>
-			</wctcontrols:SettingsCard>
-
-
 			<!--  Help and support  -->
 			<TextBlock
 				Padding="0,16,0,4"
@@ -109,26 +94,11 @@
 				</wctcontrols:SettingsCard.ActionIcon>
 			</wctcontrols:SettingsCard>
 
-			<!--  Documentation  -->
+			<!--  Feedback and support  -->
 			<wctcontrols:SettingsCard
 				HorizontalAlignment="Stretch"
-				Command="{x:Bind ViewModel.OpenDocumentationCommand}"
-				Header="{helpers:ResourceString Name=Documentation}"
-				IsClickEnabled="True">
-				<wctcontrols:SettingsCard.HeaderIcon>
-					<FontIcon Glyph="&#xE736;" />
-				</wctcontrols:SettingsCard.HeaderIcon>
-
-				<wctcontrols:SettingsCard.ActionIcon>
-					<FontIcon Glyph="&#xE8A7;" />
-				</wctcontrols:SettingsCard.ActionIcon>
-			</wctcontrols:SettingsCard>
-
-			<!--  Questions & discussions  -->
-			<wctcontrols:SettingsCard
-				HorizontalAlignment="Stretch"
-				Command="{x:Bind ViewModel.OpenDiscordCommand}"
-				Header="{helpers:ResourceString Name=QuestionsAndDiscussions}"
+				Command="{x:Bind ViewModel.OpenFeedbackCommand}"
+				Header="{helpers:ResourceString Name=Feedback}"
 				IsClickEnabled="True">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xE8F2;" />
@@ -138,36 +108,6 @@
 					<FontIcon Glyph="&#xE8A7;" />
 				</wctcontrols:SettingsCard.ActionIcon>
 			</wctcontrols:SettingsCard>
-
-			<!--  Feedback  -->
-			<wctcontrols:SettingsExpander HorizontalAlignment="Stretch" Header="{helpers:ResourceString Name=Feedback}">
-				<wctcontrols:SettingsExpander.HeaderIcon>
-					<FontIcon Glyph="&#xED15;" />
-				</wctcontrols:SettingsExpander.HeaderIcon>
-				<wctcontrols:SettingsExpander.Items>
-					<!--  Submit feature request  -->
-					<wctcontrols:SettingsCard
-						HorizontalAlignment="Stretch"
-						Command="{x:Bind ViewModel.SubmitFeatureRequestCommand}"
-						Header="{helpers:ResourceString Name=SubmitFeatureRequest}"
-						IsClickEnabled="True">
-						<wctcontrols:SettingsCard.ActionIcon>
-							<FontIcon Glyph="&#xE8A7;" />
-						</wctcontrols:SettingsCard.ActionIcon>
-					</wctcontrols:SettingsCard>
-
-					<!--  Submit bug report  -->
-					<wctcontrols:SettingsCard
-						HorizontalAlignment="Stretch"
-						Command="{x:Bind ViewModel.SubmitBugReportCommand}"
-						Header="{helpers:ResourceString Name=SubmitBugReport}"
-						IsClickEnabled="True">
-						<wctcontrols:SettingsCard.ActionIcon>
-							<FontIcon Glyph="&#xE8A7;" />
-						</wctcontrols:SettingsCard.ActionIcon>
-					</wctcontrols:SettingsCard>
-				</wctcontrols:SettingsExpander.Items>
-			</wctcontrols:SettingsExpander>
 
 			<!--  Open Log File Location  -->
 			<wctcontrols:SettingsCard
@@ -191,21 +131,6 @@
 				FontSize="16"
 				FontWeight="Medium"
 				Text="{helpers:ResourceString Name=OpenSource}" />
-
-			<!--  Translate  -->
-			<wctcontrols:SettingsCard
-				HorizontalAlignment="Stretch"
-				Command="{x:Bind ViewModel.OpenCrowdinCommand}"
-				Header="{helpers:ResourceString Name=ImproveTranslation}"
-				IsClickEnabled="True">
-				<wctcontrols:SettingsCard.HeaderIcon>
-					<FontIcon Glyph="&#xF2B7;" />
-				</wctcontrols:SettingsCard.HeaderIcon>
-
-				<wctcontrols:SettingsCard.ActionIcon>
-					<FontIcon Glyph="&#xE8A7;" />
-				</wctcontrols:SettingsCard.ActionIcon>
-			</wctcontrols:SettingsCard>
 
 			<!--  Third Party Licenses  -->
 			<wctcontrols:SettingsExpander Header="{helpers:ResourceString Name=ThirdPartyLibraries}">
@@ -246,21 +171,6 @@
 				IsClickEnabled="True">
 				<wctcontrols:SettingsCard.HeaderIcon>
 					<FontIcon Glyph="&#xE774;" />
-				</wctcontrols:SettingsCard.HeaderIcon>
-
-				<wctcontrols:SettingsCard.ActionIcon>
-					<FontIcon Glyph="&#xE8A7;" />
-				</wctcontrols:SettingsCard.ActionIcon>
-			</wctcontrols:SettingsCard>
-
-			<!--  Privacy  -->
-			<wctcontrols:SettingsCard
-				HorizontalAlignment="Stretch"
-				Command="{x:Bind ViewModel.OpenPrivacyPolicyCommand}"
-				Header="{helpers:ResourceString Name=Privacy}"
-				IsClickEnabled="True">
-				<wctcontrols:SettingsCard.HeaderIcon>
-					<FontIcon Glyph="&#xE72E;" />
 				</wctcontrols:SettingsCard.HeaderIcon>
 
 				<wctcontrols:SettingsCard.ActionIcon>

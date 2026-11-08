@@ -85,17 +85,11 @@ namespace Files.App.ViewModels.Settings
 		public ICommand CopyAppVersionCommand { get; }
 		public ICommand CopyWindowsVersionCommand { get; }
 		public ICommand CopyUserIDCommand { get; }
-		public ICommand SupportUsCommand { get; }
 		public ICommand OpenLogLocationCommand { get; }
-		public ICommand OpenDocumentationCommand { get; }
-		public ICommand OpenDiscordCommand { get; }
-		public ICommand SubmitFeatureRequestCommand { get; }
-		public ICommand SubmitBugReportCommand { get; }
 		public ICommand OpenGitHubRepoCommand { get; }
-		public ICommand OpenPrivacyPolicyCommand { get; }
-		public ICommand OpenCrowdinCommand { get; }
-		public ICommand CheckForUpdatesCommand { get; }
 		public ICommand OpenHomepageCommand { get; }
+		public ICommand OpenFeedbackCommand { get; }
+		public ICommand CheckForUpdatesCommand { get; }
 
 		// Constructor
 
@@ -131,17 +125,11 @@ namespace Files.App.ViewModels.Settings
 			CopyAppVersionCommand = new RelayCommand(CopyAppVersion);
 			CopyWindowsVersionCommand = new RelayCommand(CopyWindowsVersion);
 			CopyUserIDCommand = new RelayCommand(CopyUserID);
-			SupportUsCommand = new AsyncRelayCommand(SupportUs);
-			OpenDocumentationCommand = new AsyncRelayCommand(DoOpenDocumentation);
-			OpenDiscordCommand = new AsyncRelayCommand(DoOpenDiscord);
-			SubmitFeatureRequestCommand = new AsyncRelayCommand(DoSubmitFeatureRequest);
-			SubmitBugReportCommand = new AsyncRelayCommand(DoSubmitBugReport);
 			OpenGitHubRepoCommand = new AsyncRelayCommand(DoOpenGitHubRepo);
-			OpenPrivacyPolicyCommand = new AsyncRelayCommand(DoOpenPrivacyPolicy);
 			OpenLogLocationCommand = new AsyncRelayCommand(OpenLogLocation);
-			OpenCrowdinCommand = new AsyncRelayCommand(DoOpenCrowdin);
 			CheckForUpdatesCommand = new AsyncRelayCommand(CheckForUpdatesNowAsync);
 			OpenHomepageCommand = new AsyncRelayCommand(DoOpenHomepage);
+			OpenFeedbackCommand = new AsyncRelayCommand(DoOpenFeedback);
 		}
 
 		// Methods
@@ -174,39 +162,14 @@ namespace Files.App.ViewModels.Settings
 			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.HomepageUrl)).AsTask();
 		}
 
-		public Task DoOpenDocumentation()
+		public Task DoOpenFeedback()
 		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.DocumentationUrl)).AsTask();
-		}
-
-		public Task DoOpenDiscord()
-		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.DiscordUrl)).AsTask();
-		}
-
-		public Task DoSubmitFeatureRequest()
-		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.FeatureRequestUrl)).AsTask();
-		}
-
-		public Task DoSubmitBugReport()
-		{
-			return Launcher.LaunchUriAsync(new Uri($"{Constants.ExternalUrl.BugReportUrl}&{GetVersionsQueryString()}")).AsTask();
+			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.FeedbackUrl)).AsTask();
 		}
 
 		public Task DoOpenGitHubRepo()
 		{
 			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.GitHubRepoUrl)).AsTask();
-		}
-
-		public Task DoOpenPrivacyPolicy()
-		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.PrivacyPolicyUrl)).AsTask();
-		}
-
-		public Task DoOpenCrowdin()
-		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.CrowdinUrl)).AsTask();
 		}
 
 		public void CopyAppVersion()
@@ -242,11 +205,6 @@ namespace Files.App.ViewModels.Settings
 			});
 		}
 
-		public Task SupportUs()
-		{
-			return Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.SupportUsUrl)).AsTask();
-		}
-
 		public string GetAppVersion()
 		{
 			return $"{AppVersion.Major}.{AppVersion.Minor}.{AppVersion.Build}.{AppVersion.Revision}";
@@ -261,15 +219,6 @@ namespace Files.App.ViewModels.Settings
 		public string GetUserID()
 		{
 			return GeneralSettingsService.UserId;
-		}
-
-		public string GetVersionsQueryString()
-		{
-			var query = System.Web.HttpUtility.ParseQueryString(string.Empty);
-			query["files_version"] = GetAppVersion();
-			query["windows_version"] = GetWindowsVersion();
-			query["user_id"] = GetUserID();
-			return query.ToString() ?? string.Empty;
 		}
 	}
 }

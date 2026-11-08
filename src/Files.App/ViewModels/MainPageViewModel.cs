@@ -132,7 +132,6 @@ namespace Files.App.ViewModels
 
 			canShowPrompts = true;
 			OnPropertyChanged(nameof(ShowReviewPrompt));
-			OnPropertyChanged(nameof(ShowSponsorPrompt));
 		}
 
 		private static bool hasShownReviewPrompt;
@@ -153,30 +152,10 @@ namespace Files.App.ViewModels
 			}
 		}
 
-		// Ensures the sponsor prompt is only displayed once per app session
-		private static bool hasShownSponsorPrompt;
-
-		public bool ShowSponsorPrompt
-		{
-			get
-			{
-				if (!canShowPrompts || hasShownSponsorPrompt)
-					return false;
-
-				var isTargetEnvironment = AppLifecycleHelper.AppEnvironment is AppEnvironment.Dev or AppEnvironment.SideloadStable or AppEnvironment.SideloadPreview;
-				var hasClickedSponsorPrompt = UserSettingsService.ApplicationSettingsService.HasClickedSponsorPrompt;
-				var launchCountReached = AppLifecycleHelper.TotalLaunchCount % 50 == 0;
-
-				hasShownSponsorPrompt = isTargetEnvironment && !hasClickedSponsorPrompt && launchCountReached;
-				return hasShownSponsorPrompt;
-			}
-		}
-
 		// Commands
 
 		public ICommand NavigateToNumberedTabKeyboardAcceleratorCommand { get; }
 		public ICommand ReviewAppCommand { get; }
-		public ICommand SponsorCommand { get; }
 		public ICommand OpenNetworkSharingSettingsCommand { get; }
 
 		// Constructor
@@ -185,7 +164,6 @@ namespace Files.App.ViewModels
 		{
 			NavigateToNumberedTabKeyboardAcceleratorCommand = new RelayCommand<KeyboardAcceleratorInvokedEventArgs>(ExecuteNavigateToNumberedTabKeyboardAcceleratorCommand);
 			ReviewAppCommand = new RelayCommand(ExecuteReviewAppCommand);
-			SponsorCommand = new RelayCommand(ExecuteSponsorCommand);
 			OpenNetworkSharingSettingsCommand = new AsyncRelayCommand(ExecuteOpenNetworkSharingSettingsCommand);
 
 			AppearanceSettingsService.PropertyChanged += (s, e) =>
@@ -397,13 +375,6 @@ namespace Files.App.ViewModels
 					UserSettingsService.ApplicationSettingsService.HasClickedReviewPrompt = true;
 			}
 			catch (Exception) { }
-		}
-
-		private async void ExecuteSponsorCommand()
-		{
-			UserSettingsService.ApplicationSettingsService.HasClickedSponsorPrompt = true;
-			OnPropertyChanged(nameof(ShowSponsorPrompt));
-			await Launcher.LaunchUriAsync(new Uri(Constants.ExternalUrl.SupportUsUrl)).AsTask();
 		}
 
 		private async Task ExecuteOpenNetworkSharingSettingsCommand()

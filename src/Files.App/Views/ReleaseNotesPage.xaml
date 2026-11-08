@@ -1,4 +1,4 @@
-﻿<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
 <Page
 	x:Class="Files.App.Views.ReleaseNotesPage"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -13,11 +13,6 @@
 	mc:Ignorable="d">
 
 	<Grid x:Name="ContainerGrid">
-		<Grid.RowDefinitions>
-			<RowDefinition Height="*" />
-			<RowDefinition Height="Auto" />
-		</Grid.RowDefinitions>
-
 		<!--  WebView  -->
 		<WebView2
 			x:Name="BlogPostWebView"
@@ -26,20 +21,6 @@
 			CoreWebView2Initialized="BlogPostWebView_CoreWebView2Initialized"
 			FlowDirection="LeftToRight"
 			Source="{x:Bind ViewModel.BlogPostUrl, Mode=OneWay}" />
-
-		<!--  Footer  -->
-		<Border
-			Grid.Row="1"
-			Padding="12"
-			Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-			BackgroundSizing="OuterBorderEdge"
-			BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-			BorderThickness="0,1,0,0">
-			<HyperlinkButton
-				HorizontalAlignment="Left"
-				Content="{helpers:ResourceString Name=SponsorUsOnGitHub}"
-				NavigateUri="{x:Bind ViewModel.SupportUsUrl, Mode=OneTime}" />
-		</Border>
 	</Grid>
 
 </Page>
