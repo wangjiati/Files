@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Files 内部分支 · 功能差异说明</title>
-  <meta name="description" content="Files 内部分支相对上游 files-community/Files 的完整功能差异：便携分发、按目录时间格式、列头筛选与地址表达式、只读 SQL 工作台、导出文件列表、批量重命名、链接可视化。">
+  <meta name="description" content="Files 内部分支相对上游的功能差异速览：便携分发、按目录时间格式、列头筛选与视图地址、只读 SQL、清单导出、批量重命名。">
   <meta name="theme-color" content="#f9b81f">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Files 内部分支 · 功能差异说明">
-  <meta property="og:description" content="逐项对照上游原版：分发形态、时间格式、筛选、SQL、导出、批量重命名与链接可视化。">
+  <meta property="og:description" content="与上游原版逐项对照，一页看完本分支新增的能力、规则与限制。">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/styles.css">
   <script>
@@ -40,9 +40,9 @@
         <ul>
           <li><a href="#overview">概览</a></li>
           <li><a href="#matrix">差异表</a></li>
-          <li><a href="#details-start">功能详解</a></li>
-          <li><a href="#limits">已知边界</a></li>
+          <li><a href="#features">功能</a></li>
           <li><a href="#download">下载</a></li>
+          <li><a href="#community">交流群</a></li>
           <li><a href="#faq">FAQ</a></li>
         </ul>
       </nav>
@@ -66,16 +66,14 @@
           <span class="thin">和上游原版放在一起，逐项看清楚</span>
         </h1>
         <p class="hero__lead">
-          这个分支保留了 Files 原有的多标签、双栏、预览、标签与压缩包能力，重点补上重度文件管理用户长期缺少的几件事：
-          可随身携带的分发形态、按目录生效的时间格式、真正可组合的列头筛选、只读 SQL 查询、可导出的目录清单，
-          以及一个能处理上千个对象的批量重命名器。
+          保留上游的多标签、双栏、预览、标签与压缩包能力，补上便携分发、按目录时间格式、
+          列头筛选、只读 SQL、清单导出和批量重命名。
         </p>
 
         <ul class="badges">
           <li class="badge badge--accent">Windows 10 2004+ / x64</li>
           <li class="badge">版本 <strong>4.3.1</strong></li>
           <li class="badge">便携版 + MSIX</li>
-          <li class="badge">上游基线 <strong>d8eb92f66</strong></li>
         </ul>
 
         <div class="hero__actions">
@@ -85,1274 +83,346 @@
               <path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path>
             </svg>
           </a>
-          <a class="button button--ghost" href="#matrix">查看差异速览</a>
+          <a class="button button--ghost" href="#matrix">查看差异表</a>
         </div>
 
         <ul class="hero__meta">
-          <li>文档整理于 2026-11-07</li>
-          <li>依据仓库 README、设计文档与源码常量</li>
-          <li>数值以当前版本为准，升级后请以 <a href="https://github.com/wangjiati/Files/releases">Releases</a> 为准</li>
+          <li>上游基线 <code>d8eb92f66</code></li>
+          <li>文档更新于 2026-11-08</li>
+          <li>数值以当前版本为准</li>
         </ul>
       </div>
     </section>
 
     <div class="page">
       <div class="page__content">
-    <section class="section" id="overview">
-      <div class="section-head">
-        <p class="eyebrow">01 · 概览</p>
-        <h2>四条主线，其余都是细节</h2>
-        <p>
-          上游 Files 已经把「现代文件管理器」这件事做得不错。这个分支没有重做界面，而是把四类高频、上游又明显缺位的场景补齐，
-          并且尽量保持与上游一致的交互习惯，方便随时切回原版。
-        </p>
-      </div>
-
-      <div class="grid grid--4">
-        <article class="card">
-          <span class="card__label">分发</span>
-          <h3>解压即用的便携版</h3>
-          <p>完整目录 ZIP，自带 .NET 与 Windows App SDK，不需要管理员权限，也不写系统注册表。</p>
-          <p>设置、标签、布局、日志和缓存都在程序目录的 <code>Data</code> 里，整个文件夹可以随 U 盘移动。</p>
-        </article>
-
-        <article class="card">
-          <span class="card__label">时间</span>
-          <h3>按目录、按列的时间格式</h3>
-          <p>全局默认、全局列规则、目录规则、目录递归规则四级生效；精确到秒和毫秒，也能用 .NET 自定义格式串。</p>
-        </article>
-
-        <article class="card">
-          <span class="card__label">查找</span>
-          <h3>列头筛选 + 可复制地址</h3>
-          <p>名称、类型、扩展名、标签、大小、修改与创建时间都能筛；支持多选、范围和安全正则。</p>
-          <p>筛选、分组、排序和布局可以写进地址栏，复制整串就能还原当时的视图。</p>
-        </article>
-
-        <article class="card">
-          <span class="card__label">数据</span>
-          <h3>SQL、导出与批量重命名</h3>
-          <p>私有内存快照上的只读 SQLite 查询、12 列可选的 CSV/Excel 导出，以及带预览、变量、冲突策略和整批撤销的重命名器。</p>
-        </article>
-      </div>
-
-      <ul class="pill-row" aria-label="功能章节快捷入口">
-        <li><a href="#distribution">分发与运行形态</a></li>
-        <li><a href="#time-format">时间格式</a></li>
-        <li><a href="#filter">列头筛选</a></li>
-        <li><a href="#address">地址表达式</a></li>
-        <li><a href="#sql">SQL 工作台</a></li>
-        <li><a href="#export">导出文件列表</a></li>
-        <li><a href="#rename">批量重命名</a></li>
-        <li><a href="#new-folder">新建文件夹命名</a></li>
-        <li><a href="#links">链接可视化</a></li>
-        <li><a href="#localization">本地化与同步</a></li>
-      </ul>
-    </section>
-
-    <section class="section" id="matrix">
-      <div class="section-head">
-        <p class="eyebrow">02 · 差异速览</p>
-        <h2>上游原版 vs 本分支</h2>
-        <p>
-          下表只列确有差异的领域，不做全功能清单。标有「新增」的格子表示本分支独有能力；
-          「保留」表示行为与上游一致，只是周边增加了新入口或新选项。
-        </p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <caption>对照基准：上游提交 <code>d8eb92f66</code>；本分支版本 4.3.1。</caption>
-          <thead>
-            <tr>
-              <th scope="col">领域</th>
-              <th scope="col">上游原版</th>
-              <th scope="col">本分支</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">分发方式</th>
-              <td>MSIX 与经典安装包</td>
-              <td class="is-new">新增完整目录便携 ZIP，解压即可运行<span class="tag">新增</span></td>
-            </tr>
-            <tr>
-              <th scope="row">数据位置</th>
-              <td>包数据或用户目录</td>
-              <td class="is-new">便携版数据集中在程序目录 <code>Data</code>，可随目录复制、移动</td>
-            </tr>
-            <tr>
-              <th scope="row">运行依赖</th>
-              <td>依赖系统已安装的运行时</td>
-              <td class="is-new">便携版自带 .NET 与 Windows App SDK，Native AOT，无需管理员权限</td>
-            </tr>
-            <tr>
-              <th scope="row">包身份与更新</th>
-              <td>官方包身份，走官方更新源</td>
-              <td class="is-new">独立 <code>Files.Internal</code> 身份与内部证书；不访问官方更新源，手动升级</td>
-            </tr>
-            <tr>
-              <th scope="row">系统集成</th>
-              <td>安装后提供文件关联、协议、Shell/COM 等集成</td>
-              <td class="is-new">便携版不注册任何集成；本分支 MSIX 默认不接管，显式开启后显示接管状态，可恢复原值</td>
-            </tr>
-            <tr>
-              <th scope="row">时间格式</th>
-              <td>全局日期格式预设</td>
-              <td class="is-new">全局、按列、按目录、递归目录四级规则；自定义格式、秒、毫秒与实时预览</td>
-            </tr>
-            <tr>
-              <th scope="row">目录筛选</th>
-              <td>顶部名称包含过滤</td>
-              <td class="is-new">列头筛选：名称、类型、扩展名、标签、大小、修改/创建时间；多选、范围、正则</td>
-            </tr>
-            <tr>
-              <th scope="row">地址栏</th>
-              <td>只表示路径</td>
-              <td class="is-new">路径后可携带临时的筛选、分组、排序与布局参数，可直接复制分享</td>
-            </tr>
-            <tr>
-              <th scope="row">SQL 查询</th>
-              <td>无</td>
-              <td class="is-new">只读 SQLite 工作台；CTE、窗口函数、连接、聚合；文件与表格双结果视图</td>
-            </tr>
-            <tr>
-              <th scope="row">导出文件列表</th>
-              <td>无</td>
-              <td class="is-new">工具栏一键导出：12 列可选、可递归、可仅导出当前筛选，CSV 或 Excel</td>
-            </tr>
-            <tr>
-              <th scope="row">批量重命名</th>
-              <td>多选仅「统一名称 + 自动去重」</td>
-              <td class="is-new">文本/通配符/正则、追加模板、变量、作用域深度、冲突策略、预设与整批撤销</td>
-            </tr>
-            <tr>
-              <th scope="row">新建文件夹</th>
-              <td>固定默认名称</td>
-              <td class="is-new">可配置命名方案：名称、日期、时间、年月、顺序与分隔符</td>
-            </tr>
-            <tr>
-              <th scope="row">文件系统链接</th>
-              <td>符号链接与快捷方式混同，junction 当普通文件夹</td>
-              <td class="is-new">四类链接的角标、真实类型文字与属性页「链接」页</td>
-            </tr>
-            <tr>
-              <th scope="row">本地化</th>
-              <td>上游语言包</td>
-              <td class="is-new">补充简体中文与繁体中文的命名方案、批量重命名等界面文本</td>
-            </tr>
-            <tr>
-              <th scope="row">上游协作</th>
-              <td>原版项目</td>
-              <td>独立分支，不向上游提交 PR；同步上游采用可审查合并</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="section" id="details-start">
-      <div class="section-head">
-        <p class="eyebrow">功能详解</p>
-        <h2>每个差异具体改变了什么</h2>
-        <p>
-          下面按功能分组，分别说明入口、能力、生效规则和明确不做的部分。凡是容易踩坑的行为都单独标出，
-          避免把「设计选择」误当成「已知缺陷」。
-        </p>
-      </div>
-    </section>
-
-    <section class="section" id="distribution">
-      <div class="section-head">
-        <p class="eyebrow">03 · 分发</p>
-        <h2>安装版之外，多了一个绿色便携版</h2>
-        <p>
-          同一份源码通过 <code>Distribution</code> 构建属性产出两种形态：沿用包身份的 MSIX 安装版，
-          以及完整目录的便携版。两者核心文件管理能力一致，差异集中在系统集成和更新方式。
-        </p>
-      </div>
-
-      <div class="grid grid--halves">
-        <article class="card">
-          <span class="card__label">形态一</span>
-          <h3>MSIX 安装版</h3>
-          <ul>
-            <li>包身份为 <code>Files.Internal</code>，与本分支的便携版、上游原版互相隔离。</li>
-            <li>使用本分支的内部证书签名，不通过商店或官方渠道分发。</li>
-            <li>默认不接管原版的系统集成；在设置中显式开启后才会接管，并显示当前由谁接管。</li>
-            <li>关闭或卸载时只恢复仍归本产品所有的注册项，不覆盖其他程序后来的修改。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">形态二</span>
-          <h3>便携版</h3>
-          <ul>
-            <li>下载 <code>Files.Internal_&lt;version&gt;_x64-portable.zip</code>，解压整个目录后运行 <code>Files.exe</code>。</li>
-            <li>自带 .NET 与 Windows App SDK，不需要预装运行时，也不需要管理员权限。</li>
-            <li>支持含空格或中文的路径，可以从 U 盘启动。</li>
-            <li>首版只提供 x64 完整目录包，不提供单文件版本。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">数据</span>
-          <h3>数据随目录走</h3>
-          <p>便携版的设置、标签、布局、日志和缓存都位于程序目录的 <code>Data</code>：</p>
-          <ul>
-            <li>整个目录复制到另一台电脑或移动硬盘后，配置和标签仍然可用。</li>
-            <li>同一 <code>Data</code> 目录默认只允许一个实例；锁文件为 <code>Data/.instance.lock</code>。</li>
-            <li>数据目录不可写时会明确报错并退出，不会静默回退到用户目录或注册表。</li>
-            <li>与上游原版、本分支 MSIX 版的数据默认隔离，不自动导入原版配置。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">集成与更新</span>
-          <h3>不接管，也不自动更新</h3>
-          <ul>
-            <li>便携版不注册文件关联、协议、后台任务、COM/Shell 集成，也不提供托盘驻留、开机启动和后台更新服务。</li>
-            <li>两版都不会访问官方更新地址；升级方式是从 Releases 下载新包手动替换。</li>
-            <li>便携版禁用自然语言搜索（NaturalLanguageSearch）的包解锁与集成入口，不伪造包身份来获得系统能力。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="callout">
-        <strong>取舍说明：</strong>
-        便携版换来的「零安装」，代价是放弃系统集成与自动更新。如果你需要双击文件默认用 Files 打开、右键菜单或托盘常驻，
-        请使用本分支的 MSIX 版，并显式开启对应集成。
-      </div>
-
-      <details>
-        <summary>便携版启动与容错细节</summary>
-        <div class="details__body">
-          <ul>
-            <li>启动时在 XAML 初始化之前创建必要目录，并做一次真实写入探测；失败用系统消息框提示后退出。</li>
-            <li>设置和用户数据带简单 schema 版本；写入采用同目录临时文件加替换，尽量保证中途失败不损坏原文件。</li>
-            <li>遇到来自更新版本的 schema 时拒绝读取，而不是猜测兼容。</li>
-            <li>缓存可以删除和重建，不作为唯一事实来源。</li>
-            <li>启动路径、活动会话、窗口位置等本地状态存放在数据目录，不依赖注册表。</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <section class="section" id="time-format">
-      <div class="section-head">
-        <p class="eyebrow">04 · 时间格式</p>
-        <h2>同一个列表里，不同目录可以有不同时间格式</h2>
-        <p>
-          上游只有一个全局日期格式。这里把它拆成「全局默认 / 全局列规则 / 目录规则 / 目录递归规则」四层，
-          适合归档目录用日期、素材目录用带毫秒的时间，而系统目录保持默认。
-        </p>
-      </div>
-
-      <div class="grid grid--3">
-        <article class="card">
-          <span class="card__label">入口</span>
-          <h3>在哪里设置</h3>
-          <ul>
-            <li><strong>设置 → 常规</strong>：全局默认格式，以及修改、创建、删除三列各自的全局规则。</li>
-            <li><strong>详细信息视图 → 时间列菜单</strong>：「此目录的时间格式」，可直接为当前目录加规则。</li>
-            <li><strong>目录格式规则对话框</strong>：设置目录、列、格式、自定义文本、是否递归，并实时预览。</li>
-            <li>已打开的目录即时刷新，不需要重新进入。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">能力</span>
-          <h3>能设置成什么样</h3>
-          <ul>
-            <li>预设：日期、日期时分、日期时分秒、日期时分秒毫秒。</li>
-            <li>自定义 .NET 日期时间格式串，支持 <code>HH</code>、<code>mm</code>、<code>ss</code>、<code>fff</code> 和 12 小时制。</li>
-            <li>保留上游已有的「应用、系统、通用」选项，只在其上新增「自定义」。</li>
-            <li>作用于修改时间、创建时间、回收站删除时间三列。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">规则</span>
-          <h3>谁覆盖谁</h3>
-          <ul>
-            <li>目录规则默认只对指定目录生效；创建时可勾选「同时应用到子目录」。</li>
-            <li>多条递归规则同时命中时，距离当前目录最近的那条优先。</li>
-            <li>每个作用域、每一列只保存一条有效规则，避免出现无法解释的优先级。</li>
-            <li>删除目录规则后自动回落到下一优先级。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="table-wrap" style="margin-top:16px">
-        <table>
-          <caption>生效优先级从高到低；排序与筛选始终使用原始时间值，不受显示格式影响。</caption>
-          <thead>
-            <tr>
-              <th scope="col">优先级</th>
-              <th scope="col">规则</th>
-              <th scope="col">典型用法</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>1</strong></td>
-              <td>当前目录对特定列的规则</td>
-              <td>把 <code>D:\素材</code> 的修改时间固定为 <code>yyyy-MM-dd HH:mm:ss.fff</code></td>
-            </tr>
-            <tr>
-              <td><strong>2</strong></td>
-              <td>当前目录的默认时间格式</td>
-              <td>让整个拍摄目录统一显示日期，不区分列</td>
-            </tr>
-            <tr>
-              <td><strong>3</strong></td>
-              <td>全局对特定列的规则</td>
-              <td>所有目录的「创建时间」都带秒，其他列保持默认</td>
-            </tr>
-            <tr>
-              <td><strong>4</strong></td>
-              <td>全局默认时间格式</td>
-              <td>兜底行为，与上游一致</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="callout">
-        <strong>边界：</strong>
-        <ul>
-          <li>显示毫秒不等于数据源有毫秒精度，实际精度仍受文件系统和数据源限制。</li>
-          <li>无效时间（例如 1601 或 9999 的异常值）显示为空白，不抛异常。</li>
-          <li>自定义格式非法时会阻止保存并提示，不影响已经打开的列表。</li>
-          <li>修改格式只刷新显示，不重新枚举、不重新排序；列宽按现有入口重算。</li>
-        </ul>
-      </div>
-
-      <div class="shots">
-        <figure class="shot">
-          <img src="assets/fork/time-format-settings.png" alt="Files 常规设置页中的时间格式设置，包含全局默认与按列格式规则、自定义格式和预览" loading="lazy" width="1200" height="800">
-          <figcaption>设置 → 常规：全局默认、按列规则和实时预览。</figcaption>
-        </figure>
-      </div>
-
-      <details>
-        <summary>可移动卷与规则持久化</summary>
-        <div class="details__body">
-          <ul>
-            <li>普通目录保存规范化的绝对路径，统一大小写和尾部分隔符。</li>
-            <li>可移动卷保存「卷标识 + 卷内相对路径」，盘符变化后仍能匹配。</li>
-            <li>卷不可用时保留规则，不会把同一路径自动绑定到另一块磁盘。</li>
-            <li>便携版的目录规则随 <code>Data</code> 一起迁移，重启后保留。</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <section class="section" id="filter">
-      <div class="section-head">
-        <p class="eyebrow">05 · 筛选</p>
-        <h2>列头筛选：多条件组合，而不是一个名称框</h2>
-        <p>
-          上游顶部的名称包含过滤仍然保留，但现在它只是统一筛选模型里的一个条件。
-          在详细信息视图的列头打开筛选浮出层，可以按列叠加条件，也可以对文件名、显示名或完整路径跑正则。
-        </p>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">入口</span>
-          <h3>从列头开始</h3>
-          <ul>
-            <li>详细信息视图的列头新增独立筛选入口，点击列头仍然排序。</li>
-            <li>已生效的列有明确标识，可一键「清除所有筛选」。</li>
-            <li>顶部名称框与列头筛选共用同一份状态，不会出现两套互相覆盖的条件。</li>
-            <li>筛选只作用于当前已加载的目录项，不递归扫描磁盘。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">组合</span>
-          <h3>不同列 AND，同列多选 OR</h3>
-          <ul>
-            <li>名称：包含、不包含、开头是、结尾是、等于。</li>
-            <li>类型、扩展名、标签：多选，并可选择是否包含没有值的项目。</li>
-            <li>大小：最小值和最大值，未知大小不会被当成 0。</li>
-            <li>修改/创建时间：自定义范围，以及最近 7 天、最近 30 天、今年等相对区间。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="table-wrap" style="margin-top:16px">
-        <table>
-          <caption>首版支持的列与条件类型；所有条件都在内存快照上求值。</caption>
-          <thead>
-            <tr>
-              <th scope="col">列</th>
-              <th scope="col">可用条件</th>
-              <th scope="col">说明</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">名称</th>
-              <td>包含 / 不包含 / 开头是 / 结尾是 / 等于</td>
-              <td>顶部名称框对应「包含」，保留 250&nbsp;ms 输入防抖</td>
-            </tr>
-            <tr>
-              <th scope="row">类型</th>
-              <td>多选、包含空值</td>
-              <td>值取自当前界面语言下的项目类型</td>
-            </tr>
-            <tr>
-              <th scope="row">扩展名</th>
-              <td>多选、包含空值</td>
-              <td>无扩展名的项目单独归类</td>
-            </tr>
-            <tr>
-              <th scope="row">标签</th>
-              <td>多选、包含空值</td>
-              <td>按标签 ID 匹配，不依赖显示名称</td>
-            </tr>
-            <tr>
-              <th scope="row">大小</th>
-              <td>最小值 / 最大值</td>
-              <td>文件夹与未知大小保持空值语义</td>
-            </tr>
-            <tr>
-              <th scope="row">修改 / 创建时间</th>
-              <td>范围、相对日期</td>
-              <td>比较原始 <code>DateTimeOffset</code>，与显示格式无关</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="grid grid--2" style="margin-top:16px">
-        <article class="card">
-          <span class="card__label">正则</span>
-          <h3>三种匹配目标</h3>
-          <ul>
-            <li><strong>完整文件名</strong>：包含扩展名的物理文件名。</li>
-            <li><strong>显示名称</strong>：当前界面上看到的名称，受「隐藏扩展名」设置影响。</li>
-            <li><strong>完整路径</strong>：用于按目录结构过滤。</li>
-            <li>可选区分大小写；表达式长度上限 512 字符，单次匹配超时 250&nbsp;ms。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">稳定性</span>
-          <h3>坏正则不会拖垮界面</h3>
-          <ul>
-            <li>非法表达式、空表达式、超长表达式都会在浮出层里给出对应提示。</li>
-            <li>灾难性回溯触发超时后取消本次匹配，不产生「半份结果」。</li>
-            <li>快速输入后切换目录，旧目录的计算结果不会覆盖新目录。</li>
-            <li>空结果提示「没有匹配项目」，不会让人误以为目录是空的。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="callout">
-        <strong>作用域：</strong>
-        筛选不递归、不重新枚举磁盘；切换目录会清除临时筛选条件，避免留下看不见的过滤。
-        需要跨目录筛选时，用 SQL 工作台或「导出文件列表」的递归选项，而不是让列头筛选去扫描整块磁盘。
-      </div>
-
-      <div class="shots">
-        <figure class="shot">
-          <img src="assets/fork/date-column-filter.png" alt="Files 详细信息视图的日期列筛选浮出层，包含范围、相对日期和正则选项" loading="lazy" width="1200" height="800">
-          <figcaption>列头筛选：日期范围、相对区间与正则共用同一套条件模型。</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section class="section" id="address">
-      <div class="section-head">
-        <p class="eyebrow">06 · 地址表达式</p>
-        <h2>把「当时的视图」写进地址栏</h2>
-        <p>
-          路径后面加一个空格和 <code>?</code>，就能携带本次查看的临时筛选、分组、排序和布局。
-          复制整串发给同事，或者存进笔记，粘回地址栏即可还原同一视图。
-        </p>
-      </div>
-
-      <div class="grid grid--3">
-        <article class="card">
-          <span class="card__label">行为</span>
-          <h3>临时覆盖，不改偏好</h3>
-          <ul>
-            <li>参数只影响本次查看，不写回目录偏好、不写数据库、不进入设置。</li>
-            <li>前进/后退回到该条目时恢复完整地址状态；关闭标签或重启即丢弃。</li>
-            <li>打开裸路径仍然清空筛选，不会偷偷沿用上一次的条件。</li>
-            <li>参数在地址栏里可见，面包屑右侧会显示筛选摘要。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">复制</span>
-          <h3>默认只复制路径</h3>
-          <ul>
-            <li>激活地址栏时只选中路径部分，直接 <kbd>Ctrl</kbd>+<kbd>C</kbd> 得到干净路径。</li>
-            <li>需要分享完整视图时，按 <kbd>Ctrl</kbd>+<kbd>A</kbd> 再复制。</li>
-            <li>粘贴带参数的地址时整体替换，避免新旧参数拼成非法串。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">限制</span>
-          <h3>有上限，也会报错</h3>
-          <ul>
-            <li>整串上限 4096 字符，筛选子句上限 64 条，正则上限 512 字符。</li>
-            <li>语法错误会弹窗提示并停止导航，不会静默丢掉筛选。</li>
-            <li>未知参数键或当前布局不支持的分组会被忽略，不影响路径导航。</li>
-            <li>本地路径与带空格和问号的 FTP 路径按不同规则解析。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="code-block">
-        <pre><code>address  := path [ SP "?" params ]
-params   := param *( "&amp;" param )
-param    := "filter=" filter | "group=" group | "sort=" sort | "layout=" layout
-
-filter   := clause *( ";" clause )
-clause   := column SP op SP value | "empty=" columns | "regex" [ "[" target "," flag "]" ] "=" "/" pattern "/"
-column   := name | type | ext | tag | size | modified | created
-op       := contains | notcontains | startswith | endswith | equals | in | &gt;= | &lt;= | =
-group    := option [ "," asc|desc [ "," day|month|year ] ]
-sort     := option "," asc|desc
-layout   := details | list | cards | columns | grid</code></pre>
-        <button class="code-block__copy" type="button">复制</button>
-      </div>
-
-      <div class="grid grid--2" style="margin-top:16px">
-        <article class="card">
-          <span class="card__label">示例</span>
-          <h3>只留大于 10&nbsp;MB 的图片，按修改时间倒序</h3>
-          <div class="code-block">
-            <pre><code>D:\Photos ?filter=name contains "IMG";size &gt;= "10MB"&amp;sort=modified,desc&amp;layout=grid</code></pre>
-            <button class="code-block__copy" type="button">复制</button>
+        <section class="section" id="overview">
+          <div class="section-head">
+            <p class="eyebrow">01 · 概览</p>
+            <h2>四个最常用的变化</h2>
+            <p>不重做界面，只补上游明显缺位的场景。</p>
           </div>
-        </article>
 
-        <article class="card">
-          <span class="card__label">示例</span>
-          <h3>用正则匹配完整路径，忽略大小写</h3>
-          <div class="code-block">
-            <pre><code>D:\Downloads ?filter=regex[fullpath,i]=/\.(zip|7z)$/&amp;group=modified,desc,month</code></pre>
-            <button class="code-block__copy" type="button">复制</button>
+          <div class="grid grid--4">
+            <article class="card">
+              <span class="card__label">分发</span>
+              <h3>便携版</h3>
+              <p>完整目录 ZIP，自带运行时，不需要管理员权限；数据和配置在程序目录的 <code>Data</code>，可随目录移动。</p>
+            </article>
+
+            <article class="card">
+              <span class="card__label">时间</span>
+              <h3>按目录的格式</h3>
+              <p>全局、按列、按目录、递归目录四级规则；支持自定义格式、秒和毫秒，排序筛选仍用原始值。</p>
+            </article>
+
+            <article class="card">
+              <span class="card__label">查找</span>
+              <h3>筛选与地址</h3>
+              <p>列头多条件筛选、正则匹配；筛选、分组、排序和布局可以写进地址栏，复制整串即可还原视图。</p>
+            </article>
+
+            <article class="card">
+              <span class="card__label">数据</span>
+              <h3>SQL、导出、改名</h3>
+              <p>只读 SQLite 查询、12 列 CSV/Excel 导出，以及带预览、变量和整批撤销的批量重命名。</p>
+            </article>
           </div>
-        </article>
-      </div>
+        </section>
 
-      <details>
-        <summary>参数取值与规范化规则</summary>
-        <div class="details__body">
-          <ul>
-            <li>参数键固定按 <code>filter → group → sort → layout</code> 输出；筛选子句按 <code>name → type → ext → tag → size → modified → created → empty → regex</code> 排列。</li>
-            <li><code>size</code> 接受字节数或 <code>10MB</code>、<code>1.5GB</code> 这类带单位写法，内部统一换算成字节。</li>
-            <li><code>size</code>、<code>modified</code>、<code>created</code> 只接受 <code>&gt;=</code>、<code>&lt;=</code>、<code>=</code>，因为模型本身只有含端点的最小/最大值。</li>
-            <li>日期使用 ISO 8601，例如 <code>2026-01-01</code> 或 <code>2026-01-01T10:30:00Z</code>。</li>
-            <li><code>empty=</code> 只允许 <code>type</code>、<code>ext</code>、<code>tag</code>；用在其他列上视为语法错误。</li>
-            <li>标签参数使用稳定 UID，不使用可变的显示名称。</li>
-            <li>值里的双引号用 <code>""</code> 转义；分隔符放进引号内即视为普通字符。</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <section class="section" id="sql">
-      <div class="section-head">
-        <p class="eyebrow">07 · SQL</p>
-        <h2>对当前目录做只读查询，而不是生成筛选条件</h2>
-        <p>
-          工作台把当前已加载的目录投影到一块私有的 SQLite 内存快照，然后执行你写的 <code>SELECT</code>。
-          它不会去扫磁盘，也不会碰真实设置或标签数据库。
-        </p>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">流程</span>
-          <h3>打开、写、执行</h3>
-          <ul>
-            <li>在文件管理器窗口里打开「SQL」工作台，编辑器下方提供数据结构说明和少量示例。</li>
-            <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 执行，也可以随时取消。</li>
-            <li>结果显示耗时；超出限制会明确提示「结果已截断」。</li>
-            <li>源目录发生变化后，已有结果标记为「快照结果」，只有重新执行才会刷新。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">能力</span>
-          <h3>完整的只读 SELECT</h3>
-          <ul>
-            <li>子查询、普通/递归 CTE、聚合与 <code>HAVING</code>、窗口函数、连接、集合操作、计算列。</li>
-            <li>结果每行若能映射到有效文件，就提供「文件列表」视图，可直接选择、打开、复制。</li>
-            <li>聚合、统计或纯计算列结果进入通用表格视图，不会变成空文件列表。</li>
-            <li>两个视图可随时切换，切换不会清空原始结果；手动排序不回写 SQL。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="grid grid--3" style="margin-top:16px">
-        <article class="card">
-          <span class="card__label">数据</span>
-          <h3>固定的三张表</h3>
-          <div class="code-block">
-            <pre><code>files(
-  file_id, name, display_name, extension,
-  full_path, item_type, size_bytes,
-  modified_utc, created_utc, is_folder
-)
-tags(tag_id, name, color)
-file_tags(file_id, tag_id)</code></pre>
-            <button class="code-block__copy" type="button">复制</button>
+        <section class="section" id="matrix">
+          <div class="section-head">
+            <p class="eyebrow">02 · 差异速览</p>
+            <h2>上游原版 vs 本分支</h2>
+            <p>只列确有差异的领域，不做全功能清单。</p>
           </div>
-          <p class="small muted" style="margin-top:10px">时间为 UTC Unix 秒；未知值为 <code>NULL</code>。</p>
-        </article>
 
-        <article class="card">
-          <span class="card__label">示例</span>
-          <h3>找出当前目录里最大的文件</h3>
-          <div class="code-block">
-            <pre><code>SELECT name, size_bytes, modified_utc
-FROM files
-WHERE is_folder = 0
-  AND size_bytes &gt;= 10485760
-ORDER BY size_bytes DESC
-LIMIT 50;</code></pre>
-            <button class="code-block__copy" type="button">复制</button>
+          <div class="table-wrap">
+            <table>
+              <caption>对照基准：上游 <code>d8eb92f66</code>；本分支 4.3.1。</caption>
+              <thead>
+                <tr>
+                  <th scope="col">领域</th>
+                  <th scope="col">上游原版</th>
+                  <th scope="col">本分支</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">分发方式</th>
+                  <td>MSIX 与经典安装包</td>
+                  <td class="is-new">新增完整目录便携 ZIP，解压即用<span class="tag">新增</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">数据与依赖</th>
+                  <td>包数据或用户目录，依赖已安装运行时</td>
+                  <td class="is-new">便携版数据在 <code>Data</code>，自带 .NET 与 Windows App SDK</td>
+                </tr>
+                <tr>
+                  <th scope="row">系统集成</th>
+                  <td>安装后提供关联、协议与 Shell/COM 集成</td>
+                  <td class="is-new">便携版不注册；MSIX 默认不接管，可显式开启并显示状态</td>
+                </tr>
+                <tr>
+                  <th scope="row">更新方式</th>
+                  <td>官方更新源</td>
+                  <td class="is-new">独立 <code>Files.Internal</code> 身份与内部证书，手动更新</td>
+                </tr>
+                <tr>
+                  <th scope="row">时间格式</th>
+                  <td>全局预设</td>
+                  <td class="is-new">全局、按列、按目录、递归目录；自定义、秒、毫秒</td>
+                </tr>
+                <tr>
+                  <th scope="row">目录筛选</th>
+                  <td>顶部名称包含</td>
+                  <td class="is-new">列头筛选 7 列，多选、范围与正则</td>
+                </tr>
+                <tr>
+                  <th scope="row">地址栏</th>
+                  <td>只表示路径</td>
+                  <td class="is-new">路径后可带临时筛选、分组、排序与布局</td>
+                </tr>
+                <tr>
+                  <th scope="row">SQL 查询</th>
+                  <td>无</td>
+                  <td class="is-new">只读 SQLite 工作台，文件与表格双视图</td>
+                </tr>
+                <tr>
+                  <th scope="row">导出文件列表</th>
+                  <td>无</td>
+                  <td class="is-new">12 列 CSV / Excel，可递归、可仅导出筛选结果</td>
+                </tr>
+                <tr>
+                  <th scope="row">批量重命名</th>
+                  <td>统一名称 + 自动去重</td>
+                  <td class="is-new">三种模式、变量、深度限制、冲突策略、整批撤销</td>
+                </tr>
+                <tr>
+                  <th scope="row">其他</th>
+                  <td>—</td>
+                  <td class="is-new">新建文件夹命名方案、链接可视化、简繁中文补充</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </article>
+        </section>
 
-        <article class="card">
-          <span class="card__label">示例</span>
-          <h3>按标签统计文件数量</h3>
-          <div class="code-block">
-            <pre><code>SELECT t.name, COUNT(*) AS files
-FROM files f
-JOIN file_tags ft ON ft.file_id = f.file_id
-JOIN tags t ON t.tag_id = ft.tag_id
-GROUP BY t.name
-ORDER BY files DESC;</code></pre>
-            <button class="code-block__copy" type="button">复制</button>
+        <section class="section" id="features">
+          <div class="section-head">
+            <p class="eyebrow">03 · 功能要点</p>
+            <h2>入口、规则与限制</h2>
+            <p>每项只保留最需要知道的内容。</p>
           </div>
-        </article>
-      </div>
 
-      <div class="callout">
-        <strong>安全边界：</strong>
-        <ul>
-          <li>只允许一条只读 <code>SELECT</code>；写入、DDL、多语句、<code>ATTACH</code>/<code>DETACH</code>、危险 PRAGMA、扩展加载和文件读写函数都会被拒绝。</li>
-          <li>执行前用 <code>prepare tail</code> 确认只有一条语句，再用 authorizer 白名单限制允许的操作，不依赖正则或只读连接字符串充当安全边界。</li>
-          <li>默认 10 秒超时、最多 50,000 行；进度回调每 1,000 ms 一次，用于取消长查询。</li>
-          <li>每次执行都新建私有 <code>:memory:</code> 快照，建表与查询都在后台线程完成。</li>
-        </ul>
-      </div>
+          <div class="grid grid--3">
+            <article class="card">
+              <span class="card__label">分发</span>
+              <h3>便携版</h3>
+              <ul>
+                <li>解压整个 ZIP，运行 <code>Files.exe</code>。</li>
+                <li>设置、标签、布局、日志和缓存在 <code>Data</code>。</li>
+                <li>同一数据目录默认只允许一个实例。</li>
+              </ul>
+              <p class="small muted">仅 x64 完整目录；不注册关联、协议、托盘和后台更新。</p>
+            </article>
 
-      <div class="shots">
-        <figure class="shot">
-          <img src="assets/fork/sql-workbench.png" alt="Files 的 SQL 查询工作台，左侧查询编辑器，右侧结果与数据结构说明" loading="lazy" width="1200" height="800">
-          <figcaption>SQL 工作台：只读查询、耗时、截断提示与结果视图。</figcaption>
-        </figure>
-      </div>
+            <article class="card">
+              <span class="card__label">时间</span>
+              <h3>时间格式</h3>
+              <ul>
+                <li>设置 → 常规，或详细信息视图的时间列菜单。</li>
+                <li>优先级：目录列规则 → 目录默认 → 全局列规则 → 全局默认。</li>
+                <li>目录规则可选「同时应用到子目录」，最近的规则优先。</li>
+              </ul>
+              <p class="small muted">排序和筛选始终使用原始时间；无效时间显示为空白。</p>
+            </article>
 
-      <details>
-        <summary>结果映射与去重规则</summary>
-        <div class="details__body">
-          <ul>
-            <li>只有当结果行包含有效 <code>file_id</code> 且能映射到当前快照时，才提供文件列表视图。</li>
-            <li>多行映射到同一文件时，文件列表按 <code>file_id</code> 去重，原始表格保留全部行。</li>
-            <li>文件顺序遵循 SQL 行顺序；没有 <code>ORDER BY</code> 时不承诺额外排序。</li>
-            <li>查询期间切换目录，旧查询结果不会覆盖新目录；界面会提示「目录已切换，请重新执行」。</li>
-          </ul>
-        </div>
-      </details>
-    </section>
+            <article class="card">
+              <span class="card__label">筛选</span>
+              <h3>列头筛选</h3>
+              <ul>
+                <li>名称 5 种操作；类型、扩展名、标签多选；大小与日期范围。</li>
+                <li>不同列 AND，同列多选 OR；顶部名称框共用同一状态。</li>
+                <li>正则支持完整文件名、显示名称、完整路径三种目标。</li>
+              </ul>
+              <p class="small muted">只筛当前已加载目录，切换目录清空；正则 512 字符、250&nbsp;ms 超时。</p>
+            </article>
 
-    <section class="section" id="export">
-      <div class="section-head">
-        <p class="eyebrow">08 · 导出</p>
-        <h2>把当前文件夹变成一份干净的清单</h2>
-        <p>
-          工具栏上的「导出文件列表」可以在任意视图布局使用，导出当前文件夹的项目为 CSV 或 Excel。
-          它复用当前的筛选与排序，也支持一次性递归枚举子文件夹。
-        </p>
-      </div>
+            <article class="card">
+              <span class="card__label">地址</span>
+              <h3>视图地址</h3>
+              <div class="code-block">
+                <pre><code>D:\Photos ?filter=name contains "IMG";size &gt;= "10MB"&amp;sort=modified,desc</code></pre>
+                <button class="code-block__copy" type="button">复制</button>
+              </div>
+              <p class="small muted">参数只影响本次查看，不写回目录偏好；上限 4096 字符、64 个子句。</p>
+            </article>
 
-      <div class="grid grid--3">
-        <article class="card">
-          <span class="card__label">范围</span>
-          <h3>导出什么</h3>
-          <ul>
-            <li>「仅导出当前筛选结果」：取筛选和排序后的投影集合，顺序与视图一致。</li>
-            <li>「包含所有子文件夹」：按当前排序逐层枚举，文件夹行排在其内容之前。</li>
-            <li>两项可以同时勾选；递归枚举出的条目同样经过当前筛选规范求值。</li>
-            <li>默认文件名：<code>{当前文件夹名}_FileList_{yyyyMMdd}</code>，扩展名跟随所选格式。</li>
-          </ul>
-        </article>
+            <article class="card">
+              <span class="card__label">SQL</span>
+              <h3>SQL 工作台</h3>
+              <ul>
+                <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 执行只读 <code>SELECT</code>。</li>
+                <li>表：<code>files</code>、<code>tags</code>、<code>file_tags</code>。</li>
+                <li>结果可在文件列表与表格之间切换。</li>
+              </ul>
+              <p class="small muted">10 秒超时、最多 50,000 行；禁止写入、DDL、<code>ATTACH</code>、PRAGMA 与扩展。</p>
+            </article>
 
-        <article class="card">
-          <span class="card__label">格式</span>
-          <h3>CSV 与 Excel</h3>
-          <ul>
-            <li>默认 CSV；UTF-8 带 BOM，Excel 直接打开不乱码。</li>
-            <li>CSV 使用 RFC&nbsp;4180 引号规则和 CRLF 行结束。</li>
-            <li>Excel 由内置的零依赖 OpenXML 写入器生成，单工作表「文件列表」，表头加粗。</li>
-            <li>日期统一写成 <code>yyyy-MM-dd HH:mm:ss</code> 的真实值，与界面时间格式设置无关。</li>
-          </ul>
-        </article>
+            <article class="card">
+              <span class="card__label">导出</span>
+              <h3>导出文件列表</h3>
+              <ul>
+                <li>工具栏按钮，导出为 CSV 或 Excel。</li>
+                <li>12 列可选（默认 5 列），可递归、可仅导出筛选结果。</li>
+                <li>CSV 为 UTF-8 带 BOM，Excel 直接打开不乱码。</li>
+              </ul>
+              <p class="small muted">无进度与取消；回收站和压缩包内不可用；MTP、FTP、搜索页不递归。</p>
+            </article>
 
-        <article class="card">
-          <span class="card__label">可靠性</span>
-          <h3>不产出半成品</h3>
-          <ul>
-            <li>枚举与写入都在后台线程执行，不阻塞界面。</li>
-            <li>先写同目录临时文件，成功后再替换目标文件；失败会清理临时文件。</li>
-            <li>网络路径上无法访问的条目会跳过并计数，不中断整个导出。</li>
-            <li>完成卡片显示导出行数和跳过数量；失败时显示无法写入的路径。</li>
-          </ul>
-        </article>
-      </div>
+            <article class="card">
+              <span class="card__label">重命名</span>
+              <h3>批量重命名</h3>
+              <ul>
+                <li>多选 F2、右键或工具栏打开。</li>
+                <li>文本、通配符、正则；前缀、后缀、计数器、日期、文件夹名变量。</li>
+                <li>预览逐行对照，冲突可加序号、跳过或覆盖；整批一次撤销。</li>
+              </ul>
+              <p class="small muted">子文件夹深度 1–9；不支持 EXIF、随机串；覆盖的文件无法通过撤销恢复。</p>
+            </article>
 
-      <div class="table-wrap" style="margin-top:16px">
-        <table>
-          <caption>12 种可选列。默认勾选：名称、项目类型、大小(字节)、修改时间、完整路径。</caption>
-          <thead>
-            <tr>
-              <th scope="col">列</th>
-              <th scope="col">导出内容</th>
-              <th scope="col">空值处理</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">名称</th><td>当前显示名称</td><td>必有</td></tr>
-            <tr><th scope="row">扩展名</th><td>文件扩展名</td><td>无扩展名留空</td></tr>
-            <tr><th scope="row">项目类型</th><td>界面显示的类型文字</td><td>留空</td></tr>
-            <tr><th scope="row">大小(字节)</th><td>原始字节数</td><td>文件夹留空，不写 0</td></tr>
-            <tr><th scope="row">大小(可读)</th><td>界面显示的大小文本</td><td>留空</td></tr>
-            <tr><th scope="row">创建时间</th><td><code>yyyy-MM-dd HH:mm:ss</code></td><td>未知留空</td></tr>
-            <tr><th scope="row">修改时间</th><td><code>yyyy-MM-dd HH:mm:ss</code></td><td>未知留空</td></tr>
-            <tr><th scope="row">完整路径</th><td>绝对路径</td><td>必有</td></tr>
-            <tr><th scope="row">相对路径</th><td>相对被导出根目录，根内以 <code>.</code> 开头</td><td>必有</td></tr>
-            <tr><th scope="row">是否文件夹</th><td>布尔值</td><td>必有</td></tr>
-            <tr><th scope="row">是否隐藏</th><td>布尔值</td><td>必有</td></tr>
-            <tr><th scope="row">文件标签</th><td>标签显示名称，分号连接</td><td>无标签留空</td></tr>
-          </tbody>
-        </table>
-      </div>
+            <article class="card">
+              <span class="card__label">其他</span>
+              <h3>细节补齐</h3>
+              <ul>
+                <li>新建文件夹命名方案：名称、日期、时间、年月、顺序与分隔符。</li>
+                <li>四类文件系统链接的角标、类型文字与属性页。</li>
+                <li>简体中文与繁体中文界面文本补充。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
 
-      <div class="callout">
-        <strong>不可用或不递归的情况：</strong>
-        <ul>
-          <li>回收站和压缩包内不支持导出。</li>
-          <li>MTP 设备、FTP、搜索结果页和库根目录只能导出当前层，递归选项会禁用或锁定。</li>
-          <li>搜索结果页自带「仅导出当前筛选结果」锁定为勾选，因为页面上只有查询结果，没有完整全集可取。</li>
-          <li>v1 不提供进度和取消；误发起的大目录递归导出只能等待完成，这是已知取舍。</li>
-          <li>不保存导出预设，也不记忆上次的列与格式。</li>
-        </ul>
-      </div>
-    </section>
+        <section class="section" id="limits">
+          <div class="section-head">
+            <p class="eyebrow">04 · 已知边界</p>
+            <h2>这些是设计选择</h2>
+          </div>
 
-    <section class="section" id="rename">
-      <div class="section-head">
-        <p class="eyebrow">09 · 批量重命名</p>
-        <h2>从「全部改成同一个名字」到真正的规则引擎</h2>
-        <p>
-          上游多选按 F2 只会把所选项目改成同一个名字，再自动去重。这个分支换成带预览的批量重命名器，
-          支持查找替换、前后缀、计数器、日期、文件夹名变量、子文件夹深度限制和三种冲突策略。
-        </p>
-      </div>
+          <div class="grid grid--2">
+            <article class="card">
+              <span class="card__label">分发</span>
+              <h3>便携版与 MSIX</h3>
+              <ul>
+                <li>便携版不注册文件关联、协议、托盘常驻和后台更新。</li>
+                <li>首版仅 Windows x64，只提供完整目录包。</li>
+                <li>不自动导入原版配置；与上游数据默认隔离。</li>
+                <li>MSIX 使用内部证书，默认不接管原版集成。</li>
+              </ul>
+            </article>
 
-      <div class="grid grid--halves">
-        <article class="card">
-          <span class="card__label">入口</span>
-          <h3>四个地方都能打开</h3>
-          <ul>
-            <li>多选后按 <kbd>F2</kbd>。</li>
-            <li>选中项右键菜单「批量重命名…」，选中两项及以上时显示。</li>
-            <li>空白处右键菜单，不需要预先选择。</li>
-            <li>顶部工具栏的常驻按钮。</li>
-            <li>默认作用域：有选中项就「仅选中项」，没有就「当前文件夹」。单选按 <kbd>F2</kbd> 仍是原来的内联改名。</li>
-          </ul>
-        </article>
+            <article class="card">
+              <span class="card__label">功能</span>
+              <h3>作用域与取舍</h3>
+              <ul>
+                <li>筛选和 SQL 只针对当前目录，不递归扫描磁盘。</li>
+                <li>导出没有进度与取消，也不记忆上次选项。</li>
+                <li>SQL 没有查询历史与保存查询。</li>
+                <li>链接可视化只读，不提供创建或编辑链接的界面。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
 
-        <article class="card">
-          <span class="card__label">规则</span>
-          <h3>三种互斥模式</h3>
-          <ul>
-            <li><strong>文本</strong>：字面量查找替换，同样会展开变量。</li>
-            <li><strong>通配符</strong>：<code>*</code> 任意串、<code>?</code> 单字符。</li>
-            <li><strong>正则</strong>：.NET 正则，支持 <code>$1</code>–<code>$9</code> 捕获组；带 250&nbsp;ms 超时。</li>
-            <li>作用范围可选仅文件名、仅扩展名或全部；可叠加「匹配全部」和「区分大小写」。</li>
-          </ul>
-        </article>
+        <section class="section" id="download">
+          <div class="section-head">
+            <p class="eyebrow">05 · 下载与安装</p>
+            <h2>下载后三步</h2>
+          </div>
 
-        <article class="card">
-          <span class="card__label">模板</span>
-          <h3>查找替换、开头追加、结尾追加</h3>
-          <ul>
-            <li>开头追加可跳过已含该前缀的名称，等价于正则 <code>^</code> 替换。</li>
-            <li>结尾追加可选择插入在扩展名之前：<code>img.jpg → img_备份.jpg</code>。</li>
-            <li>切换模板时保留作用域、大小写设置和所有手改值。</li>
-            <li>大小写转换（不变、全小写、全大写、首字母、每词首字母）作用于整个结果。</li>
-          </ul>
-        </article>
+          <div class="grid grid--2">
+            <article class="card">
+              <span class="card__label">推荐</span>
+              <h3>便携版</h3>
+              <ol>
+                <li>下载 <code>Files.Internal_&lt;version&gt;_x64-portable.zip</code>。</li>
+                <li>解压到可写目录，路径可含空格和中文。</li>
+                <li>运行 <code>Files.exe</code>；升级时保留 <code>Data</code> 即可。</li>
+              </ol>
+              <p class="small muted">不要只复制 exe；便携版依赖同目录的运行时与资源。</p>
+            </article>
 
-        <article class="card">
-          <span class="card__label">作用域</span>
-          <h3>把子文件夹也纳入，但限深</h3>
-          <ul>
-            <li>仅选中项、当前文件夹、含子文件夹三种作用域。</li>
-            <li>子文件夹深度可调 1–9，默认 2，提示写明「含第 1–N 层」。</li>
-            <li>文件默认包含，文件夹默认不包含。</li>
-            <li>只有当前选中的作用域显示实时计数，不会为未选中的作用域枚举整棵树。</li>
-          </ul>
-        </article>
-      </div>
+            <article class="card">
+              <span class="card__label">可选</span>
+              <h3>MSIX</h3>
+              <ol>
+                <li>安装 <code>Microsoft.WindowsAppRuntime.2 &gt;= 2.6.4.0</code>（x64）。</li>
+                <li>信任发布说明中的内部证书，安装 MSIX。</li>
+                <li>需要文件关联或右键集成时，在设置中显式开启。</li>
+              </ol>
+              <p class="small muted">包身份 <code>Files.Internal</code>，可与原版 Files 并存。</p>
+            </article>
+          </div>
+        </section>
 
-      <div class="grid grid--3" style="margin-top:16px">
-        <article class="card">
-          <span class="card__label">预览</span>
-          <h3>改前 / 改后逐行对照</h3>
-          <ul>
-            <li>红删绿增高亮差异，改后列加粗；按文件夹分组，多文件夹时显示位置列。</li>
-            <li>每行可单独勾选是否参与执行；双击「改后」逐项手改，并标记「手动」。</li>
-            <li>筛选「全部 / 将改动 / 加序号」，带计数徽标和结果内搜索。</li>
-            <li>千级对象使用虚拟滚动，不卡住弹窗。</li>
-          </ul>
-        </article>
+        <section class="section" id="community">
+          <div class="section-head">
+            <p class="eyebrow">06 · 交流群</p>
+            <h2>扫码加入飞书服务群</h2>
+            <p>问题反馈、用法交流、版本更新提醒。</p>
+          </div>
 
-        <article class="card">
-          <span class="card__label">冲突</span>
-          <h3>加序号、跳过或覆盖</h3>
-          <ul>
-            <li>冲突判定不区分大小写；同批重名和目标已存在都算冲突。</li>
-            <li>仅大小写变化（<code>img.jpg → IMG.jpg</code>）不算冲突，按 case-rename 处理。</li>
-            <li>「覆盖」需二次确认，被覆盖文件移入回收站，撤销无法恢复。</li>
-            <li>非法名称只阻止该行，不阻塞整批；常见原因是非法字符、保留设备名、空名或超过 255 字符。</li>
-          </ul>
-        </article>
+          <div class="grid grid--halves" style="align-items:center">
+            <figure class="qr-card">
+              <img src="assets/feishu/group-qr.png" alt="「Files.分支版」飞书交流群二维码" loading="lazy" width="1372" height="1392">
+              <figcaption>飞书扫码加入「Files.分支版」话题群</figcaption>
+            </figure>
 
-        <article class="card">
-          <span class="card__label">批量操作</span>
-          <h3>预设、剪贴板与撤销</h3>
-          <ul>
-            <li>预设保存模板、参数、作用域和深度，不保存手改值。</li>
-            <li>「复制改前」按行导出名称；「粘贴新名称」按行赋给改后，空行表示跳过该行。</li>
-            <li>整批重命名在历史里表现为一次操作，<kbd>Ctrl</kbd>+<kbd>Z</kbd> 一次还原。</li>
-            <li>单项失败不中断整批，结束后汇总失败列表。</li>
-          </ul>
-        </article>
-      </div>
+            <article class="card">
+              <span class="card__label">服务群</span>
+              <h3>在群里可以做什么</h3>
+              <ul>
+                <li>反馈使用问题和可复现的异常。</li>
+                <li>讨论批量重命名、SQL、导出等功能的用法。</li>
+                <li>获取新版本发布与打包更新提醒。</li>
+              </ul>
+              <p>涉及具体文件或路径的问题，建议同时提交到
+                <a href="https://github.com/wangjiati/Files/issues">GitHub Issues</a>，方便跟踪。</p>
+            </article>
+          </div>
+        </section>
 
-      <div class="code-block" style="margin-top:16px">
-        <pre><code>弹窗内快捷键
-Ctrl+H  聚焦「查找」，弹窗打开期间覆盖全局的显示/隐藏隐藏项
-Enter   应用（焦点在列表编辑框时为确认该行）
-Esc     关闭；未应用的改动直接丢弃，不弹确认
-F2      进入下一行的手动编辑
-双击     编辑「改后」单元格</code></pre>
-        <button class="code-block__copy" type="button">复制</button>
-      </div>
+        <section class="section" id="faq">
+          <div class="section-head">
+            <p class="eyebrow">07 · FAQ</p>
+            <h2>三个常见问题</h2>
+          </div>
 
-      <details>
-        <summary>变量与日期记法</summary>
-        <div class="details__body">
-          <ul>
-            <li>计数器：<code>${}</code>、<code>${start=N}</code>、<code>${increment=N}</code>、<code>${padding=N}</code>，可组合成 <code>${start=10;padding=4;increment=2}</code>。</li>
-            <li>日期：<code>$YYYY $YY $Y $MMMM $MMM $MM $M $DDDD $DDD $DD $D $hh $h $mm $m $ss $s $fff $ff $f</code>，与 PowerRename 记法兼容。</li>
-            <li>文件夹名：<code>${folder}</code> 取直接父文件夹名，例如 <code>大阪\夜景\DSC_0001.jpg</code> 得到 <code>夜景</code>。</li>
-            <li>捕获组：<code>$1</code>–<code>$9</code> 仅在正则模式且勾选「匹配全部」时可用。</li>
-            <li>「编号模式」「日期模式」按钮只是把示例模板填进「替换为」，填入后仍可自由编辑。</li>
-          </ul>
-        </div>
-      </details>
+          <details open>
+            <summary>会和已安装的原版 Files 冲突吗？</summary>
+            <div class="details__body">
+              <p>默认不会。本分支使用独立包身份 <code>Files.Internal</code>，便携版使用自己的 <code>Data</code> 目录，
+              系统集成默认不接管。</p>
+            </div>
+          </details>
 
-      <div class="callout">
-        <strong>v1 明确不做：</strong>
-        EXIF/拍摄日期变量、随机字符串或 UUID、多步规则链、字母计数器、改名同时移动文件、
-        字面量转义、弹窗尺寸记忆，以及「应用后不关窗」的窗内撤销。
-      </div>
+          <details>
+            <summary>为什么便携版没有右键菜单和文件关联？</summary>
+            <div class="details__body">
+              <p>这些能力需要写注册表或注册 COM/Shell 扩展，与「解压即用、不污染系统」的目标冲突。
+              需要时请使用 MSIX 版并显式开启。</p>
+            </div>
+          </details>
 
-      <div class="shots">
-        <figure class="shot">
-          <img src="assets/fork/batch-rename.png" alt="Files 批量重命名弹窗，左侧规则面板，右侧改前改后预览与冲突提示" loading="lazy" width="1400" height="900">
-          <figcaption>批量重命名：规则、作用域、预览、冲突策略集中在同一个弹窗。</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section class="section" id="new-folder">
-      <div class="section-head">
-        <p class="eyebrow">10 · 新建文件夹</p>
-        <h2>新建文件夹不再只有「新建文件夹」</h2>
-        <p>
-          在新建对话框中可以按命名方案拼出名称：名称、日期、时间、年月、顺序编号，外加分隔符。
-          方案可以保存为预设，常用目录不必每次手打。
-        </p>
-      </div>
-
-      <div class="grid grid--3">
-        <article class="card">
-          <span class="card__label">组成</span>
-          <h3>组件可排序</h3>
-          <ul>
-            <li>名称、日期、时间、年月、顺序编号等组件。</li>
-            <li>组件可上移、下移，实时预览最终名称。</li>
-            <li>分隔符可选下划线、连字符、空格或无。</li>
-            <li>支持自定义文本，不受预设限制。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">预设</span>
-          <h3>记住常用方案</h3>
-          <ul>
-            <li>命名方案可以保存为预设，在新建时直接选择。</li>
-            <li>预设只影响名称生成，不改变目录位置或权限。</li>
-            <li>简体中文与繁体中文界面文本已补齐。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">边界</span>
-          <h3>仍然遵守文件系统规则</h3>
-          <ul>
-            <li>最终名称仍走 Windows 的合法性校验与重名处理。</li>
-            <li>不合法时会提示并停留在对话框，不会创建出异常目录。</li>
-            <li>命名方案只负责生成名称，不改变目录位置或权限。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="shots">
-        <figure class="shot">
-          <img src="assets/fork/new-folder-naming.png" alt="Files 新建文件夹对话框中的命名方案，包含组件、分隔符与预览" loading="lazy" width="1000" height="700">
-          <figcaption>新建文件夹：组合命名组件并实时预览。</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section class="section" id="links">
-      <div class="section-head">
-        <p class="eyebrow">11 · 链接</p>
-        <h2>符号链接、junction、硬链接不再假装成普通文件夹</h2>
-        <p>
-          上游把文件符号链接当成快捷方式，目录符号链接和 junction 当成普通文件夹，硬链接完全看不出来。
-          这里给四类文件系统链接加上角标、真实类型文字和属性页。
-        </p>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">识别</span>
-          <h3>四类链接</h3>
-          <ul>
-            <li>符号链接（文件 / 目录）。</li>
-            <li>目录联接（junction）。</li>
-            <li>硬链接，并显示链接数。</li>
-            <li>卷挂载点。</li>
-            <li><code>.lnk</code> 与 <code>.url</code> 保持原有的快捷方式表现，不混入这四类。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">显示</span>
-          <h3>形状 + 颜色双通道</h3>
-          <ul>
-            <li>图标角标用不同形状区分类型，灰度或色觉障碍下也能分辨。</li>
-            <li>类型列显示「真实类型 · 链接类型」，例如 <code>文本文档 · 符号链接</code>。</li>
-            <li>属性页新增「链接」页：类型、目标、相对/绝对、目标是否存在。</li>
-            <li>提供「打开目标位置」和「复制目标路径」；硬链接额外显示链接数。</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="callout callout--ok">
-        <strong>行为不变：</strong>
-        双击、复制、删除、重命名和搜索遍历的语义保持原样。这次只做「看得见」，
-        不做创建链接的 UI，也不引入跟随/不跟随链接的导航设置。
-      </div>
-
-      <details>
-        <summary>识别范围与性能取舍</summary>
-        <div class="details__body">
-          <ul>
-            <li>网络共享、MTP、FTP 和压缩包内不做链接识别。</li>
-            <li>OneDrive 云占位符继续由现有图标叠加层表示，不重新分类。</li>
-            <li>不会为了识别硬链接而对每个文件执行 <code>CreateFile</code>，避免拖慢大目录枚举。</li>
-            <li>目标状态区分存在、不存在、无权访问；网络路径显示为「未检查」而不是猜测。</li>
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <section class="section" id="localization">
-      <div class="section-head">
-        <p class="eyebrow">12 · 本地化与同步</p>
-        <h2>中文界面补全，上游继续跟</h2>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">本地化</span>
-          <h3>简体与繁体中文</h3>
-          <p>本分支新增的命名方案、批量重命名、筛选、SQL 工作台等界面文本，已补充简体中文与繁体中文资源。</p>
-          <p>上游语言包与 Crowdin 流程保持原样，新增字符串进入标准的 <code>Resources.resw</code>，没有硬编码在 XAML 里。</p>
-        </article>
-
-        <article class="card">
-          <span class="card__label">同步</span>
-          <h3>不向上游提交 PR</h3>
-          <ul>
-            <li>保留干净的上游跟踪分支，产品主分支独立，功能走短生命周期分支。</li>
-            <li>同步上游采用可审查的合并，不反复重写共享历史。</li>
-            <li>每次发布记录对应的上游提交，便于回溯「这块行为是谁改的」。</li>
-            <li>当前页面对应的上游基线是 <code>d8eb92f66</code>。</li>
-          </ul>
-        </article>
-      </div>
-    </section>
-
-    <section class="section" id="limits">
-      <div class="section-head">
-        <p class="eyebrow">13 · 已知边界</p>
-        <h2>这些是设计选择，不是待修的 bug</h2>
-        <p>
-          下面列出最容易产生误解的限制。如果其中某一条正好挡住你的工作流，欢迎在 Issues 里说明场景，
-          而不是把它当成偶发故障。
-        </p>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">分发</span>
-          <h3>便携版</h3>
-          <ul>
-            <li>不注册文件关联、协议、后台任务、COM/Shell 集成。</li>
-            <li>不提供托盘常驻、开机启动和后台更新。</li>
-            <li>首版仅 Windows x64，只有完整目录包，没有单文件版。</li>
-            <li>不自动导入上游原版或其他副本的配置。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">MSIX</span>
-          <h3>安装版</h3>
-          <ul>
-            <li>使用内部证书签名，安装前需要信任该证书。</li>
-            <li>默认不接管原版系统集成，需要手动开启。</li>
-            <li>不通过官方渠道自动更新，升级靠替换安装包。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">筛选</span>
-          <h3>作用域与入口</h3>
-          <ul>
-            <li>只筛当前已加载的目录，不递归扫描磁盘。</li>
-            <li>切换目录会清空临时筛选条件。</li>
-            <li>列头筛选入口在详细信息视图；其他布局仍可用顶部名称框。</li>
-            <li>不支持路径筛选、回收站扩展条件、Git/同步状态和任意嵌套 NOT 条件树。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">SQL</span>
-          <h3>只读快照</h3>
-          <ul>
-            <li>不能写入、建表、附加数据库、加载扩展或读写文件。</li>
-            <li>只查询当前打开目录的快照，不跨目录、不扫磁盘。</li>
-            <li>没有查询历史、保存查询和独立 schema 浏览器。</li>
-            <li>默认 10 秒超时、最多 50,000 行。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">导出</span>
-          <h3>一次性任务</h3>
-          <ul>
-            <li>没有进度条和取消按钮。</li>
-            <li>不记忆列、格式和范围选项。</li>
-            <li>回收站与压缩包内不可导出。</li>
-            <li>MTP、FTP、搜索结果页和库根目录不支持递归。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">重命名</span>
-          <h3>规则引擎的边界</h3>
-          <ul>
-            <li>不支持 EXIF/拍摄日期、随机串、UUID、多步规则链和字母计数器。</li>
-            <li>不能在改名同时移动文件。</li>
-            <li>「覆盖」策略移入回收站的文件无法通过撤销恢复。</li>
-            <li>子文件夹深度上限为 9 层。</li>
-          </ul>
-        </article>
-      </div>
-    </section>
-
-    <section class="section" id="download">
-      <div class="section-head">
-        <p class="eyebrow">14 · 下载与安装</p>
-        <h2>从一个 ZIP 开始</h2>
-        <p>本分支只通过 GitHub Releases 分发，不在商店或官方渠道提供。</p>
-      </div>
-
-      <div class="grid grid--2">
-        <article class="card">
-          <span class="card__label">推荐</span>
-          <h3>便携版</h3>
-          <ol>
-            <li>从 Releases 下载 <code>Files.Internal_&lt;version&gt;_x64-portable.zip</code>。</li>
-            <li>解压到一个可写目录，路径可以包含空格和中文。</li>
-            <li>运行 <code>Files.exe</code>。首次启动会在程序目录创建 <code>Data</code>。</li>
-            <li>升级时退出程序，用新包替换程序文件；需要保留配置时同时保留 <code>Data</code>。</li>
-          </ol>
-          <p class="small muted" style="margin-top:10px">不要只复制 exe；便携版依赖同目录的运行时与资源文件。</p>
-        </article>
-
-        <article class="card">
-          <span class="card__label">可选</span>
-          <h3>MSIX 安装版</h3>
-          <ol>
-            <li>下载签名的 MSIX 包，并按发布说明信任对应的内部证书。</li>
-            <li>安装后包身份为 <code>Files.Internal</code>，可与原版 Files 并存。</li>
-            <li>需要文件关联或右键集成时，在设置里显式开启；界面会显示当前接管状态。</li>
-            <li>升级时安装新包，设置与标签保留在包数据中。</li>
-          </ol>
-        </article>
-      </div>
-
-      <div class="callout">
-        <strong>升级前：</strong>
-        便携版没有自动更新。跨版本升级前建议备份 <code>Data</code> 目录；
-        如果新版本拒绝读取旧 schema，会明确报错而不是静默覆盖数据。
-      </div>
-
-      <div class="grid grid--2" style="margin-top:16px">
-        <article class="card card--flat">
-          <h3>发布产物</h3>
-          <ul>
-            <li>x64 内部签名 MSIX。</li>
-            <li>完整目录便携 ZIP。</li>
-            <li>SHA-256 校验清单。</li>
-            <li>版本号与对应的上游提交。</li>
-          </ul>
-        </article>
-
-        <article class="card card--flat">
-          <h3>相关链接</h3>
-          <ul>
-            <li><a href="https://github.com/wangjiati/Files/releases">Releases 下载</a></li>
-            <li><a href="https://github.com/wangjiati/Files">源码仓库</a></li>
-            <li><a href="https://github.com/wangjiati/Files/issues">问题反馈</a></li>
-            <li><a href="https://github.com/files-community/Files">上游项目</a></li>
-          </ul>
-        </article>
-      </div>
-    </section>
-
-    <section class="section" id="faq">
-      <div class="section-head">
-        <p class="eyebrow">15 · FAQ</p>
-        <h2>常见问题</h2>
-      </div>
-
-      <details open>
-        <summary>它会和已安装的原版 Files 冲突吗？</summary>
-        <div class="details__body">
-          <p>默认不会。本分支使用独立包身份 <code>Files.Internal</code>，便携版使用自己的 <code>Data</code> 目录，
-          系统集成默认不接管。只有你在设置中显式开启接管后，才可能改变原版的文件关联或协议注册；
-          关闭接管时会恢复开启前的值。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>便携版的数据到底在哪？</summary>
-        <div class="details__body">
-          <p>在程序目录的 <code>Data</code> 下，包含设置、标签、布局、日志和缓存。复制整个目录即可迁移；
-          同一目录同时只允许一个实例运行。如果目录不可写，程序会提示后退出，不会偷偷把数据写回用户目录。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>为什么便携版没有右键菜单和文件关联？</summary>
-        <div class="details__body">
-          <p>这两项都需要写注册表或注册 COM/Shell 扩展，与「解压即用、不污染系统」的目标冲突。
-          需要这些集成时，请使用本分支的 MSIX 版并显式开启。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>会自动更新吗？</summary>
-        <div class="details__body">
-          <p>不会。两种形态都不访问官方更新源，也不后台轮询。升级方式是到 Releases 下载新包并替换。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>为什么筛选只作用于当前目录？</summary>
-        <div class="details__body">
-          <p>列头筛选的目标是即时、可取消、可解释。递归扫描整块磁盘会让输入变慢，也会让「为什么这一行出现」变得难以回答。
-          需要跨目录分析时，用 SQL 工作台，或使用导出时的递归选项。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>SQL 能不能改文件或标签？</summary>
-        <div class="details__body">
-          <p>不能。工作台只允许一条只读 <code>SELECT</code>，执行在私有内存快照上；
-          写入、DDL、多语句、<code>ATTACH</code>、危险 PRAGMA、扩展加载和文件函数都会被拒绝。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>批量重命名能整体撤销吗？</summary>
-        <div class="details__body">
-          <p>能。整批重命名在历史里合并为一次操作，按一次 <kbd>Ctrl</kbd>+<kbd>Z</kbd> 即可还原。
-          例外是「覆盖」策略：被覆盖的文件已移入回收站，撤销只还原重命名本身，不会把被覆盖内容拿回来。</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>会支持 ARM64 吗？</summary>
-        <div class="details__body">
-          <p>首版只承诺 Windows x64，Releases 目前也只提供 x64 产物；其他架构请以实际发布内容为准。</p>
-        </div>
-      </details>
-    </section>
-
-    <section class="section" id="community">
-      <div class="section-head">
-        <p class="eyebrow">16 · 交流群</p>
-        <h2>扫码加入飞书服务群</h2>
-        <p>
-          使用中遇到问题、想确认某个功能的行为，或者希望第一时间收到版本更新提醒，可以加入
-          「Files.分支版」飞书话题群。
-        </p>
-      </div>
-
-      <div class="grid grid--halves" style="align-items:center">
-        <figure class="qr-card">
-          <img src="assets/feishu/group-qr.png" alt="「Files.分支版」飞书交流群二维码" loading="lazy" width="1372" height="1392">
-          <figcaption>飞书扫码加入「Files.分支版」话题群</figcaption>
-        </figure>
-
-        <article class="card">
-          <span class="card__label">服务群</span>
-          <h3>在群里可以做什么</h3>
-          <ul>
-            <li>反馈使用问题和可复现的异常。</li>
-            <li>讨论批量重命名、SQL 工作台、导出等功能的用法。</li>
-            <li>获取新版本发布与打包更新提醒。</li>
-            <li>提出功能建议，或确认某个限制是否属于设计取舍。</li>
-          </ul>
-          <p>问题如果涉及具体文件或路径，建议同时提交到 <a href="https://github.com/wangjiati/Files/issues">GitHub Issues</a>，方便跟踪。</p>
-        </article>
-      </div>
-    </section>
+          <details>
+            <summary>会自动更新吗？</summary>
+            <div class="details__body">
+              <p>不会。两种形态都不访问官方更新源，升级方式是到
+              <a href="https://github.com/wangjiati/Files/releases">Releases</a> 下载新包并替换。</p>
+            </div>
+          </details>
+        </section>
       </div>
 
       <aside class="toc" aria-labelledby="toc-title">
@@ -1363,25 +433,16 @@ F2      进入下一行的手动编辑
             <li><a href="#overview">概览</a></li>
             <li><a href="#matrix">差异速览</a></li>
           </ul>
-          <p class="toc__group">功能详解</p>
+          <p class="toc__group">功能</p>
           <ul>
-            <li><a href="#distribution">分发与运行形态</a></li>
-            <li><a href="#time-format">时间格式</a></li>
-            <li><a href="#filter">列头筛选</a></li>
-            <li><a href="#address">地址表达式</a></li>
-            <li><a href="#sql">SQL 工作台</a></li>
-            <li><a href="#export">导出文件列表</a></li>
-            <li><a href="#rename">批量重命名</a></li>
-            <li><a href="#new-folder">新建文件夹命名</a></li>
-            <li><a href="#links">链接可视化</a></li>
-          </ul>
-          <p class="toc__group">其他</p>
-          <ul>
-            <li><a href="#localization">本地化与同步</a></li>
+            <li><a href="#features">功能要点</a></li>
             <li><a href="#limits">已知边界</a></li>
+          </ul>
+          <p class="toc__group">支持</p>
+          <ul>
             <li><a href="#download">下载与安装</a></li>
-            <li><a href="#faq">FAQ</a></li>
             <li><a href="#community">交流群</a></li>
+            <li><a href="#faq">FAQ</a></li>
           </ul>
         </nav>
       </aside>
@@ -1392,11 +453,8 @@ F2      进入下一行的手动编辑
     <div class="site-footer__inner">
       <div>
         <p class="site-footer__title">关于本页</p>
-        <p>
-          本页是第三方分支的功能说明，不是 files-community 的官方文档。
-          内容依据仓库 README、<code>docs/superpowers</code> 下的设计文档与当前源码常量整理；
-          功能行为以对应版本的安装包为准。
-        </p>
+        <p>第三方分支的功能说明，不是 files-community 的官方文档。内容依据仓库 README、设计文档与源码常量整理，
+        功能行为以对应版本的安装包为准。</p>
         <a class="to-top" href="#top">
           回到顶部
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
