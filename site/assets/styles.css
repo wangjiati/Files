@@ -715,7 +715,111 @@ td.is-new {
   font-weight: 600;
 }
 
+/* -------------------------------------------------------------- feature */
+
+.feature {
+  margin-top: 34px;
+}
+
+.feature__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.feature__head h3 {
+  margin: 0;
+  font-size: 1.22rem;
+  letter-spacing: -0.01em;
+}
+
+.feature__head .feature__index {
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.feature__lead {
+  max-width: 70ch;
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.feature__grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.feature__grid > .card--wide {
+  grid-column: 1 / -1;
+}
+
+.callout {
+  margin: 16px 0 0;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--border));
+  background: var(--warn-soft);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.callout strong {
+  color: var(--warn);
+}
+
+.callout--ok {
+  border-color: color-mix(in srgb, var(--ok) 30%, var(--border));
+  background: var(--ok-soft);
+}
+
+.callout--ok strong {
+  color: var(--ok);
+}
+
+.callout ul {
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+  color: var(--text-muted);
+}
+
+.callout li + li {
+  margin-top: 4px;
+}
+
 /* -------------------------------------------------------------- figures */
+
+.shots {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.shot {
+  margin: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.shot figcaption {
+  padding: 11px 16px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
 
 .qr-card {
   margin: 0;
@@ -836,6 +940,33 @@ details .details__body ol {
 
 details .details__body li + li {
   margin-top: 4px;
+}
+
+/* ------------------------------------------------------------------ toc */
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.pill-row a {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.pill-row a:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 /* --------------------------------------------------------------- footer */
