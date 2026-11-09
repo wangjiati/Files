@@ -1060,6 +1060,7 @@ try {
         "Working-Tree: $workingTreeState"
         "Built-Utc: $builtUtc"
         "Portable: $zipName"
+        "Docs: install-guide.md, install-guide.png"
     )
     if (-not $PortableOnly) {
         $releaseInfoLines += "Portable-Identity: $portableIdentityName (optional, registered by the launcher)"
@@ -1080,14 +1081,25 @@ try {
     $releaseInfo = $releaseInfoLines -join "`r`n"
     Write-Utf8File (Join-Path $portableStaging $releaseInfoName) ($releaseInfo + "`r`n")
 
+    $guideSource = Join-Path $repoRoot "docs\install-guide"
+    $guideNames = @("install-guide.md", "install-guide.png")
+    foreach ($guideName in $guideNames) {
+        if (-not (Test-Path -LiteralPath (Join-Path $guideSource $guideName) -PathType Leaf)) {
+            Fail "The install guide '$guideName' is missing from '$guideSource'."
+        }
+    }
+
     # The launcher registers the identity package on first start, and that registration only
-    # succeeds while the signing certificate is trusted. Ship the certificate and the trust
-    # helper inside the payload so one download is self-sufficient.
+    # succeeds while the signing certificate is trusted. Ship the certificate, the trust helper
+    # and the install guide inside the payload so one download is self-sufficient.
     if (-not $PortableOnly) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Trust-InternalCertificate.bat") -Destination (Join-Path $portableStaging "Trust-InternalCertificate.bat") -Force
         [System.IO.File]::WriteAllBytes(
             (Join-Path $portableStaging $cerName),
             $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+    }
+    foreach ($guideName in $guideNames) {
+        Copy-Item -LiteralPath (Join-Path $guideSource $guideName) -Destination (Join-Path $portableStaging $guideName) -Force
     }
 
     $zipSourcePath = Join-Path $tempRoot $zipName
@@ -1097,13 +1109,6 @@ try {
 
     if (-not (Test-Path -LiteralPath $outputParent -PathType Container)) {
         New-Item -ItemType Directory -Path $outputParent -Force | Out-Null
-    }
-    $guideSource = Join-Path $repoRoot "docs\install-guide"
-    $guideNames = @("install-guide.md", "install-guide.png")
-    foreach ($guideName in $guideNames) {
-        if (-not (Test-Path -LiteralPath (Join-Path $guideSource $guideName) -PathType Leaf)) {
-            Fail "The install guide '$guideName' is missing from '$guideSource'."
-        }
     }
 
     $releaseStaging = Join-Path $outputParent (".$outputLeaf.staging-" + [Guid]::NewGuid().ToString("N"))

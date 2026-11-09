@@ -145,7 +145,7 @@ folders.
 | --- | --- |
 | `Files.Internal_<version>_x64-portable.zip` | Complete portable directory, extract and run |
 | `Files.Internal_<version>_x64.cer`, `Trust-InternalCertificate.bat` | Also stored at the root of the ZIP: the portable build needs the certificate trusted before its identity package can register |
-| `install-guide.md`, `install-guide.png` | Install instructions, text and single-page image |
+| `install-guide.md`, `install-guide.png` | Also stored inside the ZIP, so the extracted folder documents itself |
 | `SHA256SUMS.txt` | SHA-256 hashes for every file in the folder except itself |
 | `RELEASE-INFO.txt` | Version, commits, target dependency, signature identity and status |
 
