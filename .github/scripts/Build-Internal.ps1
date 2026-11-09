@@ -1150,6 +1150,12 @@ try {
     else {
         Publish-ReleaseFolders $releaseStaging $outputFullPath @("msix", "portable") $checksumsName
     }
+
+    # Publishing moves the folder contents out of the staging root; remove what is left so a
+    # successful build does not leave an empty ".<version>.staging-*" directory behind.
+    if (Test-Path -LiteralPath $releaseStaging) {
+        Remove-Item -LiteralPath $releaseStaging -Recurse -Force -ErrorAction SilentlyContinue
+    }
     $releaseStaging = $null
 
     Write-Host ""
