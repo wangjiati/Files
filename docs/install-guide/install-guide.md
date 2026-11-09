@@ -15,7 +15,7 @@
 | 安装 MSIX 时报 `0x800B010A`「无法验证此应用包的发布者证书」 | 证书链构建不到受信任的根 |
 | 便携版运行后输入法没有候选词预览 | 启动器无法注册身份包，退回无身份启动 |
 
-`Trust-InternalCertificate.bat` 把随包发布的 `.cer` 导入本机「受信任人」存储，两个问题一起解决。**每台机器只需要执行一次**，证书有效期到 2029-11-03，期间升级版本不用重复导入。
+`Start-FilesInternal.bat` 把随包发布的 `.cer` 导入本机「受信任人」存储，然后直接启动同目录的安装向导或便携版，两个问题一起解决。**每台机器只需要执行一次**，证书有效期到 2029-11-03，期间升级版本不用重复导入。
 
 > 只导入公钥证书（`.cer`），不涉及私钥。私钥始终留在打包机上，不会随发布包分发。
 
@@ -42,9 +42,9 @@ portable\   便携版：便携压缩包 + 说明
 | --- | --- | --- |
 | `msix\` | `Files.Internal_4.3.1.2_x64.msix` | 安装版安装包 |
 | `msix\` | `Files.Internal_4.3.1.2_x64.cer` | 签名证书公钥，导入用 |
-| `msix\` | `Trust-InternalCertificate.bat` | 一键导入证书的脚本 |
+| `msix\` | `Start-FilesInternal.bat` | 一键：导入证书 → 打开安装向导 |
 | `msix\` | `Files.Internal_4.3.1.2_x64-msix.zip` | 上述文件的打包，便于整包转发 |
-| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体；解压后目录根部同样自带 `.cer` 和 `.bat` |
+| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体；解压后目录根部同样自带 `.cer`、`.bat` 和说明 |
 | 两者 | `install-guide.md`、`install-guide.png` | 本说明 |
 | 两者 | `SHA256SUMS.txt`、`RELEASE-INFO.txt` | 完整性校验与版本信息 |
 
@@ -73,30 +73,38 @@ certutil -hashfile Files.Internal_4.3.1.2_x64.msix SHA256
 
 两个包各自带着证书和脚本，位置不同：
 
-- **安装版**：`msix\` 文件夹里有 `Files.Internal_4.3.1.2_x64.cer` 和 `Trust-InternalCertificate.bat`
+- **安装版**：`msix\` 文件夹里有 `Files.Internal_4.3.1.2_x64.cer` 和 `Start-FilesInternal.bat`
 - **便携版**：先解压 `Files.Internal_4.3.1.2_x64-portable.zip`，解压目录根部有同样的两个文件
 
 脚本只认**自己所在目录**的 `.cer`，所以不要把 `.bat` 单独拷到别处。
 
-### 第 2 步：运行脚本
+### 第 2 步：运行 Start-FilesInternal.bat
 
-在上一步那个目录里双击 `Trust-InternalCertificate.bat`。
+在上一步那个目录里双击 `Start-FilesInternal.bat`。它做三件事：
 
-- 脚本会检测权限，未提权时自动通过 UAC 重新拉起自己
-- 在 UAC 提示中点「是」
-- 如果 UAC 窗口没有出现，右键脚本 →「以管理员身份运行」
+1. 检测权限，未提权时通过 UAC 重新拉起自己
+2. 把同目录的证书导入「受信任人」
+3. 自动启动同目录的产品：
+   - 旁边有 `.msix` → 打开 Windows 安装向导
+   - 旁边有 `Files.exe` → 启动便携版
+
+在 UAC 提示中点「是」。如果 UAC 窗口没有出现，右键脚本 →「以管理员身份运行」。
+
+> 应用是通过 `explorer.exe` 拉起的，所以即使脚本本身是管理员权限，Files 仍以普通用户权限运行。
 
 ### 第 3 步：确认成功
 
-窗口显示下面这行即完成：
+窗口显示下面这行即表示证书已导入，随后会自动打开安装向导或便携版：
 
 ```text
-Done. The certificate is now trusted for this machine.
+The certificate is trusted on this machine.
 ```
 
 失败时脚本以退出码 `1` 结束，并打印 `certutil` 的原始错误。最常见的是没有管理员权限导致的 `0x80070005`。
 
 ### 第 4 步：安装（安装版与便携版二选一）
+
+如果第 2 步已经自动打开了安装向导或便携版，这一步可以跳过；需要手动时才看。
 
 **方式 A — 安装版（推荐日常使用）**
 
@@ -188,10 +196,11 @@ certutil -delstore TrustedPeople 479604F7D446C7E8959902E6076572634EA1A7A1
 
 ## 附：脚本做了什么
 
-`Trust-InternalCertificate.bat` 的全部动作只有三步：
+`Start-FilesInternal.bat` 的全部动作只有四步：
 
 1. 用 `whoami /groups` 检查当前是否具有管理员完整性级别（查 `S-1-16-12288`）
-2. 未提权时通过 `mshta` 调用 `ShellExecute ... runas` 重新拉起自己
+2. 未提权时生成一个临时 `.vbs`，用 `ShellExecute ... "runas"` 重新拉起自己，用完即删
 3. 执行 `certutil -addstore -f "TrustedPeople" <证书>` 写入本机证书存储
+4. 通过 `explorer.exe` 启动同目录的 `.msix`（安装向导）或 `Files.exe`（便携版），保证应用不以管理员权限运行
 
 不写注册表、不改系统设置、不联网、不安装任何服务。

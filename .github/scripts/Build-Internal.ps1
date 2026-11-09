@@ -723,6 +723,7 @@ try {
     $zipName = "${productId}_${version}_${platform}-portable.zip"
     $msixBundleName = "${productId}_${version}_${platform}-msix.zip"
     $cerName = "${productId}_${version}_${platform}.cer"
+    $startScriptName = "Start-FilesInternal.bat"
     $checksumsName = "SHA256SUMS.txt"
     $releaseInfoName = "RELEASE-INFO.txt"
 
@@ -1064,7 +1065,7 @@ try {
     )
     if (-not $PortableOnly) {
         $releaseInfoLines += "Portable-Identity: $portableIdentityName (optional, registered by the launcher)"
-        $releaseInfoLines += "Portable-Trust-Helper: Trust-InternalCertificate.bat + $cerName (run once per machine)"
+        $releaseInfoLines += "Portable-Trust-Helper: $startScriptName + $cerName (run once per machine)"
     }
     if ($PortableOnly) {
         $releaseInfoLines += "MSIX: Not included (portable-only build)"
@@ -1093,7 +1094,7 @@ try {
     # succeeds while the signing certificate is trusted. Ship the certificate, the trust helper
     # and the install guide inside the payload so one download is self-sufficient.
     if (-not $PortableOnly) {
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Trust-InternalCertificate.bat") -Destination (Join-Path $portableStaging "Trust-InternalCertificate.bat") -Force
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $startScriptName) -Destination (Join-Path $portableStaging $startScriptName) -Force
         [System.IO.File]::WriteAllBytes(
             (Join-Path $portableStaging $cerName),
             $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
@@ -1135,7 +1136,7 @@ try {
         [System.IO.File]::WriteAllBytes(
             (Join-Path $msixFolder $cerName),
             $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Trust-InternalCertificate.bat") -Destination (Join-Path $msixFolder "Trust-InternalCertificate.bat") -Force
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $startScriptName) -Destination (Join-Path $msixFolder $startScriptName) -Force
         foreach ($guideName in $guideNames) {
             Copy-Item -LiteralPath (Join-Path $guideSource $guideName) -Destination (Join-Path $msixFolder $guideName) -Force
         }
@@ -1165,6 +1166,21 @@ try {
     }
     else {
         Publish-ReleaseFolders $releaseStaging $outputFullPath @("msix", "portable") $checksumsName
+    }
+
+    # The release directory owns exactly its two folders. Anything else is a leftover from an
+    # older layout or a manual copy, and a published release should not carry it. Skip the
+    # sweep when the output was pointed at the repository root: deleting there would be
+    # destructive and is never what a release build means.
+    $isRepositoryRoot = [string]::Equals($outputFullPath.TrimEnd("\"), $repoRoot.TrimEnd("\"), [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $isRepositoryRoot) {
+        $keptEntries = @("msix", "portable")
+        $strayEntries = @(Get-ChildItem -LiteralPath $outputFullPath -Force |
+            Where-Object { $keptEntries -notcontains $_.Name })
+        foreach ($strayEntry in $strayEntries) {
+            Remove-Item -LiteralPath $strayEntry.FullName -Recurse -Force -ErrorAction Stop
+            Write-Host "    Removed stray entry from the output directory: $($strayEntry.Name)"
+        }
     }
 
     # Publishing moves the folder contents out of the staging root; remove what is left so a

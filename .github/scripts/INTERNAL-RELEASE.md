@@ -124,6 +124,11 @@ verification happen in staging directories. The previous release is replaced
 only after the complete new release passes validation. A failed build leaves the
 previous release intact and removes the failed staging output.
 
+The release directory owns exactly `msix\` and `portable\`. After a successful
+publish the script removes every other top-level entry, so leftovers from an
+older layout or manual copies do not survive a rebuild. It never sweeps when the
+output directory is the repository root.
+
 Default output: `artifacts\internal\<version>\`, split into two self-contained
 folders.
 
@@ -133,7 +138,7 @@ folders.
 | --- | --- |
 | `Files.Internal_<version>_x64.msix` | Signed internal install package |
 | `Files.Internal_<version>_x64.cer` | Public certificate used to sign the package |
-| `Trust-InternalCertificate.bat` | Imports the certificate into `LocalMachine\TrustedPeople` |
+| `Start-FilesInternal.bat` | Imports the certificate into `LocalMachine\TrustedPeople`, then opens the MSIX |
 | `Files.Internal_<version>_x64-msix.zip` | The files above plus `RELEASE-INFO.txt`, as one archive |
 | `install-guide.md`, `install-guide.png` | Install instructions, text and single-page image |
 | `SHA256SUMS.txt` | SHA-256 hashes for every file in the folder except itself |
@@ -144,13 +149,13 @@ folders.
 | File | Purpose |
 | --- | --- |
 | `Files.Internal_<version>_x64-portable.zip` | Complete portable directory, extract and run |
-| `Files.Internal_<version>_x64.cer`, `Trust-InternalCertificate.bat` | Also stored at the root of the ZIP: the portable build needs the certificate trusted before its identity package can register |
+| `Files.Internal_<version>_x64.cer`, `Start-FilesInternal.bat` | Also stored at the root of the ZIP: the portable build needs the certificate trusted before its identity package can register. The script then starts the launcher. |
 | `install-guide.md`, `install-guide.png` | Also stored inside the ZIP, so the extracted folder documents itself |
 | `SHA256SUMS.txt` | SHA-256 hashes for every file in the folder except itself |
 | `RELEASE-INFO.txt` | Version, commits, target dependency, signature identity and status |
 
 Each folder can be handed out on its own: neither needs the other. The `.cer`
-and `Trust-InternalCertificate.bat` are exported and copied by the build, so
+and `Start-FilesInternal.bat` are exported and copied by the build, so
 they always match the signature of the package in the same folder.
 
 `RELEASE-INFO.txt` is also stored at the root of the portable ZIP. MSIX bundles,
@@ -248,11 +253,12 @@ The portable ZIP also contains `Files.Internal.Portable.Identity.msix` (a payloa
 package). On Windows builds where unpackaged WinUI 3 applications lose the IME candidate window
 (observed on Windows 11 build 26300), the launcher registers this package on first start and then
 activates the app through the package identity, which restores the candidate window. The binaries
-keep living in the portable folder. No helper script ships in the ZIP: registration is automatic.
+keep living in the portable folder. No separate registration script ships: the launcher does it.
 
 - Registration is per user and only succeeds when the signing certificate is trusted. Trust it
-  once per machine with `Trust-InternalCertificate.bat` (shipped beside the MSIX, not inside the
-  ZIP); with a trusted code-signing certificate the launcher registers silently.
+  once per machine with `Start-FilesInternal.bat`, which is shipped in the `msix\` folder and at
+  the root of the portable ZIP; with a trusted code-signing certificate the launcher registers
+  silently.
 - To remove the registration, unregister before deleting the folder, otherwise the registration
   keeps pointing at a missing external location:
   `Get-AppxPackage -Name Files.Internal.Portable.Identity | Remove-AppxPackage`.
