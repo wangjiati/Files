@@ -1126,12 +1126,16 @@ try {
         Write-Utf8File (Join-Path $msixFolder $releaseInfoName) ($releaseInfo + "`r`n")
 
         # Bundle the folder once RELEASE-INFO exists so the archive carries the same metadata.
-        # The checksum manifest is written afterwards and stays outside the archive.
+        # The checksum manifest is written afterwards and stays outside the archive. The
+        # archive is produced outside the folder and copied in, because a ZIP cannot be
+        # created inside the directory it is enumerating.
+        $bundleTemp = Join-Path $tempRoot $msixBundleName
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $msixFolder,
-            (Join-Path $msixFolder $msixBundleName),
+            $bundleTemp,
             [System.IO.Compression.CompressionLevel]::Optimal,
             $false)
+        Copy-Item -LiteralPath $bundleTemp -Destination (Join-Path $msixFolder $msixBundleName) -Force
 
         Write-ReleaseChecksums $msixFolder $checksumsName $displayName $version $commit $resolvedUpstream $builtUtc
         $msixHash = Get-Sha256 (Join-Path $msixFolder $msixName)
