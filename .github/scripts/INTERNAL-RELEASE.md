@@ -10,6 +10,9 @@ Versions are four numeric parts: `<upstreamMajor>.<upstreamMinor>.<upstreamBuild
 - The first three parts match the upstream version the branch is synced to.
 - The fourth part is the internal iteration. It starts at 1 and increases with
   every internal release; reset it to 1 when the upstream version changes.
+- Do not bump the fourth part on your own. Ask the maintainer whether the build is a new
+  release. Only increment after they say yes; a verification rebuild keeps the current
+  version and overwrites the existing output directory.
 - The first release using this scheme is `4.3.1.1`.
 - Change both `Files.App.csproj` and `Package.appxmanifest`; the existing
   `Portable_VersionMatchesThePackageManifest` test fails if they drift.
@@ -18,7 +21,8 @@ Versions are four numeric parts: `<upstreamMajor>.<upstreamMinor>.<upstreamBuild
 - The GitHub release title is `Files Internal <version>`.
 - The release body must contain `## 本版变化`; this section is shown in the
   client update dialog.
-- Upload the MSIX, the portable ZIP, `SHA256SUMS.txt`, and `RELEASE-INFO.txt`.
+- Upload the contents of `msix\` and `portable\`, each with its own `SHA256SUMS.txt`
+  and `RELEASE-INFO.txt`.
 - Mark preview builds as `prerelease` so `releases/latest` ignores them.
 
 ## Requirements
@@ -120,14 +124,33 @@ verification happen in staging directories. The previous release is replaced
 only after the complete new release passes validation. A failed build leaves the
 previous release intact and removes the failed staging output.
 
-Default output: `artifacts\internal\<version>\`.
+Default output: `artifacts\internal\<version>\`, split into two self-contained
+folders.
+
+`msix\`
 
 | File | Purpose |
 | --- | --- |
 | `Files.Internal_<version>_x64.msix` | Signed internal install package |
-| `Files.Internal_<version>_x64-portable.zip` | Complete portable directory |
-| `SHA256SUMS.txt` | SHA-256 hashes for the MSIX, Portable ZIP, and `RELEASE-INFO.txt` |
+| `Files.Internal_<version>_x64.cer` | Public certificate used to sign the package |
+| `Trust-InternalCertificate.bat` | Imports the certificate into `LocalMachine\TrustedPeople` |
+| `Files.Internal_<version>_x64-msix.zip` | The files above plus `RELEASE-INFO.txt`, as one archive |
+| `install-guide.md`, `install-guide.png` | Install instructions, text and single-page image |
+| `SHA256SUMS.txt` | SHA-256 hashes for every file in the folder except itself |
 | `RELEASE-INFO.txt` | Version, commits, target dependency, signature identity and status |
+
+`portable\`
+
+| File | Purpose |
+| --- | --- |
+| `Files.Internal_<version>_x64-portable.zip` | Complete portable directory, extract and run |
+| `install-guide.md`, `install-guide.png` | Install instructions, text and single-page image |
+| `SHA256SUMS.txt` | SHA-256 hashes for every file in the folder except itself |
+| `RELEASE-INFO.txt` | Version, commits, target dependency, signature identity and status |
+
+Each folder can be handed out on its own: neither needs the other. The `.cer`
+and `Trust-InternalCertificate.bat` are exported and copied by the build, so
+they always match the signature of the package in the same folder.
 
 `RELEASE-INFO.txt` is also stored at the root of the portable ZIP. MSIX bundles,
 app installers, symbol packages, and official update metadata are intentionally
@@ -136,14 +159,13 @@ not included in the release output.
 Verify the artifacts:
 
 ```powershell
-Get-FileHash .\Files.Internal_<version>_x64.msix -Algorithm SHA256
-Get-FileHash .\Files.Internal_<version>_x64-portable.zip -Algorithm SHA256
-Get-FileHash .\RELEASE-INFO.txt -Algorithm SHA256
-Get-AuthenticodeSignature .\Files.Internal_<version>_x64.msix
+Get-FileHash .\msix\Files.Internal_<version>_x64.msix -Algorithm SHA256
+Get-FileHash .\portable\Files.Internal_<version>_x64-portable.zip -Algorithm SHA256
+Get-AuthenticodeSignature .\msix\Files.Internal_<version>_x64.msix
 ```
 
-Compare all three hashes with `SHA256SUMS.txt`. `SHA256SUMS.txt` does not contain
-a hash of itself.
+Compare the hashes with the `SHA256SUMS.txt` of the folder each file belongs to.
+A manifest covers every file in its own folder and never contains a hash of itself.
 
 Trust the internal certificate on the target machine through the organization's
 normal certificate deployment; the build script does not install it. A build

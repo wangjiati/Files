@@ -8,7 +8,7 @@ Automated acceptance test for the internal portable release.
 .DESCRIPTION
 Extracts the portable ZIP and verifies, without user interaction:
 
-  * payload completeness (launcher, lib, merged resource index, identity package, install script)
+  * payload completeness (launcher, lib, merged resource index, identity package)
   * identity package signature and RELEASE-INFO contents
   * launcher capabilities (QA opt-out and package-repository fallback)
   * plain launch: app starts without package identity and without the startup error page

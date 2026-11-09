@@ -6,10 +6,17 @@
 Builds the x64 Files - Internal release artifacts.
 
 .DESCRIPTION
-Produces exactly three release artifacts in the output directory:
-  - a signed x64 internal MSIX package
-  - a complete portable ZIP archive
-  - a SHA-256 checksum manifest
+Produces the x64 Files - Internal release as two sibling folders in the output
+directory:
+
+  msix\       signed internal MSIX, its public certificate, the trust helper,
+              the install guide, RELEASE-INFO.txt, SHA256SUMS.txt, and one ZIP
+              of that set.
+  portable\   the complete portable ZIP archive, the install guide,
+              RELEASE-INFO.txt, and SHA256SUMS.txt.
+
+Each folder is self-contained: it carries its own release information and
+checksum manifest, so either one can be handed out on its own.
 
 A release information file is also written next to the artifacts and included
 in the portable ZIP so the package version, product commit, upstream commit,
@@ -492,156 +499,80 @@ function Assert-ReleaseChecksums([string]$ManifestPath, [string]$Root, [string[]
     }
 }
 
-function Publish-ReleaseSet([string]$StagingDirectory, [string]$DestinationDirectory, [string[]]$FileNames, [string]$ChecksumsName) {
-    if (-not (Test-Path -LiteralPath $StagingDirectory -PathType Container)) {
-        Fail "Release staging directory '$StagingDirectory' is missing."
+function Write-ReleaseChecksums([string]$Folder, [string]$ChecksumsName, [string]$DisplayName, [string]$Version, [string]$Commit, [string]$Upstream, [string]$BuiltUtc) {
+    $names = @(Get-ChildItem -LiteralPath $Folder -File -Force |
+        Where-Object { $_.Name -ne $ChecksumsName } |
+        ForEach-Object Name |
+        Sort-Object)
+
+    $lines = @(
+        "# $DisplayName $Version"
+        "# Commit: $Commit"
+        "# Upstream-Commit: $Upstream"
+        "# Built-Utc: $BuiltUtc"
+        "# Format: SHA-256, two spaces, filename"
+    )
+    foreach ($name in $names) {
+        $lines += "$(Get-Sha256 (Join-Path $Folder $name))  $name"
     }
 
-    $stagingExtras = @(Get-ChildItem -LiteralPath $StagingDirectory -Force |
-        Where-Object { $FileNames -notcontains $_.Name })
-    if ($stagingExtras.Count -ne 0) {
-        Fail "Release staging contains unexpected entries: $(($stagingExtras | ForEach-Object Name) -join ', ')."
+    Write-Utf8File (Join-Path $Folder $ChecksumsName) (($lines -join "`r`n") + "`r`n")
+    Assert-ReleaseChecksums (Join-Path $Folder $ChecksumsName) $Folder $names
+}
+
+function Publish-ReleaseFolders([string]$StagingRoot, [string]$DestinationRoot, [string[]]$FolderNames, [string]$ChecksumsName) {
+    if (-not (Test-Path -LiteralPath $DestinationRoot -PathType Container)) {
+        New-Item -ItemType Directory -Path $DestinationRoot -Force | Out-Null
     }
-    foreach ($name in $FileNames) {
-        if (-not (Test-Path -LiteralPath (Join-Path $StagingDirectory $name) -PathType Leaf)) {
-            Fail "Release staging is missing '$name'."
+
+    foreach ($folderName in $FolderNames) {
+        $sourceFolder = Join-Path $StagingRoot $folderName
+        $destinationFolder = Join-Path $DestinationRoot $folderName
+        if (-not (Test-Path -LiteralPath $sourceFolder -PathType Container)) {
+            Fail "Release staging is missing the '$folderName' folder."
         }
-    }
 
-    if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
-        Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory -Confirm:$false
+        $backupFolder = $null
+        if (Test-Path -LiteralPath $destinationFolder) {
+            if (-not (Test-Path -LiteralPath $destinationFolder -PathType Container)) {
+                Fail "Release output path '$destinationFolder' exists but is not a directory."
+            }
+
+            $backupFolder = $destinationFolder + ".old-" + [Guid]::NewGuid().ToString("N")
+            Move-Item -LiteralPath $destinationFolder -Destination $backupFolder -Confirm:$false
+        }
+
         try {
-            Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
+            Move-Item -LiteralPath $sourceFolder -Destination $destinationFolder -Confirm:$false
+
+            $coveredNames = @(Get-ChildItem -LiteralPath $destinationFolder -File -Force |
+                Where-Object { $_.Name -ne $ChecksumsName } |
+                ForEach-Object Name)
+            Assert-ReleaseChecksums (Join-Path $destinationFolder $ChecksumsName) $destinationFolder $coveredNames
         }
         catch {
-            if (Test-Path -LiteralPath $DestinationDirectory) {
-                Remove-Item -LiteralPath $DestinationDirectory -Recurse -Force -ErrorAction SilentlyContinue
+            $publishError = $_
+            if (Test-Path -LiteralPath $destinationFolder) {
+                Remove-Item -LiteralPath $destinationFolder -Recurse -Force -ErrorAction SilentlyContinue
             }
-            throw
+            if ($null -ne $backupFolder -and (Test-Path -LiteralPath $backupFolder)) {
+                try {
+                    Move-Item -LiteralPath $backupFolder -Destination $destinationFolder -ErrorAction Stop
+                }
+                catch {
+                    Fail "Publishing '$folderName' failed and the previous folder could not be restored from '$backupFolder': $($_.Exception.Message)"
+                }
+            }
+            throw $publishError
         }
-        return
-    }
 
-    if (Test-Path -LiteralPath $DestinationDirectory) {
-        if (-not (Test-Path -LiteralPath $DestinationDirectory -PathType Container)) {
-            Fail "Release output path '$DestinationDirectory' exists but is not a directory."
-        }
-
-        $existingNames = @(Get-ChildItem -LiteralPath $DestinationDirectory -Force | ForEach-Object Name)
-        $hasOnlyReleaseFiles = @($existingNames | Where-Object { $FileNames -notcontains $_ }).Count -eq 0
-
-        if ($hasOnlyReleaseFiles) {
-            $backupDirectory = $DestinationDirectory + ".old-" + [Guid]::NewGuid().ToString("N")
-            Move-Item -LiteralPath $DestinationDirectory -Destination $backupDirectory -Confirm:$false
+        if ($null -ne $backupFolder -and (Test-Path -LiteralPath $backupFolder)) {
             try {
-                Move-Item -LiteralPath $StagingDirectory -Destination $DestinationDirectory -Confirm:$false
-                Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
+                Remove-Item -LiteralPath $backupFolder -Recurse -Force -ErrorAction Stop
             }
             catch {
-                $publishError = $_
-                if (Test-Path -LiteralPath $DestinationDirectory) {
-                    Remove-Item -LiteralPath $DestinationDirectory -Recurse -Force -ErrorAction SilentlyContinue
-                }
-                if (Test-Path -LiteralPath $backupDirectory) {
-                    try {
-                        Move-Item -LiteralPath $backupDirectory -Destination $DestinationDirectory -ErrorAction Stop
-                    }
-                    catch {
-                        Fail "Publishing failed and the previous release could not be restored from '$backupDirectory': $($_.Exception.Message)"
-                    }
-                }
-                throw $publishError
+                Write-Warning "The '$folderName' folder was published, but the previous copy '$backupFolder' could not be removed: $($_.Exception.Message)"
             }
-
-            if (Test-Path -LiteralPath $backupDirectory) {
-                try {
-                    Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction Stop
-                }
-                catch {
-                    Write-Warning "The new release was published, but the previous release backup '$backupDirectory' could not be removed: $($_.Exception.Message)"
-                }
-            }
-            return
-        }
-    }
-
-    foreach ($name in $FileNames) {
-        $destinationFile = Join-Path $DestinationDirectory $name
-        if (Test-Path -LiteralPath $destinationFile) {
-            if (-not (Test-Path -LiteralPath $destinationFile -PathType Leaf)) {
-                Fail "Release output path '$destinationFile' exists but is not a file."
-            }
-        }
-    }
-
-    $destinationParent = Split-Path -Parent $DestinationDirectory
-    $destinationLeaf = Split-Path -Leaf $DestinationDirectory
-    $backupDirectory = Join-Path $destinationParent (".$destinationLeaf.backup-" + [Guid]::NewGuid().ToString("N"))
-
-    $replacedFiles = New-Object System.Collections.ArrayList
-    $addedFiles = New-Object System.Collections.Generic.List[string]
-    $backupCreated = $false
-    try {
-        foreach ($name in $FileNames) {
-            $sourceFile = Join-Path $StagingDirectory $name
-            $destinationFile = Join-Path $DestinationDirectory $name
-            if (Test-Path -LiteralPath $destinationFile -PathType Leaf) {
-                if (-not $backupCreated) {
-                    New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
-                    $backupCreated = $true
-                }
-
-                $backupFile = Join-Path $backupDirectory $name
-                [System.IO.File]::Replace($sourceFile, $destinationFile, $backupFile, $true)
-                [void]$replacedFiles.Add([pscustomobject]@{ Destination = $destinationFile; Backup = $backupFile })
-            }
-            else {
-                [System.IO.File]::Move($sourceFile, $destinationFile)
-                $addedFiles.Add($name)
-            }
-        }
-
-        Assert-ReleaseChecksums (Join-Path $DestinationDirectory $ChecksumsName) $DestinationDirectory ($FileNames | Where-Object { $_ -ne $ChecksumsName })
-    }
-    catch {
-        $publishError = $_
-        $rollbackErrors = @()
-        for ($index = $replacedFiles.Count - 1; $index -ge 0; $index--) {
-            $entry = $replacedFiles[$index]
-            if (Test-Path -LiteralPath $entry.Backup -PathType Leaf) {
-                try {
-                    [System.IO.File]::Copy($entry.Backup, $entry.Destination, $true)
-                }
-                catch {
-                    $rollbackErrors += "'$($entry.Destination)': $($_.Exception.Message)"
-                }
-            }
-        }
-        foreach ($name in $addedFiles) {
-            $destinationFile = Join-Path $DestinationDirectory $name
-            if (Test-Path -LiteralPath $destinationFile) {
-                try {
-                    Remove-Item -LiteralPath $destinationFile -Force -Confirm:$false -ErrorAction Stop
-                }
-                catch {
-                    $rollbackErrors += "'$destinationFile': $($_.Exception.Message)"
-                }
-            }
-        }
-
-        if ($rollbackErrors.Count -ne 0) {
-            Fail "Publishing failed and rollback could not restore the previous release. Backups remain in '$backupDirectory'. Errors: $($rollbackErrors -join '; '). Original error: $($publishError.Exception.Message)"
-        }
-        Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction SilentlyContinue
-        throw $publishError
-    }
-
-    if ($backupCreated -and (Test-Path -LiteralPath $backupDirectory)) {
-        try {
-            Remove-Item -LiteralPath $backupDirectory -Recurse -Force -ErrorAction Stop
-        }
-        catch {
-            Write-Warning "The new release was published, but the previous release backup '$backupDirectory' could not be removed: $($_.Exception.Message)"
         }
     }
 }
@@ -762,11 +693,7 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
-        $outputGroup = "internal"
-        if ($PortableOnly) {
-            $outputGroup = "internal-portable"
-        }
-        $OutputDirectory = Join-Path $repoRoot "artifacts\$outputGroup\$version"
+        $OutputDirectory = Join-Path $repoRoot "artifacts\internal\$version"
     }
     elseif (-not [System.IO.Path]::IsPathRooted($OutputDirectory)) {
         $OutputDirectory = Join-Path $repoRoot $OutputDirectory
@@ -794,12 +721,10 @@ try {
 
     $msixName = "${productId}_${version}_${platform}.msix"
     $zipName = "${productId}_${version}_${platform}-portable.zip"
+    $msixBundleName = "${productId}_${version}_${platform}-msix.zip"
+    $cerName = "${productId}_${version}_${platform}.cer"
     $checksumsName = "SHA256SUMS.txt"
     $releaseInfoName = "RELEASE-INFO.txt"
-    $releaseFileNames = @($zipName, $releaseInfoName, $checksumsName)
-    if (-not $PortableOnly) {
-        $releaseFileNames = @($msixName) + $releaseFileNames
-    }
 
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("files-internal-" + [Guid]::NewGuid().ToString("N"))
     $msixStaging = Join-Path $tempRoot "msix"
@@ -1162,45 +1087,65 @@ try {
     if (-not (Test-Path -LiteralPath $outputParent -PathType Container)) {
         New-Item -ItemType Directory -Path $outputParent -Force | Out-Null
     }
-    $releaseStaging = Join-Path $outputParent (".$outputLeaf.staging-" + [Guid]::NewGuid().ToString("N"))
-    New-Item -ItemType Directory -Path $releaseStaging -Force | Out-Null
-    if (-not $PortableOnly) {
-        Copy-Item -LiteralPath $msixSourcePath -Destination (Join-Path $releaseStaging $msixName) -Force
+    $guideSource = Join-Path $repoRoot "docs\install-guide"
+    $guideNames = @("install-guide.md", "install-guide.png")
+    foreach ($guideName in $guideNames) {
+        if (-not (Test-Path -LiteralPath (Join-Path $guideSource $guideName) -PathType Leaf)) {
+            Fail "The install guide '$guideName' is missing from '$guideSource'."
+        }
     }
-    Copy-Item -LiteralPath $zipSourcePath -Destination (Join-Path $releaseStaging $zipName) -Force
-    Write-Utf8File (Join-Path $releaseStaging $releaseInfoName) ($releaseInfo + "`r`n")
 
+    $releaseStaging = Join-Path $outputParent (".$outputLeaf.staging-" + [Guid]::NewGuid().ToString("N"))
+
+    # Portable folder: the ZIP plus the documents a user needs next to it.
+    $portableFolder = Join-Path $releaseStaging "portable"
+    New-Item -ItemType Directory -Path $portableFolder -Force | Out-Null
+    Copy-Item -LiteralPath $zipSourcePath -Destination (Join-Path $portableFolder $zipName) -Force
+    foreach ($guideName in $guideNames) {
+        Copy-Item -LiteralPath (Join-Path $guideSource $guideName) -Destination (Join-Path $portableFolder $guideName) -Force
+    }
+    Write-Utf8File (Join-Path $portableFolder $releaseInfoName) ($releaseInfo + "`r`n")
+    Write-ReleaseChecksums $portableFolder $checksumsName $displayName $version $commit $resolvedUpstream $builtUtc
+    $zipHash = Get-Sha256 (Join-Path $portableFolder $zipName)
+    $releaseInfoHash = Get-Sha256 (Join-Path $portableFolder $releaseInfoName)
+
+    # MSIX folder: the package, its certificate, the trust helper and one archive of the set.
     $msixHash = $null
+    $msixBundleHash = $null
     if (-not $PortableOnly) {
-        $msixHash = Get-Sha256 (Join-Path $releaseStaging $msixName)
+        $msixFolder = Join-Path $releaseStaging "msix"
+        New-Item -ItemType Directory -Path $msixFolder -Force | Out-Null
+        Copy-Item -LiteralPath $msixSourcePath -Destination (Join-Path $msixFolder $msixName) -Force
+        [System.IO.File]::WriteAllBytes(
+            (Join-Path $msixFolder $cerName),
+            $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Trust-InternalCertificate.bat") -Destination (Join-Path $msixFolder "Trust-InternalCertificate.bat") -Force
+        foreach ($guideName in $guideNames) {
+            Copy-Item -LiteralPath (Join-Path $guideSource $guideName) -Destination (Join-Path $msixFolder $guideName) -Force
+        }
+        Write-Utf8File (Join-Path $msixFolder $releaseInfoName) ($releaseInfo + "`r`n")
+
+        # Bundle the folder once RELEASE-INFO exists so the archive carries the same metadata.
+        # The checksum manifest is written afterwards and stays outside the archive.
+        [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $msixFolder,
+            (Join-Path $msixFolder $msixBundleName),
+            [System.IO.Compression.CompressionLevel]::Optimal,
+            $false)
+
+        Write-ReleaseChecksums $msixFolder $checksumsName $displayName $version $commit $resolvedUpstream $builtUtc
+        $msixHash = Get-Sha256 (Join-Path $msixFolder $msixName)
+        $msixBundleHash = Get-Sha256 (Join-Path $msixFolder $msixBundleName)
     }
-    $zipHash = Get-Sha256 (Join-Path $releaseStaging $zipName)
-    $releaseInfoHash = Get-Sha256 (Join-Path $releaseStaging $releaseInfoName)
-    $checksumLines = @(
-        "# $displayName $version"
-        "# Commit: $commit"
-        "# Upstream-Commit: $resolvedUpstream"
-        "# Built-Utc: $builtUtc"
-        "# Format: SHA-256, two spaces, filename"
-    )
-    if (-not $PortableOnly) {
-        $checksumLines += "$msixHash  $msixName"
-    }
-    $checksumLines += @(
-        "$zipHash  $zipName"
-        "$releaseInfoHash  $releaseInfoName"
-    )
-    $checksums = $checksumLines -join "`r`n"
-    Write-Utf8File (Join-Path $releaseStaging $checksumsName) ($checksums + "`r`n")
 
     Assert-NoPrivateKeyFiles $releaseStaging "The release staging directory"
-    $checksumFileNames = @($zipName, $releaseInfoName)
-    if (-not $PortableOnly) {
-        $checksumFileNames = @($msixName) + $checksumFileNames
-    }
-    Assert-ReleaseChecksums (Join-Path $releaseStaging $checksumsName) $releaseStaging $checksumFileNames
 
-    Publish-ReleaseSet $releaseStaging $outputFullPath $releaseFileNames $checksumsName
+    if ($PortableOnly) {
+        Publish-ReleaseFolders $releaseStaging $outputFullPath @("portable") $checksumsName
+    }
+    else {
+        Publish-ReleaseFolders $releaseStaging $outputFullPath @("msix", "portable") $checksumsName
+    }
     $releaseStaging = $null
 
     Write-Host ""
@@ -1209,14 +1154,22 @@ try {
     Write-Host "  Version:     $version"
     Write-Host "  Commit:      $commit"
     Write-Host "  Upstream:    $resolvedUpstream ($upstreamSource)"
-    if (-not $PortableOnly) {
-        Write-Host "  MSIX:        $(Join-Path $outputFullPath $msixName)"
-        Write-Host "  MSIX SHA256: $msixHash"
-    }
-    Write-Host "  Portable:    $(Join-Path $outputFullPath $zipName)"
+    $portablePath = Join-Path $outputFullPath "portable"
+    Write-Host "  Portable:    $(Join-Path $portablePath $zipName)"
     Write-Host "  ZIP SHA256:  $zipHash"
     Write-Host "  Info SHA256: $releaseInfoHash"
-    Write-Host "  Checksums:   $(Join-Path $outputFullPath $checksumsName)"
+    Write-Host "  Port. info:  $(Join-Path $portablePath $releaseInfoName)"
+    Write-Host "  Port. sums:  $(Join-Path $portablePath $checksumsName)"
+    if (-not $PortableOnly) {
+        $msixPath = Join-Path $outputFullPath "msix"
+        Write-Host "  MSIX:        $(Join-Path $msixPath $msixName)"
+        Write-Host "  MSIX SHA256: $msixHash"
+        Write-Host "  MSIX zip:    $(Join-Path $msixPath $msixBundleName)"
+        Write-Host "  Bundle SHA256: $msixBundleHash"
+        Write-Host "  Certificate: $(Join-Path $msixPath $cerName)"
+        Write-Host "  MSIX info:   $(Join-Path $msixPath $releaseInfoName)"
+        Write-Host "  MSIX sums:   $(Join-Path $msixPath $checksumsName)"
+    }
     if (-not $PortableOnly) {
         Write-Host "  MSIX target dependency: $($dependencySummary -join '; ') (install or provision separately)"
     }

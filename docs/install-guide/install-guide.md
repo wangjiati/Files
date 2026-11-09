@@ -31,16 +31,24 @@
 
 ### 需要准备的文件
 
-从同一个发布目录取用，不要混用不同版本的证书：
+发布目录分成两个文件夹，各自独立，拿走其中一个就能用：
 
-| 文件 | 用途 |
-| --- | --- |
-| `Files.Internal_4.3.1.2_x64.msix` | 安装版安装包 |
-| `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版，解压即用 |
-| `Files.Internal_4.3.1.2_x64.cer` | 签名证书公钥，导入用 |
-| `Trust-InternalCertificate.bat` | 一键导入证书的脚本 |
-| `SHA256SUMS.txt` | 完整性校验值 |
-| `RELEASE-INFO.txt` | 版本、提交、依赖信息 |
+```text
+msix\       安装版：安装包 + 证书 + 信任脚本 + 说明
+portable\   便携版：便携压缩包 + 说明
+```
+
+| 文件夹 | 文件 | 用途 |
+| --- | --- | --- |
+| `msix\` | `Files.Internal_4.3.1.2_x64.msix` | 安装版安装包 |
+| `msix\` | `Files.Internal_4.3.1.2_x64.cer` | 签名证书公钥，导入用 |
+| `msix\` | `Trust-InternalCertificate.bat` | 一键导入证书的脚本 |
+| `msix\` | `Files.Internal_4.3.1.2_x64-msix.zip` | 上述文件的打包，便于整包转发 |
+| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体，解压即用 |
+| 两者 | `install-guide.md`、`install-guide.png` | 本说明 |
+| 两者 | `SHA256SUMS.txt`、`RELEASE-INFO.txt` | 完整性校验与版本信息 |
+
+两个文件夹的 `SHA256SUMS.txt` 各自覆盖本文件夹内的文件，可以分别校验。
 
 ### 校验文件完整性（可选）
 
@@ -63,7 +71,7 @@ certutil -hashfile Files.Internal_4.3.1.2_x64.msix SHA256
 
 ### 第 1 步：准备文件
 
-把 `Files.Internal_4.3.1.2_x64.cer` 和 `Trust-InternalCertificate.bat` 放进同一个文件夹。发布目录里这两个文件已经在一起，直接沿用即可。
+在 `msix\` 文件夹里这两个文件本来就在一起，直接在该目录运行即可。
 
 脚本只认**自己所在目录**的 `.cer`，所以不要把 `.bat` 单独拷到别处。
 
