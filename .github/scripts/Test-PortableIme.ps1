@@ -74,6 +74,7 @@ $result = [ordered]@{
     OriginalText      = $null
     CompositionText   = $null
     CommittedText     = $null
+    CommittedChinese  = $null
     CandidateVisible  = $false
     CandidateWindows  = @()
     NewCandidateWindows = @()
@@ -559,7 +560,14 @@ $expected = switch ($ExpectCandidates) {
 $result.ExpectCandidates = $expected
 
 $textLanded = $result.CommittedText -and ($result.CommittedText -ne $result.OriginalText)
-$result.Pass = [bool]($textLanded -and ($result.CandidateVisible -eq $expected))
+
+# A candidate window can be visible while the composition never reaches the text box:
+# the pinyin lands as literal letters ("ni'ha'o") and nothing is committed. Text landing
+# is therefore not proof of working input; when candidates are expected, the committed
+# text must actually contain Chinese.
+$result.CommittedChinese = [bool]($result.CommittedText -match '[\u4E00-\u9FFF]')
+
+$result.Pass = [bool]($textLanded -and ($result.CandidateVisible -eq $expected) -and ((-not $expected) -or $result.CommittedChinese))
 
 Get-Process Files -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\FILES_DISABLE_PORTABLE_IDENTITY -ErrorAction SilentlyContinue

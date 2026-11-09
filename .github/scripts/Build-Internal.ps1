@@ -1088,11 +1088,6 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $portableStaging $portableIdentityName))) {
             Fail "The portable identity package was not produced."
         }
-
-        $installerScript = Join-Path $PSScriptRoot "Install-PortableIdentity.ps1"
-        if (Test-Path -LiteralPath $installerScript) {
-            Copy-Item -LiteralPath $installerScript -Destination (Join-Path $portableStaging "Install-PortableIdentity.ps1") -Force
-        }
     }
     else {
         Write-Host "    Skipping the portable identity package (portable-only build has no signing certificate)."

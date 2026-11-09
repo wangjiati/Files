@@ -222,16 +222,17 @@ the acceptance checklist below; they are not established by the build script.
 ### Portable identity package
 
 The portable ZIP also contains `Files.Internal.Portable.Identity.msix` (a payload-free identity
-package) and `Install-PortableIdentity.ps1`. On Windows builds where unpackaged WinUI 3
-applications lose the IME candidate window (observed on Windows 11 build 26300), the launcher
-registers this package on first start and then activates the app through the package identity,
-which restores the candidate window. The binaries keep living in the portable folder.
+package). On Windows builds where unpackaged WinUI 3 applications lose the IME candidate window
+(observed on Windows 11 build 26300), the launcher registers this package on first start and then
+activates the app through the package identity, which restores the candidate window. The binaries
+keep living in the portable folder. No helper script ships in the ZIP: registration is automatic.
 
-- Registration is per user and only succeeds when the signing certificate is trusted. With a
-  self-signed test certificate, run `Install-PortableIdentity.ps1 -TrustCertificate` once from an
-  elevated shell; with a trusted code-signing certificate the launcher registers silently.
-- Removal: `Install-PortableIdentity.ps1 -Uninstall`. Unregister before deleting the folder,
-  otherwise the registration keeps pointing at a missing external location.
+- Registration is per user and only succeeds when the signing certificate is trusted. Trust it
+  once per machine with `Trust-InternalCertificate.bat` (shipped beside the MSIX, not inside the
+  ZIP); with a trusted code-signing certificate the launcher registers silently.
+- To remove the registration, unregister before deleting the folder, otherwise the registration
+  keeps pointing at a missing external location:
+  `Get-AppxPackage -Name Files.Internal.Portable.Identity | Remove-AppxPackage`.
 - Moving the folder changes the external location, so the launcher re-registers on the next start.
 - QA switch: set `FILES_DISABLE_PORTABLE_IDENTITY=1` to compare behavior with and without package
   identity. The launcher then skips registration and activation.

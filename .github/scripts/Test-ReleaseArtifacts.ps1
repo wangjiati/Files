@@ -110,13 +110,11 @@ $launcher = Join-Path $portable 'Files.exe'
 $appExe = Join-Path $portable 'lib\Files.exe'
 $pri = Join-Path $portable 'lib\Files.pri'
 $identityMsix = Join-Path $portable "$identityPackageName.msix"
-$installer = Join-Path $portable 'Install-PortableIdentity.ps1'
 $releaseInfoPath = Join-Path $portable 'RELEASE-INFO.txt'
 
 Add-Check 'launcher' (Test-Path -LiteralPath $launcher) $launcher
 Add-Check 'app executable' (Test-Path -LiteralPath $appExe) $appExe
 Add-Check 'identity package' (Test-Path -LiteralPath $identityMsix) $identityMsix
-Add-Check 'install script' (Test-Path -LiteralPath $installer) $installer
 Add-Check 'release info' (Test-Path -LiteralPath $releaseInfoPath) $releaseInfoPath
 
 if (Test-Path -LiteralPath $pri) {
