@@ -1063,6 +1063,7 @@ try {
     )
     if (-not $PortableOnly) {
         $releaseInfoLines += "Portable-Identity: $portableIdentityName (optional, registered by the launcher)"
+        $releaseInfoLines += "Portable-Trust-Helper: Trust-InternalCertificate.bat + $cerName (run once per machine)"
     }
     if ($PortableOnly) {
         $releaseInfoLines += "MSIX: Not included (portable-only build)"
@@ -1078,6 +1079,16 @@ try {
     }
     $releaseInfo = $releaseInfoLines -join "`r`n"
     Write-Utf8File (Join-Path $portableStaging $releaseInfoName) ($releaseInfo + "`r`n")
+
+    # The launcher registers the identity package on first start, and that registration only
+    # succeeds while the signing certificate is trusted. Ship the certificate and the trust
+    # helper inside the payload so one download is self-sufficient.
+    if (-not $PortableOnly) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Trust-InternalCertificate.bat") -Destination (Join-Path $portableStaging "Trust-InternalCertificate.bat") -Force
+        [System.IO.File]::WriteAllBytes(
+            (Join-Path $portableStaging $cerName),
+            $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+    }
 
     $zipSourcePath = Join-Path $tempRoot $zipName
     New-PortableZip $portableStaging $zipSourcePath $zipEntryTimestamp

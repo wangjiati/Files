@@ -44,7 +44,7 @@ portable\   便携版：便携压缩包 + 说明
 | `msix\` | `Files.Internal_4.3.1.2_x64.cer` | 签名证书公钥，导入用 |
 | `msix\` | `Trust-InternalCertificate.bat` | 一键导入证书的脚本 |
 | `msix\` | `Files.Internal_4.3.1.2_x64-msix.zip` | 上述文件的打包，便于整包转发 |
-| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体，解压即用 |
+| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体；解压后目录根部同样自带 `.cer` 和 `.bat` |
 | 两者 | `install-guide.md`、`install-guide.png` | 本说明 |
 | 两者 | `SHA256SUMS.txt`、`RELEASE-INFO.txt` | 完整性校验与版本信息 |
 
@@ -71,13 +71,16 @@ certutil -hashfile Files.Internal_4.3.1.2_x64.msix SHA256
 
 ### 第 1 步：准备文件
 
-在 `msix\` 文件夹里这两个文件本来就在一起，直接在该目录运行即可。
+两个包各自带着证书和脚本，位置不同：
+
+- **安装版**：`msix\` 文件夹里有 `Files.Internal_4.3.1.2_x64.cer` 和 `Trust-InternalCertificate.bat`
+- **便携版**：先解压 `Files.Internal_4.3.1.2_x64-portable.zip`，解压目录根部有同样的两个文件
 
 脚本只认**自己所在目录**的 `.cer`，所以不要把 `.bat` 单独拷到别处。
 
 ### 第 2 步：运行脚本
 
-双击 `Trust-InternalCertificate.bat`。
+在上一步那个目录里双击 `Trust-InternalCertificate.bat`。
 
 - 脚本会检测权限，未提权时自动通过 UAC 重新拉起自己
 - 在 UAC 提示中点「是」
