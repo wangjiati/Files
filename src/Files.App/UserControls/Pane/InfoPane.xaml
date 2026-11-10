@@ -683,7 +683,7 @@
 				<VisualState x:Name="Vertical">
 					<VisualState.Setters>
 						<Setter Target="RootPreviewGrid.(Grid.Column)" Value="0" />
-						<Setter Target="RootPropertiesScrollViewer.Column" Value="0" />
+						<Setter Target="RootPropertiesScrollViewer.(Grid.Column)" Value="0" />
 						<Setter Target="RootPropertiesScrollViewer.(Grid.RowSpan)" Value="1" />
 						<Setter Target="RootPropertiesScrollViewer.(Grid.ColumnSpan)" Value="2" />
 						<Setter Target="RootPreviewGrid.(Grid.ColumnSpan)" Value="2" />
