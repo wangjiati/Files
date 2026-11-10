@@ -407,7 +407,6 @@ namespace Files.App.Views
 			{
 				case PreviewPaneLayout.RightSplit:
 				case PreviewPaneLayout.RightTabs:
-				default:
 					if (ContentColumn.ActualWidth == ContentColumn.MinWidth)
 					{
 						UserSettingsService.InfoPaneSettingsService.VerticalSizePx += e.NewSize.Width - e.PreviousSize.Width;
@@ -415,9 +414,15 @@ namespace Files.App.Views
 					}
 
 					break;
-				case PreviewPaneLayout.Bottom when ContentRow.ActualHeight == ContentRow.MinHeight:
-					UserSettingsService.InfoPaneSettingsService.HorizontalSizePx += e.NewSize.Height - e.PreviousSize.Height;
-					UpdatePositioning();
+				case PreviewPaneLayout.Bottom:
+					if (ContentRow.ActualHeight == ContentRow.MinHeight)
+					{
+						UserSettingsService.InfoPaneSettingsService.HorizontalSizePx += e.NewSize.Height - e.PreviousSize.Height;
+						UpdatePositioning();
+					}
+
+					break;
+				default:
 					break;
 			}
 		}
