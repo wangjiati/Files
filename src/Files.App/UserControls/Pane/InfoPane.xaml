@@ -152,87 +152,93 @@
 		</Grid.ColumnDefinitions>
 
 		<!--  Panes  -->
-		<StackPanel
-			x:Name="TabSelectorPanel"
+		<Grid
 			Grid.Row="0"
 			Grid.Column="0"
 			Grid.ColumnSpan="2"
-			Margin="12"
-			Padding="-1"
-			HorizontalAlignment="Center"
-			VerticalAlignment="Center"
-			Background="{ThemeResource SubtleFillColorTertiaryBrush}"
-			BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-			BorderThickness="1"
-			CornerRadius="4"
-			Orientation="Horizontal">
-			<!--  Details  -->
-			<RadioButton
-				Command="{x:Bind Commands.ToggleDetailsPane, Mode=OneWay}"
-				Content="{helpers:ResourceString Name=Details}"
-				IsChecked="{x:Bind ViewModel.SelectedTab, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Details, Mode=OneWay}"
-				Style="{StaticResource Local.RadioButtonStyle}" />
-			<!--  Preview  -->
-			<RadioButton
-				Command="{x:Bind Commands.TogglePreviewPane, Mode=OneWay}"
-				Content="{helpers:ResourceString Name=Preview}"
-				IsChecked="{x:Bind ViewModel.SelectedTab, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Preview, Mode=OneWay}"
-				Style="{StaticResource Local.RadioButtonStyle}" />
-		</StackPanel>
+			Margin="12">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
 
-		<!--  Layout Buttons  -->
-		<StackPanel
-			Grid.Row="0"
-			Grid.Column="0"
-			Grid.ColumnSpan="2"
-			Margin="12"
-			HorizontalAlignment="Right"
-			VerticalAlignment="Center"
-			Orientation="Horizontal"
-			Spacing="4">
-			<!--  Right, preview above details  -->
-			<ToggleButton
-				x:Name="LayoutRightSplitButton"
-				Width="24"
-				Height="24"
-				Padding="0"
-				AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutRightSplit}"
-				Background="Transparent"
-				BorderBrush="Transparent"
-				Click="LayoutButton_Click"
-				Tag="RightSplit"
-				ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutRightSplit}">
-				<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelRight}" />
-			</ToggleButton>
-			<!--  Below the file list  -->
-			<ToggleButton
-				x:Name="LayoutBottomButton"
-				Width="24"
-				Height="24"
-				Padding="0"
-				AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutBottom}"
-				Background="Transparent"
-				BorderBrush="Transparent"
-				Click="LayoutButton_Click"
-				Tag="Bottom"
-				ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutBottom}">
-				<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelBottom}" />
-			</ToggleButton>
-			<!--  Right, as tabs  -->
-			<ToggleButton
-				x:Name="LayoutRightTabsButton"
-				Width="24"
-				Height="24"
-				Padding="0"
-				AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutRightTabs}"
-				Background="Transparent"
-				BorderBrush="Transparent"
-				Click="LayoutButton_Click"
-				Tag="RightTabs"
-				ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutRightTabs}">
-				<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelTabs}" />
-			</ToggleButton>
-		</StackPanel>
+			<StackPanel
+				x:Name="TabSelectorPanel"
+				Grid.Column="0"
+				Padding="-1"
+				HorizontalAlignment="Left"
+				VerticalAlignment="Center"
+				Background="{ThemeResource SubtleFillColorTertiaryBrush}"
+				BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+				BorderThickness="1"
+				CornerRadius="4"
+				Orientation="Horizontal">
+				<!--  Details  -->
+				<RadioButton
+					Command="{x:Bind Commands.ToggleDetailsPane, Mode=OneWay}"
+					Content="{helpers:ResourceString Name=Details}"
+					IsChecked="{x:Bind ViewModel.SelectedTab, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Details, Mode=OneWay}"
+					Style="{StaticResource Local.RadioButtonStyle}" />
+				<!--  Preview  -->
+				<RadioButton
+					Command="{x:Bind Commands.TogglePreviewPane, Mode=OneWay}"
+					Content="{helpers:ResourceString Name=Preview}"
+					IsChecked="{x:Bind ViewModel.SelectedTab, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Preview, Mode=OneWay}"
+					Style="{StaticResource Local.RadioButtonStyle}" />
+			</StackPanel>
+
+			<!--  Layout Buttons  -->
+			<StackPanel
+				Grid.Column="2"
+				HorizontalAlignment="Right"
+				VerticalAlignment="Center"
+				Orientation="Horizontal"
+				Spacing="4">
+				<!--  Right, preview above details  -->
+				<ToggleButton
+					x:Name="LayoutRightSplitButton"
+					Width="24"
+					Height="24"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutRightSplit}"
+					Background="Transparent"
+					BorderBrush="Transparent"
+					Click="LayoutButton_Click"
+					Tag="RightSplit"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutRightSplit}">
+					<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelRight}" />
+				</ToggleButton>
+				<!--  Below the file list  -->
+				<ToggleButton
+					x:Name="LayoutBottomButton"
+					Width="24"
+					Height="24"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutBottom}"
+					Background="Transparent"
+					BorderBrush="Transparent"
+					Click="LayoutButton_Click"
+					Tag="Bottom"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutBottom}">
+					<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelBottom}" />
+				</ToggleButton>
+				<!--  Right, as tabs  -->
+				<ToggleButton
+					x:Name="LayoutRightTabsButton"
+					Width="24"
+					Height="24"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=PreviewPaneLayoutRightTabs}"
+					Background="Transparent"
+					BorderBrush="Transparent"
+					Click="LayoutButton_Click"
+					Tag="RightTabs"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=PreviewPaneLayoutRightTabs}">
+					<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.PanelTabs}" />
+				</ToggleButton>
+			</StackPanel>
+		</Grid>
 
 		<Grid
 			x:Name="RootPreviewGrid"
@@ -662,8 +668,6 @@
 					</VisualState.StateTriggers>
 					<VisualState.Setters>
 						<Setter Target="RootPropertiesScrollViewer.Visibility" Value="Visible" />
-						<Setter Target="PropertiesRow.Height" Value="3*" />
-						<Setter Target="PropertiesColumn.Width" Value="3*" />
 					</VisualState.Setters>
 				</VisualState>
 				<VisualState>
@@ -672,8 +676,6 @@
 					</VisualState.StateTriggers>
 					<VisualState.Setters>
 						<Setter Target="RootPropertiesScrollViewer.Visibility" Value="Collapsed" />
-						<Setter Target="PropertiesRow.Height" Value="0" />
-						<Setter Target="PropertiesColumn.Width" Value="0" />
 					</VisualState.Setters>
 				</VisualState>
 			</VisualStateGroup>

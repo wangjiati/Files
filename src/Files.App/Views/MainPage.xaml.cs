@@ -405,9 +405,15 @@ namespace Files.App.Views
 
 			switch (UserSettingsService.InfoPaneSettingsService.Layout)
 			{
-				case PreviewPaneLayout.RightSplit or PreviewPaneLayout.RightTabs when ContentColumn.ActualWidth == ContentColumn.MinWidth:
-					UserSettingsService.InfoPaneSettingsService.VerticalSizePx += e.NewSize.Width - e.PreviousSize.Width;
-					UpdatePositioning();
+				case PreviewPaneLayout.RightSplit:
+				case PreviewPaneLayout.RightTabs:
+				default:
+					if (ContentColumn.ActualWidth == ContentColumn.MinWidth)
+					{
+						UserSettingsService.InfoPaneSettingsService.VerticalSizePx += e.NewSize.Width - e.PreviousSize.Width;
+						UpdatePositioning();
+					}
+
 					break;
 				case PreviewPaneLayout.Bottom when ContentRow.ActualHeight == ContentRow.MinHeight:
 					UserSettingsService.InfoPaneSettingsService.HorizontalSizePx += e.NewSize.Height - e.PreviousSize.Height;
@@ -450,6 +456,7 @@ namespace Files.App.Views
 				{
 					case PreviewPaneLayout.RightSplit:
 					case PreviewPaneLayout.RightTabs:
+					default:
 						InfoPaneSizer.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
 						InfoPaneColumnDefinition.Width = new(Math.Max(300d, infoPaneSettingsService.VerticalSizePx));
 						VisualStateManager.GoToState(this, "InfoPanePositionRight", true);

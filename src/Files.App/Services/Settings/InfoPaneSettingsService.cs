@@ -19,8 +19,8 @@ namespace Files.App.Services.Settings
 
 		public double VerticalSizePx
 		{
-			get => Math.Max(100d, Get(300d));
-			set => Set(Math.Max(100d, value));
+			get => Math.Clamp(Get(300d), 300d, 500d);
+			set => Set(Math.Clamp(value, 300d, 500d));
 		}
 
 		public PreviewPaneLayout Layout

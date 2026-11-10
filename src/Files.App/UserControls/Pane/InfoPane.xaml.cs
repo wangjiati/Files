@@ -28,6 +28,7 @@ namespace Files.App.UserControls
 			PaneSettingsService = Ioc.Default.GetRequiredService<IInfoPaneSettingsService>();
 			Commands = Ioc.Default.GetRequiredService<ICommandManager>();
 			ViewModel = Ioc.Default.GetRequiredService<InfoPaneViewModel>();
+			ViewModel.PropertyChanged += ViewModel_PropertyChanged;
 		}
 
 		public void ApplyLayout(PreviewPaneLayout layout)
@@ -39,6 +40,7 @@ namespace Files.App.UserControls
 			switch (layout)
 			{
 				case PreviewPaneLayout.RightSplit:
+				default:
 					(MinWidth, MinHeight) = (300, 0);
 					VisualStateManager.GoToState(this, "Vertical", true);
 					RowSplitter.Visibility = Visibility.Visible;
@@ -85,6 +87,12 @@ namespace Files.App.UserControls
 			LayoutRightTabsButton.IsChecked = layout is PreviewPaneLayout.RightTabs;
 		}
 
+		private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName is nameof(InfoPaneViewModel.SelectedTab))
+				ApplyLayout(PaneSettingsService.Layout);
+		}
+
 		private void RowSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
 		{
 			var totalHeight = PreviewRow.ActualHeight + PropertiesRow.ActualHeight;
@@ -129,6 +137,7 @@ namespace Files.App.UserControls
 
 		private void Root_Unloaded(object sender, RoutedEventArgs e)
 		{
+			ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 			ViewModel.UnloadPreview();
 			PreviewControlPresenter.Content = null;
 			Bindings.StopTracking();
