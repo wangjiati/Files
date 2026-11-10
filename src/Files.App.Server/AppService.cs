@@ -36,10 +36,6 @@ public sealed partial class AppService : IDisposable
 
 	public static IAsyncAction InitializeAsync() => ServerAsync.Run(token => StartupServices.InitializeAsync().WaitAsync(token));
 
-	public static void BeginUpdate() => ServerHost.BeginUpdate();
-
-	public static void EndUpdate() => ServerHost.EndUpdate();
-
 	public void Dispose()
 	{
 		if (Interlocked.Exchange(ref disposed, 1) == 0)

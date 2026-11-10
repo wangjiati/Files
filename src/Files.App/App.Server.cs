@@ -122,7 +122,7 @@ public partial class App
 		}, Logger);
 	}
 
-	private static async Task SetServerWindowHandleAsync(long handle)
+	internal static async Task SetServerWindowHandleAsync(long handle)
 	{
 		Volatile.Write(ref serverWindowHandle, handle);
 		var session = await ServerSession;

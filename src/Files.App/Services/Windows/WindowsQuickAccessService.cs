@@ -242,8 +242,12 @@ namespace Files.App.Services
 			if (desiredItems.SequenceEqual(App.QuickAccessManager.Model.PinnedFolders, StringComparer.OrdinalIgnoreCase))
 				return;
 
-			var appServer = Ioc.Default.GetRequiredService<IAppServerService>();
-			appServer.BeginUpdate();
+#if DISTRIBUTION_MSIX
+			var server = await App.ServerSession;
+			server.PinnedFolders.BeginUpdate();
+#else
+			Server.InProcessServer.BeginUpdate();
+#endif
 			try
 			{
 				using (App.QuickAccessManager.Model.SuspendSync())
@@ -274,7 +278,11 @@ namespace Files.App.Services
 			}
 			finally
 			{
-				SafetyExtensions.IgnoreExceptions(appServer.EndUpdate, App.Logger);
+#if DISTRIBUTION_MSIX
+				SafetyExtensions.IgnoreExceptions(server.PinnedFolders.EndUpdate, App.Logger);
+#else
+				SafetyExtensions.IgnoreExceptions(Server.InProcessServer.EndUpdate, App.Logger);
+#endif
 			}
 		}
 	}

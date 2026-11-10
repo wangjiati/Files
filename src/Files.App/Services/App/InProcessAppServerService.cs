@@ -35,8 +35,6 @@ internal sealed class InProcessAppServerService : IAppServerService
 		Server.PinnedFoldersService.InvalidatePinnedFolders();
 	}
 	public Task<IReadOnlyList<ICloudProvider>> GetCloudProvidersAsync(int group) => provider.GetCloudProvidersAsync(group);
-	public void BeginUpdate() => Server.InProcessServer.BeginUpdate();
-	public void EndUpdate() => Server.InProcessServer.EndUpdate();
 	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 #endif

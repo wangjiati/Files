@@ -24,7 +24,7 @@ internal sealed class PackagedAppServerService : IAppServerService
 		await Server.AppService.InitializeAsync();
 	}
 
-	public async Task SetWindowHandleAsync(long handle) => (await serverSession).SetWindowHandle(handle);
+	public Task SetWindowHandleAsync(long handle) => App.SetServerWindowHandleAsync(handle);
 
 	public async Task<IReadOnlyList<ShellNewEntry>> GetShellNewEntriesAsync() =>
 		(await Server.ShellService.GetShellNewEntriesAsync()).Select(ToEntry).ToArray();
@@ -63,9 +63,6 @@ internal sealed class PackagedAppServerService : IAppServerService
 			SyncFolder = provider.SyncFolder,
 			IconData = provider.IconData.Length == 0 ? null : provider.IconData,
 		}).ToArray();
-
-	public void BeginUpdate() => Server.AppService.BeginUpdate();
-	public void EndUpdate() => Server.AppService.EndUpdate();
 
 	public async ValueTask DisposeAsync() => (await serverSession).Dispose();
 

@@ -17,6 +17,4 @@ public interface IAppServerService : IAsyncDisposable
 	Task<IReadOnlyList<PinnedFolder>> GetPinnedFoldersAsync();
 	void InvalidatePinnedFolders();
 	Task<IReadOnlyList<ICloudProvider>> GetCloudProvidersAsync(int group);
-	void BeginUpdate();
-	void EndUpdate();
 }
