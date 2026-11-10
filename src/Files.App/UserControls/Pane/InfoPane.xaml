@@ -575,7 +575,7 @@
 			ResizeDirection="Columns"
 			Style="{StaticResource InvisibleGridSplitterStyle}"
 			Visibility="Collapsed"
-			Width="6" />
+			Width="8" />
 
 		<VisualStateManager.VisualStateGroups>
 			<VisualStateGroup>

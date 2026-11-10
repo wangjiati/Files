@@ -63,8 +63,8 @@ namespace Files.App.UserControls
 					ColumnSplitter.Visibility = Visibility.Visible;
 					RowSplitter.Visibility = Visibility.Collapsed;
 					ColumnSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
-					RootPropertiesScrollViewer.Margin = new Thickness(6, 0, 0, 0);
-					PropertiesColumn.Width = new GridLength(Math.Min(PaneSettingsService.BottomDetailsWidthPx, Math.Max(132d, ActualWidth * 0.6d)));
+					RootPropertiesScrollViewer.Margin = new Thickness(8, 0, 0, 0);
+					PropertiesColumn.Width = new(Math.Max(132d, PaneSettingsService.BottomDetailsWidthPx));
 					break;
 			}
 
