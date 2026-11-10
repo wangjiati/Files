@@ -11,6 +11,11 @@ namespace Files.App.Data.Contracts
 		bool IsInfoPaneEnabled { get; set; }
 
 		/// <summary>
+		/// Gets or sets a value indicating where the pane is placed.
+		/// </summary>
+		PreviewPaneLayout Layout { get; set; }
+
+		/// <summary>
 		/// Gets or sets a value indicating the height of the pane in a horizontal layout.
 		/// </summary>
 		double HorizontalSizePx { get; set; }
@@ -19,6 +24,16 @@ namespace Files.App.Data.Contracts
 		/// Gets or sets a value indicating the width of the pane in a vertical layout.
 		/// </summary>
 		double VerticalSizePx { get; set; }
+
+		/// <summary>
+		/// Gets or sets a value indicating the preview height ratio in a vertical layout with split rows.
+		/// </summary>
+		double SplitRatio { get; set; }
+
+		/// <summary>
+		/// Gets or sets a value indicating the width of the details column in a horizontal layout.
+		/// </summary>
+		double BottomDetailsWidthPx { get; set; }
 
 		/// <summary>
 		/// Gets or sets a value indicating the preview pane media volume.

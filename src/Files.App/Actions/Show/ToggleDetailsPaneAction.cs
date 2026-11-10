@@ -34,6 +34,9 @@ namespace Files.App.Actions
 
 		public Task ExecuteAsync(object? parameter = null)
 		{
+			if (infoPaneSettingsService.Layout is not PreviewPaneLayout.RightTabs)
+				return Task.CompletedTask;
+
 			infoPaneSettingsService.SelectedTab = InfoPaneTabs.Details;
 
 			return Task.CompletedTask;

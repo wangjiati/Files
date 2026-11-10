@@ -24,6 +24,16 @@ namespace Files.App.ViewModels.UserControls
 		private Files.App.UserControls.Menus.FileTagsContextMenu? cachedTagsContextMenu;
 
 		/// <summary>
+		/// Value indicating if the pane currently shows the basic preview instead of a real one
+		/// </summary>
+		private bool usesBasicPreview;
+
+		/// <summary>
+		/// Value indicating if the pane used the tabs layout before the last settings change
+		/// </summary>
+		private bool wasInTabsLayout;
+
+		/// <summary>
 		/// Value indicating if the info pane is on/off
 		/// </summary>
 		private bool isEnabled;
@@ -144,6 +154,10 @@ namespace Files.App.ViewModels.UserControls
 
 		public InfoPaneViewModel()
 		{
+			usesBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+				infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
+			wasInTabsLayout = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs;
+
 			infoPaneSettingsService.PropertyChanged += PreviewSettingsService_OnPropertyChangedEvent;
 			contentPageContext.PropertyChanged += ContentPageContext_PropertyChanged;
 			CloudDrivesManager.DataChanged += CloudDrivesManager_DataChanged;
@@ -419,7 +433,8 @@ namespace Files.App.ViewModels.UserControls
 				{
 					PreviewPaneState = PreviewPaneStates.LoadingPreview;
 
-					if (SelectedTab == InfoPaneTabs.Preview ||
+					if (infoPaneSettingsService.Layout is not PreviewPaneLayout.RightTabs ||
+						SelectedTab == InfoPaneTabs.Preview ||
 						SelectedItem?.PrimaryItemAttribute == StorageItemTypes.Folder)
 					{
 						await LoadPreviewControlAsync(token, downloadItem);
@@ -500,11 +515,33 @@ namespace Files.App.ViewModels.UserControls
 		[DynamicWindowsRuntimeCast(typeof(Frame))]
 		private async void PreviewSettingsService_OnPropertyChangedEvent(object? sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+			if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab) or nameof(infoPaneSettingsService.Layout))
 			{
-				OnPropertyChanged(nameof(SelectedTab));
+				if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+					OnPropertyChanged(nameof(SelectedTab));
 
-				// The preview will need refreshing as the file details won't be accurate
+				var isUsingBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+					infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
+				var isInTabsLayout = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs;
+
+				// Tab changes reload when the basic preview comes or goes. Layout changes reload whenever the tabs
+				// layout is entered or left, since the previous preview does not fill the details shown after it.
+				var shouldReload = false;
+				if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+				{
+					shouldReload = isUsingBasicPreview != usesBasicPreview;
+				}
+				else
+				{
+					shouldReload = isInTabsLayout != wasInTabsLayout;
+					wasInTabsLayout = isInTabsLayout;
+				}
+
+				usesBasicPreview = isUsingBasicPreview;
+
+				if (!shouldReload)
+					return;
+
 				var shouldUpdatePreview = ((MainWindow.Instance.Content as Frame)?.Content as MainPage)?.ViewModel.ShouldPreviewPaneBeActive;
 				if (shouldUpdatePreview == true)
 					await UpdateSelectedItemPreviewAsync();
