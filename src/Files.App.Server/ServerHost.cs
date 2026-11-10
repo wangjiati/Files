@@ -41,6 +41,13 @@ internal static class ServerHost
 		}, null, TimeSpan.FromSeconds(30), Timeout.InfiniteTimeSpan);
 	}
 
+	// The in-process host needs the dispatcher for shell notifications, but not the
+	// tray icon, idle exit timer, or server settings.
+	internal static void InitializeDispatcher()
+	{
+		controller ??= DispatcherQueueController.CreateOnDedicatedThread();
+	}
+
 	internal static (long Id, bool CanRestorePreviousSession) AddClient(int processId)
 	{
 		lock (gate)
@@ -208,6 +215,20 @@ internal static class ServerHost
 
 	internal static Task InvokeAsync(Action action)
 	{
+		// The in-process portable host has no dedicated server dispatcher.
+		if (controller is null)
+		{
+			try
+			{
+				action();
+				return Task.CompletedTask;
+			}
+			catch (Exception ex)
+			{
+				return Task.FromException(ex);
+			}
+		}
+
 		var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 		if (!controller.DispatcherQueue.TryEnqueue(() =>
 		{

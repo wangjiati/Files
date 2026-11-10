@@ -42,6 +42,7 @@ public static class InProcessServer
 
 	private static async Task InitializeCoreAsync()
 	{
+		ServerHost.InitializeDispatcher();
 		CatalogWatchers.Initialize();
 
 		await Task.WhenAll(
