@@ -16,7 +16,7 @@ internal sealed class PackagedAppServerService : IAppServerService
 		serverSession = App.ServerSession;
 	}
 
-	public int CloudProviderGroupCount => Server.AppService.CloudProviderGroupCount;
+	public int CloudProviderGroupCount => Server.DriveService.CloudProviderGroupCount;
 
 	public async Task InitializeAsync()
 	{
@@ -27,19 +27,19 @@ internal sealed class PackagedAppServerService : IAppServerService
 	public async Task SetWindowHandleAsync(long handle) => (await serverSession).SetWindowHandle(handle);
 
 	public async Task<IReadOnlyList<ShellNewEntry>> GetShellNewEntriesAsync() =>
-		(await Server.AppService.GetShellNewEntriesAsync()).Select(ToEntry).ToArray();
+		(await Server.ShellService.GetShellNewEntriesAsync()).Select(ToEntry).ToArray();
 
 	public async Task<ShellNewEntry?> GetShellNewEntryAsync(string extension)
 	{
-		var entry = await Server.AppService.GetShellNewEntryAsync(extension);
+		var entry = await Server.ShellService.GetShellNewEntryAsync(extension);
 		return entry is null ? null : ToEntry(entry);
 	}
 
 	public async Task<IReadOnlyList<string>> GetWslDistributionsAsync() =>
-		(await Server.AppService.GetWslDistributionsAsync()).ToArray();
+		(await Server.DriveService.GetWslDistributionsAsync()).ToArray();
 
 	public async Task<IReadOnlyList<ShellLibraryItem>> GetLibrariesAsync() =>
-		(await Server.AppService.GetLibrariesAsync()).Select(library => new ShellLibraryItem
+		(await Server.LocationService.GetLibrariesAsync()).Select(library => new ShellLibraryItem
 		{
 			FullPath = library.FullPath,
 			AbsolutePath = library.AbsolutePath,
@@ -51,13 +51,13 @@ internal sealed class PackagedAppServerService : IAppServerService
 		}).ToArray();
 
 	public async Task<IReadOnlyList<PinnedFolder>> GetPinnedFoldersAsync() =>
-		(await Server.AppService.GetPinnedFoldersAsync())
+		(await Server.PinnedFoldersService.GetPinnedFoldersAsync())
 			.Select(folder => new PinnedFolder(folder.Path, folder.Name, folder.Pidl, folder.IsPinned)).ToArray();
 
-	public void InvalidatePinnedFolders() => Server.AppService.InvalidatePinnedFolders();
+	public void InvalidatePinnedFolders() => Server.PinnedFoldersService.InvalidatePinnedFolders();
 
 	public async Task<IReadOnlyList<ICloudProvider>> GetCloudProvidersAsync(int group) =>
-		(await Server.AppService.GetCloudProvidersAsync(group)).Select(provider => (ICloudProvider)new CloudProvider((CloudProviders)provider.Id)
+		(await Server.DriveService.GetCloudProvidersAsync(group)).Select(provider => (ICloudProvider)new CloudProvider((CloudProviders)provider.Id)
 		{
 			Name = provider.Name,
 			SyncFolder = provider.SyncFolder,

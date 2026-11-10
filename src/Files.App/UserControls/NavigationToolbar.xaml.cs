@@ -191,7 +191,19 @@ namespace Files.App.UserControls
 			if (mode == OmnibarPathMode)
 			{
 				var submittedText = args.Text;
-				if (!DirectoryAddressCodec.TryParse(submittedText, out var address, out _))
+				var targetPath = submittedText;
+				if (FolderAliasHelpers.IsAliasQuery(submittedText) &&
+					args.Item is OmnibarPathModeSuggestionModel { IsPlaceholder: false } suggestion)
+				{
+					// The selection can lag behind the last keystroke
+					targetPath = suggestion.Path.StartsWith($"{FolderAliasHelpers.Prefix}{FolderAliasHelpers.GetQuery(submittedText)}", StringComparison.OrdinalIgnoreCase)
+						? suggestion.Path
+						: FolderAliasHelpers.GetMatches(FolderAliasHelpers.Aliases, submittedText).FirstOrDefault() is { } match
+							? $"{FolderAliasHelpers.Prefix}{match.Name}"
+							: submittedText;
+				}
+
+				if (!DirectoryAddressCodec.TryParse(targetPath, out var address, out _))
 				{
 					await DialogDisplayHelper.ShowDialogAsync(
 						Strings.FilterAddressErrorTitle.GetLocalizedResource(),
@@ -437,7 +449,7 @@ namespace Files.App.UserControls
 			if (e.NewMode == OmnibarPathMode)
 			{
 				// Initialize with current working directory or fallback to home path
-				viewModel.PathText = pendingText ?? GetDefaultPathText();
+				viewModel.PathText = pendingText ?? TakePendingPathModeInput(viewModel) ?? GetDefaultPathText();
 				if (pendingText is null)
 					SchedulePathSelection(viewModel);
 
@@ -478,7 +490,7 @@ namespace Files.App.UserControls
 				if (Omnibar.CurrentSelectedMode == OmnibarPathMode)
 				{
 					var pendingText = TakePendingOmnibarText(OmnibarPathMode);
-					viewModel.PathText = pendingText ?? GetDefaultPathText();
+					viewModel.PathText = pendingText ?? TakePendingPathModeInput(viewModel) ?? GetDefaultPathText();
 					if (pendingText is null)
 						SchedulePathSelection(viewModel);
 
@@ -506,9 +518,15 @@ namespace Files.App.UserControls
 			if (Omnibar.CurrentSelectedMode != mode)
 				Omnibar.CurrentSelectedMode = mode;
 			else if (mode == OmnibarPathMode)
+			{
 				viewModel.PathText = text;
+				_ = DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForPathMode);
+			}
 			else if (mode == OmnibarCommandPaletteMode)
+			{
 				viewModel.OmnibarCommandPaletteModeText = text;
+				_ = DispatcherQueue.EnqueueOrInvokeAsync(viewModel.PopulateOmnibarSuggestionsForCommandPaletteMode);
+			}
 
 			Omnibar.FocusWithCaretAtEnd();
 		}
@@ -570,6 +588,11 @@ namespace Files.App.UserControls
 			}
 
 			await viewModel.PopulateOmnibarSuggestionsForPathMode();
+		}
+
+		private string? TakePendingPathModeInput(NavigationToolbarViewModel viewModel)
+		{
+			return Omnibar.IsFocused ? viewModel.TakePendingPathModeInput() : null;
 		}
 
 		private void Omnibar_FocusRedirectRequested(Omnibar sender, EventArgs args)

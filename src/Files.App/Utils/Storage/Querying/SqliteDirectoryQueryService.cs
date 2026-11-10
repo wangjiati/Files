@@ -352,7 +352,7 @@ namespace Files.App.Utils.Storage
 				if (isInitialized)
 					return;
 
-				SQLitePCL.Batteries_V2.Init();
+				SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
 				isInitialized = true;
 			}
 		}

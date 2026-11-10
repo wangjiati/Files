@@ -1,6 +1,6 @@
 # Files - Internal 安装说明
 
-适用版本：`4.3.1.2`　平台：Windows x64
+适用版本：`4.3.3.1`　平台：Windows x64
 
 这是一份纯文字版说明。同一份内容的图解版见同目录的 `install-guide.png`，可以直接转发给要安装的人。
 
@@ -40,11 +40,11 @@ portable\   便携版：便携压缩包 + 说明
 
 | 文件夹 | 文件 | 用途 |
 | --- | --- | --- |
-| `msix\` | `Files.Internal_4.3.1.2_x64.msix` | 安装版安装包 |
-| `msix\` | `Files.Internal_4.3.1.2_x64.cer` | 签名证书公钥，导入用 |
+| `msix\` | `Files.Internal_4.3.3.1_x64.msix` | 安装版安装包 |
+| `msix\` | `Files.Internal_4.3.3.1_x64.cer` | 签名证书公钥，导入用 |
 | `msix\` | `Start-FilesInternal.bat` | 一键：导入证书 → 打开安装向导 |
-| `msix\` | `Files.Internal_4.3.1.2_x64-msix.zip` | 上述文件的打包，便于整包转发 |
-| `portable\` | `Files.Internal_4.3.1.2_x64-portable.zip` | 便携版本体；解压后目录根部同样自带 `.cer`、`.bat` 和说明 |
+| `msix\` | `Files.Internal_4.3.3.1_x64-msix.zip` | 上述文件的打包，便于整包转发 |
+| `portable\` | `Files.Internal_4.3.3.1_x64-portable.zip` | 便携版本体；解压后目录根部同样自带 `.cer`、`.bat` 和说明 |
 | 两者 | `install-guide.md`、`install-guide.png` | 本说明 |
 | 两者 | `SHA256SUMS.txt`、`RELEASE-INFO.txt` | 完整性校验与版本信息 |
 
@@ -55,14 +55,14 @@ portable\   便携版：便携压缩包 + 说明
 在发布目录打开 PowerShell：
 
 ```powershell
-Get-FileHash .\Files.Internal_4.3.1.2_x64.msix -Algorithm SHA256
-Get-FileHash .\Files.Internal_4.3.1.2_x64-portable.zip -Algorithm SHA256
+Get-FileHash .\Files.Internal_4.3.3.1_x64.msix -Algorithm SHA256
+Get-FileHash .\Files.Internal_4.3.3.1_x64-portable.zip -Algorithm SHA256
 ```
 
 结果与 `SHA256SUMS.txt` 中对应行一致即可。命令行的等价写法：
 
 ```bat
-certutil -hashfile Files.Internal_4.3.1.2_x64.msix SHA256
+certutil -hashfile Files.Internal_4.3.3.1_x64.msix SHA256
 ```
 
 ---
@@ -73,8 +73,8 @@ certutil -hashfile Files.Internal_4.3.1.2_x64.msix SHA256
 
 两个包各自带着证书和脚本，位置不同：
 
-- **安装版**：`msix\` 文件夹里有 `Files.Internal_4.3.1.2_x64.cer` 和 `Start-FilesInternal.bat`
-- **便携版**：先解压 `Files.Internal_4.3.1.2_x64-portable.zip`，解压目录根部有同样的两个文件
+- **安装版**：`msix\` 文件夹里有 `Files.Internal_4.3.3.1_x64.cer` 和 `Start-FilesInternal.bat`
+- **便携版**：先解压 `Files.Internal_4.3.3.1_x64-portable.zip`，解压目录根部有同样的两个文件
 
 脚本只认**自己所在目录**的 `.cer`，所以不要把 `.bat` 单独拷到别处。
 
@@ -108,13 +108,13 @@ The certificate is trusted on this machine.
 
 **方式 A — 安装版（推荐日常使用）**
 
-1. 双击 `Files.Internal_4.3.1.2_x64.msix`
+1. 双击 `Files.Internal_4.3.3.1_x64.msix`
 2. 在应用安装程序窗口点「安装」
 3. 如果提示缺少框架，先安装 Microsoft Windows App Runtime `2.6.4`（x64）
 
 **方式 B — 便携版（不写注册表，数据随目录走）**
 
-1. 把 `Files.Internal_4.3.1.2_x64-portable.zip` 解压到一个固定目录
+1. 把 `Files.Internal_4.3.3.1_x64-portable.zip` 解压到一个固定目录
 2. 不要单独移动里面的文件，整个目录可以整体拷贝或改名
 3. 配置、日志、缓存都在同级的 `Data` 目录内
 4. 根目录那个 `Files.Internal.Portable.Identity.msix` **不要删**，启动器要它来恢复输入法候选窗
@@ -148,7 +148,7 @@ The certificate is trusted on this machine.
 管理员命令提示符：
 
 ```bat
-certutil -addstore -f "TrustedPeople" "Files.Internal_4.3.1.2_x64.cer"
+certutil -addstore -f "TrustedPeople" "Files.Internal_4.3.3.1_x64.cer"
 ```
 
 图形界面方式：

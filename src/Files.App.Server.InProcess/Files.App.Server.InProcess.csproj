@@ -1,0 +1,36 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>$(WindowsTargetFramework)</TargetFramework>
+        <TargetPlatformMinVersion>$(MinimalWindowsVersion)</TargetPlatformMinVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <IsAotCompatible>true</IsAotCompatible>
+        <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <OutputType>Library</OutputType>
+        <RootNamespace>Files.App.Server</RootNamespace>
+        <AssemblyName>Files.App.Server.InProcess</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Windows.CsWinRT" />
+        <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+        <PackageReference Include="SQLitePCLRaw.provider.winsqlite3" />
+        <PackageReference Include="System.Drawing.Common" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\Files.App.Server\**\*.cs"
+                 Exclude="..\Files.App.Server\bin\**;..\Files.App.Server\obj\**;..\Files.App.Server\Program.cs;..\Files.App.Server\Helpers.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Files.App.Server.Core\Files.App.Server.Core.csproj" />
+        <ProjectReference Include="..\Files.Storage\Files.Storage.csproj" />
+        <ProjectReference Include="..\Files.Shared\Files.Shared.csproj" />
+    </ItemGroup>
+
+</Project>

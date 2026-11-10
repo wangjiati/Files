@@ -4,10 +4,10 @@
     <PropertyGroup>
         <Distribution Condition="'$(Distribution)' == ''">Msix</Distribution>
         <EnableMsixTooling>true</EnableMsixTooling>
-        <Version>4.3.1.2</Version>
-        <AssemblyVersion>4.3.1.2</AssemblyVersion>
-        <FileVersion>4.3.1.2</FileVersion>
-        <InformationalVersion>4.3.1.2</InformationalVersion>
+        <Version>4.3.3.1</Version>
+        <AssemblyVersion>4.3.3.1</AssemblyVersion>
+        <FileVersion>4.3.3.1</FileVersion>
+        <InformationalVersion>4.3.3.1</InformationalVersion>
         <PublishProfile>Properties\PublishProfiles\win-$(Platform).pubxml</PublishProfile>
         <TargetFramework>$(WindowsTargetFramework)</TargetFramework>
         <OutputType>WinExe</OutputType>
@@ -82,6 +82,7 @@
         <DirectPInvoke Include="api-ms-win-core-winrt-l1-1-0" />
         <DirectPInvoke Include="api-ms-win-core-winrt-robuffer-l1-1-0" />
         <DirectPInvoke Include="api-ms-win-core-winrt-string-l1-1-0" />
+        <DirectPInvoke Include="CFGMGR32" />
         <DirectPInvoke Include="CRYPT32" />
         <DirectPInvoke Include="GDI32" />
         <DirectPInvoke Include="KERNEL32.dll" />
@@ -92,11 +93,13 @@
         <DirectPInvoke Include="MPR" />
         <_WindowsAppRuntimeBootstrapLibrary Include="@(WindowsAppSdkComponentPackages->'%(FullPath)lib\native\$(Platform)\Microsoft.WindowsAppRuntime.Bootstrap.lib')" />
         <NativeLibrary Include="runtimeobject.lib" />
+        <NativeLibrary Include="cfgmgr32.lib" />
         <NativeLibrary Include="mpr.lib" />
         <NativeLibrary Include="@(_WindowsAppRuntimeBootstrapLibrary->Exists())" />
     </ItemGroup>
   
     <ItemGroup>
+        <Content Remove="Assets\Libraries\**" />
         <Manifest Include="app.manifest" />
         <Content Update="Assets\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -133,7 +136,6 @@
         <PackageReference Include="Hogimn.Sql.Formatter" />
         <PackageReference Include="LibGit2Sharp" />
         <PackageReference Include="MessageFormat" />
-        <PackageReference Include="Microsoft.Data.Sqlite.Core" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
         <PackageReference Include="Microsoft.Extensions.Logging" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
@@ -142,7 +144,6 @@
         <PackageReference Include="Sentry" />
         <PackageReference Include="SevenZipSharp" />
         <PackageReference Include="SharpZipLib" />
-        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
         <PackageReference Include="System.Drawing.Common" />
         <PackageReference Include="Microsoft.WindowsAppSDK" />
         <PackageReference Include="Microsoft.Graphics.Win2D" />
@@ -175,6 +176,10 @@
             <Link>Files.App.Server.winmd</Link>
             <Visible>false</Visible>
         </None>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(Distribution)' == 'Portable'">
+        <ProjectReference Include="..\Files.App.Server.InProcess\Files.App.Server.InProcess.csproj" />
     </ItemGroup>
 
     <ItemGroup>

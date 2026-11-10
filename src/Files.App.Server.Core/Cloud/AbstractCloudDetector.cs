@@ -8,7 +8,7 @@ namespace Files.App.Server.Core.Cloud
 {
 	internal abstract class AbstractCloudDetector(ILogger logger)
 	{
-		static AbstractCloudDetector() => SQLitePCL.Batteries_V2.Init();
+		static AbstractCloudDetector() => SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
 
 		protected ILogger Logger { get; } = logger;
 

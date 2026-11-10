@@ -4,4 +4,5 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Files.App.Server")]
+[assembly: InternalsVisibleTo("Files.App.Server.InProcess")]
 [assembly: InternalsVisibleTo("Files.App.UnitTests")]

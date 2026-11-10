@@ -2,6 +2,11 @@
 <Project>
   <PropertyGroup>
 
+    <!--  Keep Portable intermediates separate so MSIX CsWinRT outputs cannot leak into them.  -->
+    <BaseIntermediateOutputPath Condition="'$(Distribution)' == 'Portable' And '$(MSBuildProjectName)' == 'Files.App'">$(MSBuildProjectDirectory)\obj\portable\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath Condition="'$(Distribution)' == 'Portable' And '$(MSBuildProjectName)' == 'Files.App'">$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+    <DefaultItemExcludes Condition="'$(Distribution)' == 'Portable' And '$(MSBuildProjectName)' == 'Files.App'">$(DefaultItemExcludes);obj\**</DefaultItemExcludes>
+
     <!--  Generic properties  -->
     <TargetFrameworkVersion>net10.0</TargetFrameworkVersion>
     <TargetWindowsVersion>10.0.26100.0</TargetWindowsVersion>

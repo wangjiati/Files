@@ -29,26 +29,17 @@ namespace Files.App
 		private static FlyoutBase? _LastOpenedFlyout;
 		private static bool _isWindowTeardownCompleted;
 		private static bool _isWindowClosing;
-#if DISTRIBUTION_MSIX
-		internal static Task<Server.AppService> ServerSession { get; } = Task.Run(() =>
-		{
-			var server = new Server.AppService(Environment.ProcessId);
-			CanRestorePreviousSession = server.CanRestorePreviousSession;
-			server.Changed += (_, name) => UiDispatcher?.TryEnqueue(() =>
-			{
-				if (ServerChanged is not { } handlers)
-					return;
-				foreach (EventHandler<string> handler in handlers.GetInvocationList())
-					SafetyExtensions.IgnoreExceptions(() => handler(null, name), Logger);
-			});
-			return server;
-		});
-
-		internal static event EventHandler<string>? ServerChanged;
-		internal static bool CanRestorePreviousSession { get; private set; }
-#else
+#if !DISTRIBUTION_MSIX
 		internal static event EventHandler<string>? ServerChanged;
 		internal static bool CanRestorePreviousSession => true;
+
+		internal static void NotifyServerChanged(string name) => UiDispatcher?.TryEnqueue(() =>
+		{
+			if (ServerChanged is not { } handlers)
+				return;
+			foreach (EventHandler<string> handler in handlers.GetInvocationList())
+				SafetyExtensions.IgnoreExceptions(() => handler(null, name), Logger);
+		});
 #endif
 		public static FlyoutBase? LastOpenedFlyout
 		{
@@ -93,26 +84,30 @@ namespace Files.App
 		protected override void OnLaunched(LaunchActivatedEventArgs e)
 		{
 			UiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+#if DISTRIBUTION_MSIX
+			_ = ServerSession;
+#endif
 
 			// Constructed on the UI thread: the ctor subscribes the UI-thread-only Clipboard.ContentChanged
 			AppModel = new AppModel();
 
-			_ = ActivateAsync().ContinueWith(task =>
+			_ = SafetyExtensions.WrapAsync(ActivateAsync, (_, ex) =>
 			{
 				// Startup failures used to be swallowed here: the window stayed invisible with no trace.
-				var details = task.Exception?.ToString() ?? "Unknown startup failure.";
+				var details = ex?.ToString() ?? "Unknown startup failure.";
 				Debug.WriteLine(details);
 				try
 				{
 					SystemIO.File.WriteAllText(SystemIO.Path.Combine(SystemIO.Path.GetTempPath(), "files-startup-error.txt"), details);
 				}
-				catch (Exception ex)
+				catch (Exception writeException)
 				{
-					Debug.WriteLine(ex);
+					Debug.WriteLine(writeException);
 				}
 
-				AppLifecycleHelper.HandleAppUnhandledException(task.Exception, true, "App.OnLaunched.ActivateAsync");
-			}, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+				AppLifecycleHelper.HandleAppUnhandledException(ex, true, "App.OnLaunched.ActivateAsync");
+				return Task.CompletedTask;
+			});
 
 			async Task ActivateAsync()
 			{
@@ -124,12 +119,14 @@ namespace Files.App
 				var appModel = AppModel;
 				var servicesTask = Task.Run(() =>
 				{
+					var provider = AppLifecycleHelper.ConfigureHost(appModel);
+
+					// Configure Ioc here so Ioc.Default-dependent constructions warm off-thread too.
+					Ioc.Default.ConfigureServices(provider);
+					Logger = provider.GetRequiredService<ILogger<App>>();
+
 					try
 					{
-						var provider = AppLifecycleHelper.ConfigureHost(appModel);
-
-						// Configure Ioc here so Ioc.Default-dependent constructions warm off-thread too
-						Ioc.Default.ConfigureServices(provider);
 						_ = provider.GetRequiredService<IFileTagsSettingsService>();
 
 						// Load the appearance settings needed for the first frame off the UI thread.
@@ -138,14 +135,13 @@ namespace Files.App
 						var appearanceSettings = provider.GetRequiredService<IAppearanceSettingsService>();
 						_ = appearanceSettings.AppThemeMode;
 						_ = appearanceSettings.AppThemeBackdropMaterial;
-
-						return provider;
 					}
-					catch (Exception)
+					catch (Exception ex)
 					{
-						// A UI-thread-only service ctor failed off-thread; rebuilt on the UI thread below
-						return null;
+						// Retry UI-thread-only constructors using the same provider on first use.
+						Logger.LogWarning(ex, "Could not warm up settings in the background.");
 					}
+					return provider;
 				});
 
 				// Native AOT opens the main page directly; JIT builds retain the splash screen.
@@ -157,13 +153,7 @@ namespace Files.App
 					_ = MainWindow.Instance;
 				}
 
-				// Configure the DI (dependency injection) container
 				var serviceProvider = await servicesTask;
-				if (serviceProvider is null)
-				{
-					serviceProvider = AppLifecycleHelper.ConfigureHost(appModel);
-					Ioc.Default.ConfigureServices(serviceProvider);
-				}
 
 				var userSettingsService = Ioc.Default.GetRequiredService<IUserSettingsService>();
 				var appServer = serviceProvider.GetRequiredService<IAppServerService>();
@@ -176,6 +166,9 @@ namespace Files.App
 					return;
 				}
 
+				// WinRT thumbnails can initialize the same Shell cache outside our icon helpers.
+				await STATask.RunPooled(WindowsStorableHelpers.InitializeShellImageList, Logger);
+
 				if (isStartupTask)
 					Program.RegisterCurrentInstance();
 
@@ -184,7 +177,6 @@ namespace Files.App
 				HistoryWrapper = Ioc.Default.GetRequiredService<StorageHistoryWrapper>();
 				FileTagsManager = Ioc.Default.GetRequiredService<FileTagsManager>();
 				LibraryManager = Ioc.Default.GetRequiredService<LibraryManager>();
-				Logger = Ioc.Default.GetRequiredService<ILogger<App>>();
 				AppModel = Ioc.Default.GetRequiredService<AppModel>();
 
 				MainWindow.Instance.Closed += Window_Closed;
