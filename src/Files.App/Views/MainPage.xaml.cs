@@ -117,6 +117,9 @@ namespace Files.App.Views
 				case nameof(IInfoPaneSettingsService.IsInfoPaneEnabled):
 					LoadPaneChanged();
 					break;
+				case nameof(IInfoPaneSettingsService.Layout):
+					UpdatePositioning();
+					break;
 				case nameof(IAppearanceSettingsService.SidebarWidth):
 					ApplySidebarWidthState();
 					break;
@@ -397,13 +400,16 @@ namespace Files.App.Views
 
 		private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
 		{
-			switch (InfoPane?.Position)
+			if (InfoPane is null)
+				return;
+
+			switch (UserSettingsService.InfoPaneSettingsService.Layout)
 			{
-				case PreviewPanePositions.Right when ContentColumn.ActualWidth == ContentColumn.MinWidth:
+				case PreviewPaneLayout.RightSplit or PreviewPaneLayout.RightTabs when ContentColumn.ActualWidth == ContentColumn.MinWidth:
 					UserSettingsService.InfoPaneSettingsService.VerticalSizePx += e.NewSize.Width - e.PreviousSize.Width;
 					UpdatePositioning();
 					break;
-				case PreviewPanePositions.Bottom when ContentRow.ActualHeight == ContentRow.MinHeight:
+				case PreviewPaneLayout.Bottom when ContentRow.ActualHeight == ContentRow.MinHeight:
 					UserSettingsService.InfoPaneSettingsService.HorizontalSizePx += e.NewSize.Height - e.PreviousSize.Height;
 					UpdatePositioning();
 					break;
@@ -435,20 +441,22 @@ namespace Files.App.Views
 			}
 			else
 			{
-				InfoPane.UpdatePosition(RootGrid.ActualWidth, RootGrid.ActualHeight);
-				switch (InfoPane.Position)
+				var infoPaneSettingsService = UserSettingsService.InfoPaneSettingsService;
+				var layout = infoPaneSettingsService.Layout;
+
+				InfoPane.ApplyLayout(layout);
+
+				switch (layout)
 				{
-					case PreviewPanePositions.None:
-						VisualStateManager.GoToState(this, "InfoPanePositionNone", true);
-						break;
-					case PreviewPanePositions.Right:
+					case PreviewPaneLayout.RightSplit:
+					case PreviewPaneLayout.RightTabs:
 						InfoPaneSizer.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
-						InfoPaneColumnDefinition.Width = new(UserSettingsService.InfoPaneSettingsService.VerticalSizePx);
+						InfoPaneColumnDefinition.Width = new(Math.Max(300d, infoPaneSettingsService.VerticalSizePx));
 						VisualStateManager.GoToState(this, "InfoPanePositionRight", true);
 						break;
-					case PreviewPanePositions.Bottom:
+					case PreviewPaneLayout.Bottom:
 						InfoPaneSizer.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
-						InfoPaneRowDefinition.Height = new(UserSettingsService.InfoPaneSettingsService.HorizontalSizePx);
+						InfoPaneRowDefinition.Height = new(infoPaneSettingsService.HorizontalSizePx);
 						VisualStateManager.GoToState(this, "InfoPanePositionBottom", true);
 						break;
 				}
@@ -457,14 +465,17 @@ namespace Files.App.Views
 
 		private void PaneSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
 		{
-			switch (InfoPane?.Position)
+			if (InfoPane is not null)
 			{
-				case PreviewPanePositions.Right:
-					UserSettingsService.InfoPaneSettingsService.VerticalSizePx = InfoPane.ActualWidth;
-					break;
-				case PreviewPanePositions.Bottom:
-					UserSettingsService.InfoPaneSettingsService.HorizontalSizePx = InfoPane.ActualHeight;
-					break;
+				switch (UserSettingsService.InfoPaneSettingsService.Layout)
+				{
+					case PreviewPaneLayout.RightSplit or PreviewPaneLayout.RightTabs:
+						UserSettingsService.InfoPaneSettingsService.VerticalSizePx = InfoPane.ActualWidth;
+						break;
+					case PreviewPaneLayout.Bottom:
+						UserSettingsService.InfoPaneSettingsService.HorizontalSizePx = InfoPane.ActualHeight;
+						break;
+				}
 			}
 
 			this.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.Arrow));
@@ -570,8 +581,8 @@ namespace Files.App.Views
 
 		private void PaneSplitter_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
 		{
-			this.ChangeCursor(InputSystemCursor.Create(InfoPane.Position == PreviewPanePositions.Right ?
-				InputSystemCursorShape.SizeWestEast : InputSystemCursorShape.SizeNorthSouth));
+			this.ChangeCursor(InputSystemCursor.Create(UserSettingsService.InfoPaneSettingsService.Layout is PreviewPaneLayout.Bottom ?
+				InputSystemCursorShape.SizeNorthSouth : InputSystemCursorShape.SizeWestEast));
 		}
 
 		private void SettingsButton_AccessKeyInvoked(UIElement sender, AccessKeyInvokedEventArgs args)

@@ -8,17 +8,8 @@ using WinRT;
 
 namespace Files.App.UserControls
 {
-	public enum PreviewPanePositions : ushort
-	{
-		None,
-		Right,
-		Bottom,
-	}
-
 	public sealed partial class InfoPane : UserControl
 	{
-		public PreviewPanePositions Position { get; private set; } = PreviewPanePositions.None;
-
 		private readonly IInfoPaneSettingsService PaneSettingsService;
 
 		private readonly ICommandManager Commands;
@@ -37,20 +28,41 @@ namespace Files.App.UserControls
 			ViewModel = Ioc.Default.GetRequiredService<InfoPaneViewModel>();
 		}
 
-		public void UpdatePosition(double panelWidth, double panelHeight)
+		public void ApplyLayout(PreviewPaneLayout layout)
 		{
-			if (panelWidth > 700)
+			// The tabs visual state collapses the details when the preview tab is selected.
+			if (layout is not PreviewPaneLayout.RightTabs && ViewModel.SelectedTab != InfoPaneTabs.Details)
+				ViewModel.SelectedTab = InfoPaneTabs.Details;
+
+			switch (layout)
 			{
-				Position = PreviewPanePositions.Right;
-				(MinWidth, MinHeight) = (150, 0);
-				VisualStateManager.GoToState(this, "Vertical", true);
+				case PreviewPaneLayout.RightSplit:
+				case PreviewPaneLayout.RightTabs:
+					(MinWidth, MinHeight) = (300, 0);
+					VisualStateManager.GoToState(this, "Vertical", true);
+					break;
+				case PreviewPaneLayout.Bottom:
+					(MinWidth, MinHeight) = (0, 140);
+					VisualStateManager.GoToState(this, "Horizontal", true);
+					break;
 			}
-			else
-			{
-				Position = PreviewPanePositions.Bottom;
-				(MinWidth, MinHeight) = (0, 140);
-				VisualStateManager.GoToState(this, "Horizontal", true);
-			}
+
+			// The details/preview selector only applies when the two panes share the same area.
+			TabSelectorPanel.Visibility = layout is PreviewPaneLayout.RightTabs ? Visibility.Visible : Visibility.Collapsed;
+
+			LayoutRightSplitButton.IsChecked = layout is PreviewPaneLayout.RightSplit;
+			LayoutBottomButton.IsChecked = layout is PreviewPaneLayout.Bottom;
+			LayoutRightTabsButton.IsChecked = layout is PreviewPaneLayout.RightTabs;
+		}
+
+		private void LayoutButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (sender is not FrameworkElement { Tag: string tag } || !Enum.TryParse<PreviewPaneLayout>(tag, out var layout))
+				return;
+
+			// Re-selecting the current layout doesn't raise a settings change event, so apply it here as well.
+			PaneSettingsService.Layout = layout;
+			ApplyLayout(layout);
 		}
 
 		private void Root_Unloaded(object sender, RoutedEventArgs e)

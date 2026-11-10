@@ -1763,6 +1763,15 @@
   <data name="PreviewPaneLoadCloudItemButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Downloads the item from the cloud and loads the preview</value>
   </data>
+  <data name="PreviewPaneLayoutRightSplit" xml:space="preserve">
+    <value>Right, preview above details</value>
+  </data>
+  <data name="PreviewPaneLayoutBottom" xml:space="preserve">
+    <value>Below the file list</value>
+  </data>
+  <data name="PreviewPaneLayoutRightTabs" xml:space="preserve">
+    <value>Right, as tabs</value>
+  </data>
   <data name="DetailsArchiveItems" xml:space="preserve">
     <value>{0, plural, one {# item} other {# items}} ({1, plural, one {# file} other {# files}}, {2, plural, one {# folder} other {# folders}})</value>
   </data>

@@ -19,8 +19,26 @@ namespace Files.App.Services.Settings
 
 		public double VerticalSizePx
 		{
-			get => Math.Max(100d, Get(250d));
+			get => Math.Max(100d, Get(300d));
 			set => Set(Math.Max(100d, value));
+		}
+
+		public PreviewPaneLayout Layout
+		{
+			get => Get(PreviewPaneLayout.RightSplit);
+			set => Set(value);
+		}
+
+		public double SplitRatio
+		{
+			get => Math.Clamp(Get(0.42d), 0.22d, 0.72d);
+			set => Set(Math.Clamp(value, 0.22d, 0.72d));
+		}
+
+		public double BottomDetailsWidthPx
+		{
+			get => Math.Max(132d, Get(300d));
+			set => Set(Math.Max(132d, value));
 		}
 
 		public double MediaVolume
