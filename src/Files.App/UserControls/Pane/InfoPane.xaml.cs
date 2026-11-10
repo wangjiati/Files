@@ -59,8 +59,12 @@ namespace Files.App.UserControls
 					RootPropertiesScrollViewer.Margin = new Thickness(0);
 					PreviewColumn.Width = new(2, GridUnitType.Star);
 					PropertiesColumn.Width = new(3, GridUnitType.Star);
-					PreviewRow.Height = new(2, GridUnitType.Star);
-					PropertiesRow.Height = new(3, GridUnitType.Star);
+
+					// The preview row keeps its share so that switching back to the details tab restores 2:3.
+					PreviewRow.Height = new GridLength(2, GridUnitType.Star);
+					PropertiesRow.Height = ViewModel.SelectedTab is InfoPaneTabs.Preview
+						? new GridLength(0)
+						: new GridLength(3, GridUnitType.Star);
 					break;
 				case PreviewPaneLayout.Bottom:
 					(MinWidth, MinHeight) = (0, 140);
@@ -96,19 +100,21 @@ namespace Files.App.UserControls
 
 		private void ColumnSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
 		{
-			var detailsWidth = Math.Max(132d, PropertiesColumn.ActualWidth);
+			var detailsWidth = ClampBottomDetailsWidth(PropertiesColumn.ActualWidth);
 			PaneSettingsService.BottomDetailsWidthPx = detailsWidth;
 
 			PropertiesColumn.Width = new GridLength(detailsWidth);
 		}
 
 		private void ApplyBottomDetailsWidth()
+			=> PropertiesColumn.Width = new GridLength(ClampBottomDetailsWidth(PaneSettingsService.BottomDetailsWidthPx));
+
+		private double ClampBottomDetailsWidth(double detailsWidth)
 		{
 			// Keep at least 160 px available for the preview column.
 			var maxWidth = Math.Max(132d, Root.ActualWidth - 160d);
-			var detailsWidth = Math.Clamp(PaneSettingsService.BottomDetailsWidthPx, 132d, maxWidth);
 
-			PropertiesColumn.Width = new GridLength(detailsWidth);
+			return Math.Clamp(detailsWidth, 132d, maxWidth);
 		}
 
 		private void LayoutButton_Click(object sender, RoutedEventArgs e)
