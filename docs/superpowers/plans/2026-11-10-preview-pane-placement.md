@@ -158,11 +158,11 @@ git commit -m "Add preview pane layout buttons and mode switching"
 `InfoPane.xaml` 的 `UserControl.Resources` 合并 `ms-appx:///Styles/DefaultGridSplitterStyle.xaml`，然后加两条分隔条（均 `Style="{StaticResource InvisibleGridSplitterStyle}"`，初始 `Collapsed`，`IsTabStop="False"`）：
 
 - 行分隔条 `RowSplitter`：放在详情区的行、列跨 2、`VerticalAlignment="Top"`、`Height=8`、`ResizeDirection="Rows"`、`ResizeBehavior="PreviousAndCurrent"`。
-- 列分隔条 `ColumnSplitter`：`Grid.Row=1 Grid.RowSpan=2 Grid.Column=1`、`HorizontalAlignment="Left"`、`Width=6`、`ResizeDirection="Columns"`、`ResizeBehavior="PreviousAndCurrent"`。
+- 列分隔条 `ColumnSplitter`：`Grid.Row=1 Grid.RowSpan=2 Grid.Column=1`、`HorizontalAlignment="Left"`、`Width=8`、`ResizeDirection="Columns"`、`ResizeBehavior="PreviousAndCurrent"`。
 
 - [ ] **步骤 2：详情列的 MinWidth 与内边距**
 
-`PropertiesColumn` 加 `MinWidth="132"`。行分隔条出现时详情区 `Margin="0,8,0,0"`，列分隔条出现时 `Margin="6,0,0,0"`——由 `ApplyLayout` 按模式设置，不写进状态。
+`PropertiesColumn` 加 `MinWidth="132"`。行分隔条出现时详情区 `Margin="0,8,0,0"`，列分隔条出现时 `Margin="8,0,0,0"`——由 `ApplyLayout` 按模式设置，不写进状态。
 
 - [ ] **步骤 3：LoadingPreview 不再藏详情**
 
@@ -174,7 +174,7 @@ git commit -m "Add preview pane layout buttons and mode switching"
 
 - `RightSplit`：`RowSplitter.Visible`、`ColumnSplitter.Collapsed`；`PreviewRow.Height=SplitRatio`、`PropertiesRow.Height=1-SplitRatio`（星号），详情 `Margin="0,8,0,0"`；行分隔条光标 `SizeNorthSouth`。
 - `RightTabs`：两条都 `Collapsed`；`PreviewRow=2*`、`PropertiesRow=3*`，详情 `Margin="0"`。
-- `Bottom`：`ColumnSplitter.Visible`、`RowSplitter.Collapsed`；`PropertiesColumn.Width = Math.Min(BottomDetailsWidthPx, Math.Max(132, ActualWidth*0.6))`，详情 `Margin="6,0,0,0"`；列分隔条光标 `SizeWestEast`。
+- `Bottom`：`ColumnSplitter.Visible`、`RowSplitter.Collapsed`；`PropertiesColumn.Width = new(Math.Max(132d, PaneSettingsService.BottomDetailsWidthPx))`（不做百分比截断），详情 `Margin="8,0,0,0"`；列分隔条光标 `SizeWestEast`。
 - 两条分隔条的 `ManipulationCompleted` 分别写回：行分隔条按 `PreviewRow.ActualHeight / (PreviewRow+PropertiesRow)` 算比例、夹紧后再设回星号；列分隔条把 `Math.Max(132, PropertiesColumn.ActualWidth)` 写回设置并重新设列宽。
 
 - [ ] **步骤 5：预览加载规则与刷新策略**
