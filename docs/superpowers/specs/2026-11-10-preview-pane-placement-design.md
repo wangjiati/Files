@@ -55,17 +55,7 @@
 
 ![底部通栏 · 详情压到 170 px](assets/preview-pane/04-bottom-narrow-dark.jpg)
 
-原型里的关键读数（实现以设置值为准，原型为了展示效果取了窗口宽度 1440 下的合适值）：
-
-| 项目 | 原型值 | 应用默认值 |
-| --- | --- | --- |
-| 右侧窗格宽度 | 360 px | `VerticalSizePx`，默认 250；标签页模式最小 300 |
-| 底栏高度 | 340 px | `HorizontalSizePx`，默认 300 |
-| 上下两行比例（预览占比） | 42% | 新增 `SplitRatio`，见 7.4 |
-| 底部详情列宽 | 300 px | 新增 `BottomDetailsWidthPx`，默认 300 |
-| 底部详情列最小宽度 | 132 px | 132 px |
-| 详情紧凑排版阈值 | 内容宽 < 200 px | 同左 |
-| 位置按钮 | 24×24，图标 16 px | 同左 |
+原型尺寸只作示意（1440 宽窗口下的展示值）；默认值与约束只在 §7.2 出现一次，实现时不要照抄原型的像素。
 
 ## 6. 交互规格
 
@@ -88,14 +78,14 @@
 
 **右侧 · 上下两行（默认）**
 
-- 窗格宽度 = `VerticalSizePx`（不小于 150 px）。
-- 内容区：预览在上，详情在下，中间一条 8 px 分隔条（悬停显示抓手线、光标为上下箭头）。
+- 窗格宽度 = `VerticalSizePx`；右侧两种模式共用同一个下限 300 px（见 7.2）。
+- 内容区：预览在上，详情在下，中间一条分隔条（复用 `DefaultGridSplitterStyle`，命中区不小于 8 px，光标为上下箭头）。
 - 预览占比 = `SplitRatio`，默认 0.42，范围 0.22–0.72；拖动分隔条更新，`ManipulationCompleted` 时写回设置。
 - 拖正文分隔条不改窗格宽度。
 
 **右侧 · 标签页**
 
-- 窗格宽度 = `VerticalSizePx`，且不小于 300 px（顶栏要同时放下居中的胶囊和右侧三个按钮；其它模式仍按 150 px 下限）。用户保存的宽度小于 300 时，仅在本模式下按 300 显示。
+- 窗格宽度 = `VerticalSizePx`，与上下两行共用同一个下限 300 px：居中的胶囊加右侧三个 24 px 按钮大约需要 300 px 才不重叠，所以两个右侧模式统一这个下限，不做按模式分支。
 - 内容区由 `SelectedTab` 决定：
   - 详情：**维持现状**——上方基础预览（`BasicPreview`：图标 / 缩略图拉伸），下方详情，比例 2:3。
   - 预览：真实预览占满整块。
@@ -104,10 +94,10 @@
 **底部通栏**
 
 - 窗格高度 = `HorizontalSizePx`（不小于 140 px），宽度铺满文件列表下方。
-- 内容区左右并排：预览列占剩余宽度，详情列宽 = `BottomDetailsWidthPx`（默认 300，最小 132，最大为窗格宽度的 60%）。
-- 中间一条 6 px 竖直分隔条（光标为左右箭头），拖动更新 `BottomDetailsWidthPx`。
+- 内容区左右并排：预览列 `*`，详情列宽 = `BottomDetailsWidthPx`；132 px 作为详情列的 `MinWidth`，不做百分比截断。
+- 中间一条竖直分隔条（复用 `DefaultGridSplitterStyle`，命中区不小于 8 px，光标为左右箭头），拖动更新 `BottomDetailsWidthPx`。
 - 不显示"详情 / 预览"胶囊。
-- 详情列压窄时按 6.4 自动切换紧凑排版；"打开属性"按钮在底部模式隐藏（高度有限，属性可从右键菜单进入）。
+- 详情列窄时按 6.4 自然换行；"打开属性"按钮三种模式都保留，高度不够时随详情一起滚动。
 
 **关闭态**
 
@@ -127,15 +117,17 @@
 | 底部通栏 | 始终加载真实预览，不受 `SelectedTab` 影响 |
 | 标签页 · 预览 | 加载真实预览 |
 | 标签页 · 详情 | 维持现状：加载 `BasicPreview`（图标 / 缩略图），同时显示详情 |
-| 无可用预览 | 显示现有"无可用预览"文案 + 详情 |
 
 - `BasicPreview` 整条链路保留：详情页、快捷方式、可浏览 zip、回收站非文件夹项、无处理器兜底，共 5 处调用，都不删除。
 - 需要改的只是"何时走真实预览"：`Layout` 为上下两行 / 底部时，无论 `SelectedTab` 是什么都走真实预览；为标签页时保持现有分支逻辑。
+- "无可用预览"沿用现有 `NoPreviewAvailable` 状态（预览区文案 + 详情可见），不新增分支。
+- 详情区可见性独立于预览状态：上下两行 / 底部模式强制"预览 + 详情"两块可见（即使上次停在"预览"页），只有标签页模式按 `SelectedTab` 决定；`LoadingPreview` 不得把详情隐藏。
 - 保留现有的加载取消与版本号机制（`UpdateSelectedItemPreviewAsync`、`previewRequestVersion`、延迟入队），切换选中项时旧请求必须作废。
 
 ### 6.6 位置决策
 
 - 位置完全由 `PreviewPaneLayout` 设置决定，删除 `InfoPane.UpdatePosition` 里"宽度 > 700 就右侧、否则底部"的推断。
+- 只保留一个位置枚举：删除 `PreviewPanePositions` 与 `InfoPane.Position`，`MainPage` 直接按 `Layout` 分支（现有枚举只有两个引用点）。
 - 窗口变窄不再自动翻转模式；空间不足由用户自己改模式，或者由窗格的最小宽度限制压缩文件列表。
 - 切换模式后，主窗口的 `InfoPanePositionStates` 立即切到对应状态，并保留该模式上次的尺寸。
 
@@ -162,9 +154,11 @@ public enum PreviewPaneLayout
 | --- | --- | --- | --- |
 | `Layout` | `PreviewPaneLayout` | `RightSplit` | — |
 | `SplitRatio` | `double` | `0.42` | 限制在 0.22–0.72 |
-| `BottomDetailsWidthPx` | `double` | `300` | 不小于 132；应用时再按窗格宽度的 60% 截断 |
+| `BottomDetailsWidthPx` | `double` | `300` | 不小于 132；132 同时作为详情列的 `MinWidth` |
 
 复用：`VerticalSizePx`（右侧宽度）、`HorizontalSizePx`（底栏高度）、`IsInfoPaneEnabled`、`SelectedTab`。
+
+右侧两种模式的最小宽度统一为 300 px：`VerticalSizePx` 的默认值从 250 调到 300；保存值小于 300 时按 300 应用，拖动到更小时也按 300 写回，避免"存 250、显示 300、再回写 250"的来回。
 
 `UserSettingsJsonSerializationContext` 增加 `[JsonSerializable(typeof(PreviewPaneLayout))]`。
 
@@ -188,17 +182,17 @@ public enum PreviewPaneLayout
 | `Data/Contracts/IInfoPaneSettingsService.cs` | 新增三处属性契约 |
 | `Services/Settings/InfoPaneSettingsService.cs` | 默认值与范围限制 |
 | `Services/Settings/UserSettingsService.cs` | 序列化上下文注册枚举 |
-| `UserControls/Pane/InfoPane.xaml` | 顶部位置按钮组；上下两行的分隔条行；底部模式的列定义与竖直分隔条；详情紧凑视觉状态；详情页收起预览区；修正 `RootPropertiesScrollViewer.Column` 缺 `(Grid.Column)` 的现有笔误 |
-| `UserControls/Pane/InfoPane.xaml.cs` | 位置由设置驱动；分隔条拖动与写回；详情宽度变化时切紧凑状态 |
+| `UserControls/Pane/InfoPane.xaml` | 顶部位置按钮组；上下两行的分隔条行；底部模式的列定义与竖直分隔条；详情列 `MinWidth=132`；修正 `RootPropertiesScrollViewer.Column` 缺 `(Grid.Column)` 的现有笔误 |
+| `UserControls/Pane/InfoPane.xaml.cs` | 位置由设置驱动（删除 `PreviewPanePositions` / `Position`）；分隔条拖动与写回；上下两行 / 底部强制详情可见 |
 | `ViewModels/UserControls/InfoPaneViewModel.cs` | 只调整"何时走真实预览"：`Layout` 为上下两行 / 底部时忽略 `SelectedTab`、直接加载真实预览；标签页模式保持现有分支（含 `BasicPreview`） |
-| `Views/MainPage.xaml.cs` | `UpdatePositioning` 按 `Layout` 切状态，删除宽度推断；监听 `Layout` 变化 |
+| `Views/MainPage.xaml.cs` | `UpdatePositioning` 按 `Layout` 切状态，删除宽度推断与 `Position` 引用；右侧宽度统一 `Max(300, VerticalSizePx)`；监听 `Layout` 变化 |
 | `Views/MainPage.xaml` | `InfoPanePositionStates` 沿用，必要时补 setter |
 | `Strings/en-US/Resources.resw` | 三条按钮文案（名称 / 提示） |
 | `Data/Enums/InfoPaneTabs.cs` 等 | 无改动，继续用于标签页模式 |
 
 说明：
 
-- `PreviewPaneStates` 的 `LoadingPreview` 状态会隐藏详情；上下两行 / 底部模式下预览与详情同时可见，加载期间不能让详情消失（调整该状态的 setter，或加载期间不切到该状态）。
+- 三组 VisualState 会往同一批属性写值：页签组在 `SelectedTab=Preview` 时把 `PropertiesRow.Height` / `PropertiesColumn.Width` 设为 0 并隐藏详情，`LoadingPreview` 也隐藏详情。上下两行 / 底部模式必须在应用布局时把详情恢复为可见并重新给出行列尺寸，否则会出现"胶囊已隐藏、详情却为 0 高"的死角。
 - 位置按钮的本地化沿用 `helpers:ResourceString` 与 `Strings.*` 生成方式，不硬编码。
 - Info Pane 是单实例、被所有标签页共用；设置变化时要广播到主窗口并重算布局（现有 `MainPage` 已监听 `IInfoPaneSettingsService` 的部分键）。
 
@@ -227,11 +221,10 @@ public enum PreviewPaneLayout
 
 - 上下两行比例默认 0.42，范围 0.22–0.72。
 - 详情列最小 132 px；紧凑排版阈值 200 px。
-- 底部模式隐藏"打开属性"按钮。
 - 窄窗口不再自动翻转到底部，用户选择优先。
 - 尺寸与模式全局记忆，不按标签页区分。
 - 不做设置页入口，位置只在预览区切换。
-- 标签页模式的右侧窗格最小宽度 300 px（其它模式仍为 150 px），保证胶囊与三个按钮不重叠。
+- 右侧两种模式统一最小宽度 300 px，`VerticalSizePx` 默认值同步从 250 调到 300。
 
 ## 11. 验收清单
 
@@ -248,7 +241,7 @@ public enum PreviewPaneLayout
 
 ## 12. 留给建造者的空间
 
-- 具体 XAML 结构（新增行还是重排现有行）、紧凑排版用 VisualState 还是绑定、分隔条的精确厚度。
+- 具体 XAML 结构（新增行/列还是复用现有行列）、分隔条的精确厚度（命中区不小于 8 px 即可）。
 - 位置按钮图标的具体画法，只要与"两行 / 底栏 / 标签页"语义一致即可。
 - 资源键命名与提示文案措辞。
 - 是否顺手把"详情 / 预览"胶囊的选中态跟随 `SelectedTab` 的现有实现一并整理。
