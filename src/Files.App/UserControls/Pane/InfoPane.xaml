@@ -25,6 +25,7 @@
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="ms-appx:///Styles/PropertiesStyles.xaml" />
+				<ResourceDictionary Source="ms-appx:///Styles/DefaultGridSplitterStyle.xaml" />
 
 				<ResourceDictionary>
 					<converters:BoolNegationConverter x:Key="BoolNegationConverter" />
@@ -142,12 +143,12 @@
 		CornerRadius="8">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="2*" />
+			<RowDefinition x:Name="PreviewRow" Height="2*" />
 			<RowDefinition x:Name="PropertiesRow" Height="3*" />
 		</Grid.RowDefinitions>
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="2*" />
-			<ColumnDefinition x:Name="PropertiesColumn" Width="3*" />
+			<ColumnDefinition x:Name="PropertiesColumn" Width="3*" MinWidth="132" />
 		</Grid.ColumnDefinitions>
 
 		<!--  Panes  -->
@@ -547,6 +548,35 @@
 			</StackPanel>
 		</ScrollViewer>
 
+		<!--  Row splitter for the right split layout  -->
+		<controls:GridSplitter
+			x:Name="RowSplitter"
+			Grid.Row="2"
+			Grid.ColumnSpan="2"
+			Height="8"
+			IsTabStop="False"
+			ManipulationCompleted="RowSplitter_ManipulationCompleted"
+			ResizeBehavior="PreviousAndCurrent"
+			ResizeDirection="Rows"
+			Style="{StaticResource InvisibleGridSplitterStyle}"
+			VerticalAlignment="Top"
+			Visibility="Collapsed" />
+
+		<!--  Column splitter for the bottom layout  -->
+		<controls:GridSplitter
+			x:Name="ColumnSplitter"
+			Grid.Row="1"
+			Grid.RowSpan="2"
+			Grid.Column="1"
+			HorizontalAlignment="Left"
+			IsTabStop="False"
+			ManipulationCompleted="ColumnSplitter_ManipulationCompleted"
+			ResizeBehavior="PreviousAndCurrent"
+			ResizeDirection="Columns"
+			Style="{StaticResource InvisibleGridSplitterStyle}"
+			Visibility="Collapsed"
+			Width="6" />
+
 		<VisualStateManager.VisualStateGroups>
 			<VisualStateGroup>
 				<VisualState x:Name="NoItemSelected">
@@ -601,9 +631,6 @@
 					</VisualState.StateTriggers>
 					<VisualState.Setters>
 						<Setter Target="PreviewErrorText.Visibility" Value="Collapsed" />
-						<Setter Target="FileDetailsRepeater.Visibility" Value="Collapsed" />
-						<Setter Target="DetailsTagsList.Visibility" Value="Collapsed" />
-						<Setter Target="DetailsOpenProperties.Visibility" Value="Collapsed" />
 						<Setter Target="DetailsListHeader.Visibility" Value="Visible" />
 						<Setter Target="PreviewControlPresenter.Visibility" Value="Collapsed" />
 						<Setter Target="PreviewLoadingIndicator.IsActive" Value="True" />

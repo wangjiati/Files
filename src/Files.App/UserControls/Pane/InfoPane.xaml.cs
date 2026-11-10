@@ -1,6 +1,8 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Controls;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -37,13 +39,32 @@ namespace Files.App.UserControls
 			switch (layout)
 			{
 				case PreviewPaneLayout.RightSplit:
+					(MinWidth, MinHeight) = (300, 0);
+					VisualStateManager.GoToState(this, "Vertical", true);
+					RowSplitter.Visibility = Visibility.Visible;
+					ColumnSplitter.Visibility = Visibility.Collapsed;
+					RowSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
+					RootPropertiesScrollViewer.Margin = new Thickness(0, 8, 0, 0);
+					PreviewRow.Height = new GridLength(PaneSettingsService.SplitRatio, GridUnitType.Star);
+					PropertiesRow.Height = new GridLength(1d - PaneSettingsService.SplitRatio, GridUnitType.Star);
+					break;
 				case PreviewPaneLayout.RightTabs:
 					(MinWidth, MinHeight) = (300, 0);
 					VisualStateManager.GoToState(this, "Vertical", true);
+					RowSplitter.Visibility = Visibility.Collapsed;
+					ColumnSplitter.Visibility = Visibility.Collapsed;
+					RootPropertiesScrollViewer.Margin = new Thickness(0);
+					PreviewRow.Height = new GridLength(2, GridUnitType.Star);
+					PropertiesRow.Height = new GridLength(3, GridUnitType.Star);
 					break;
 				case PreviewPaneLayout.Bottom:
 					(MinWidth, MinHeight) = (0, 140);
 					VisualStateManager.GoToState(this, "Horizontal", true);
+					ColumnSplitter.Visibility = Visibility.Visible;
+					RowSplitter.Visibility = Visibility.Collapsed;
+					ColumnSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
+					RootPropertiesScrollViewer.Margin = new Thickness(6, 0, 0, 0);
+					PropertiesColumn.Width = new GridLength(Math.Min(PaneSettingsService.BottomDetailsWidthPx, Math.Max(132d, ActualWidth * 0.6d)));
 					break;
 			}
 
@@ -53,6 +74,27 @@ namespace Files.App.UserControls
 			LayoutRightSplitButton.IsChecked = layout is PreviewPaneLayout.RightSplit;
 			LayoutBottomButton.IsChecked = layout is PreviewPaneLayout.Bottom;
 			LayoutRightTabsButton.IsChecked = layout is PreviewPaneLayout.RightTabs;
+		}
+
+		private void RowSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
+		{
+			var totalHeight = PreviewRow.ActualHeight + PropertiesRow.ActualHeight;
+			if (totalHeight <= 0d)
+				return;
+
+			var splitRatio = Math.Clamp(PreviewRow.ActualHeight / totalHeight, 0.22d, 0.72d);
+			PaneSettingsService.SplitRatio = splitRatio;
+
+			PreviewRow.Height = new GridLength(splitRatio, GridUnitType.Star);
+			PropertiesRow.Height = new GridLength(1d - splitRatio, GridUnitType.Star);
+		}
+
+		private void ColumnSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
+		{
+			var detailsWidth = Math.Max(132d, PropertiesColumn.ActualWidth);
+			PaneSettingsService.BottomDetailsWidthPx = detailsWidth;
+
+			PropertiesColumn.Width = new GridLength(detailsWidth);
 		}
 
 		private void LayoutButton_Click(object sender, RoutedEventArgs e)

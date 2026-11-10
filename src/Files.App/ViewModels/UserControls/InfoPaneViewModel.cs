@@ -24,6 +24,11 @@ namespace Files.App.ViewModels.UserControls
 		private Files.App.UserControls.Menus.FileTagsContextMenu? cachedTagsContextMenu;
 
 		/// <summary>
+		/// Value indicating if the pane currently shows the basic preview instead of a real one
+		/// </summary>
+		private bool usesBasicPreview;
+
+		/// <summary>
 		/// Value indicating if the info pane is on/off
 		/// </summary>
 		private bool isEnabled;
@@ -144,6 +149,9 @@ namespace Files.App.ViewModels.UserControls
 
 		public InfoPaneViewModel()
 		{
+			usesBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+				infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
+
 			infoPaneSettingsService.PropertyChanged += PreviewSettingsService_OnPropertyChangedEvent;
 			contentPageContext.PropertyChanged += ContentPageContext_PropertyChanged;
 			CloudDrivesManager.DataChanged += CloudDrivesManager_DataChanged;
@@ -419,7 +427,8 @@ namespace Files.App.ViewModels.UserControls
 				{
 					PreviewPaneState = PreviewPaneStates.LoadingPreview;
 
-					if (SelectedTab == InfoPaneTabs.Preview ||
+					if (infoPaneSettingsService.Layout is not PreviewPaneLayout.RightTabs ||
+						SelectedTab == InfoPaneTabs.Preview ||
 						SelectedItem?.PrimaryItemAttribute == StorageItemTypes.Folder)
 					{
 						await LoadPreviewControlAsync(token, downloadItem);
@@ -500,11 +509,19 @@ namespace Files.App.ViewModels.UserControls
 		[DynamicWindowsRuntimeCast(typeof(Frame))]
 		private async void PreviewSettingsService_OnPropertyChangedEvent(object? sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+			if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab) or nameof(infoPaneSettingsService.Layout))
 			{
-				OnPropertyChanged(nameof(SelectedTab));
+				if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+					OnPropertyChanged(nameof(SelectedTab));
 
-				// The preview will need refreshing as the file details won't be accurate
+				// The other layouts show the real preview, so only switching to or from the basic preview needs a reload.
+				var isBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+					infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
+				if (isBasicPreview == usesBasicPreview)
+					return;
+
+				usesBasicPreview = isBasicPreview;
+
 				var shouldUpdatePreview = ((MainWindow.Instance.Content as Frame)?.Content as MainPage)?.ViewModel.ShouldPreviewPaneBeActive;
 				if (shouldUpdatePreview == true)
 					await UpdateSelectedItemPreviewAsync();
