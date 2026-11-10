@@ -29,6 +29,11 @@ namespace Files.App.ViewModels.UserControls
 		private bool usesBasicPreview;
 
 		/// <summary>
+		/// Value indicating if the pane used the tabs layout before the last settings change
+		/// </summary>
+		private bool wasInTabsLayout;
+
+		/// <summary>
 		/// Value indicating if the info pane is on/off
 		/// </summary>
 		private bool isEnabled;
@@ -151,6 +156,7 @@ namespace Files.App.ViewModels.UserControls
 		{
 			usesBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
 				infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
+			wasInTabsLayout = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs;
 
 			infoPaneSettingsService.PropertyChanged += PreviewSettingsService_OnPropertyChangedEvent;
 			contentPageContext.PropertyChanged += ContentPageContext_PropertyChanged;
@@ -514,13 +520,27 @@ namespace Files.App.ViewModels.UserControls
 				if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
 					OnPropertyChanged(nameof(SelectedTab));
 
-				// The other layouts show the real preview, so only switching to or from the basic preview needs a reload.
-				var isBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+				var isUsingBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
 					infoPaneSettingsService.SelectedTab is InfoPaneTabs.Details;
-				if (isBasicPreview == usesBasicPreview)
-					return;
+				var isInTabsLayout = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs;
 
-				usesBasicPreview = isBasicPreview;
+				// Tab changes reload when the basic preview comes or goes. Layout changes reload whenever the tabs
+				// layout is entered or left, since the previous preview does not fill the details shown after it.
+				var shouldReload = false;
+				if (e.PropertyName is nameof(infoPaneSettingsService.SelectedTab))
+				{
+					shouldReload = isUsingBasicPreview != usesBasicPreview;
+				}
+				else
+				{
+					shouldReload = isInTabsLayout != wasInTabsLayout;
+					wasInTabsLayout = isInTabsLayout;
+				}
+
+				usesBasicPreview = isUsingBasicPreview;
+
+				if (!shouldReload)
+					return;
 
 				var shouldUpdatePreview = ((MainWindow.Instance.Content as Frame)?.Content as MainPage)?.ViewModel.ShouldPreviewPaneBeActive;
 				if (shouldUpdatePreview == true)

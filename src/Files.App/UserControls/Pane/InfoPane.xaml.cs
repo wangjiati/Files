@@ -45,8 +45,11 @@ namespace Files.App.UserControls
 					ColumnSplitter.Visibility = Visibility.Collapsed;
 					RowSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
 					RootPropertiesScrollViewer.Margin = new Thickness(0, 8, 0, 0);
-					PreviewRow.Height = new GridLength(PaneSettingsService.SplitRatio, GridUnitType.Star);
-					PropertiesRow.Height = new GridLength(1d - PaneSettingsService.SplitRatio, GridUnitType.Star);
+					PreviewColumn.Width = new(2, GridUnitType.Star);
+					PropertiesColumn.Width = new(3, GridUnitType.Star);
+					var splitRatio = Math.Clamp(PaneSettingsService.SplitRatio, 0.22d, 0.72d);
+					PreviewRow.Height = new(splitRatio, GridUnitType.Star);
+					PropertiesRow.Height = new(1d - splitRatio, GridUnitType.Star);
 					break;
 				case PreviewPaneLayout.RightTabs:
 					(MinWidth, MinHeight) = (300, 0);
@@ -54,8 +57,10 @@ namespace Files.App.UserControls
 					RowSplitter.Visibility = Visibility.Collapsed;
 					ColumnSplitter.Visibility = Visibility.Collapsed;
 					RootPropertiesScrollViewer.Margin = new Thickness(0);
-					PreviewRow.Height = new GridLength(2, GridUnitType.Star);
-					PropertiesRow.Height = new GridLength(3, GridUnitType.Star);
+					PreviewColumn.Width = new(2, GridUnitType.Star);
+					PropertiesColumn.Width = new(3, GridUnitType.Star);
+					PreviewRow.Height = new(2, GridUnitType.Star);
+					PropertiesRow.Height = new(3, GridUnitType.Star);
 					break;
 				case PreviewPaneLayout.Bottom:
 					(MinWidth, MinHeight) = (0, 140);
@@ -64,7 +69,7 @@ namespace Files.App.UserControls
 					RowSplitter.Visibility = Visibility.Collapsed;
 					ColumnSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
 					RootPropertiesScrollViewer.Margin = new Thickness(8, 0, 0, 0);
-					PropertiesColumn.Width = new(Math.Max(132d, PaneSettingsService.BottomDetailsWidthPx));
+					ApplyBottomDetailsWidth();
 					break;
 			}
 
@@ -97,6 +102,15 @@ namespace Files.App.UserControls
 			PropertiesColumn.Width = new GridLength(detailsWidth);
 		}
 
+		private void ApplyBottomDetailsWidth()
+		{
+			// Keep at least 160 px available for the preview column.
+			var maxWidth = Math.Max(132d, Root.ActualWidth - 160d);
+			var detailsWidth = Math.Clamp(PaneSettingsService.BottomDetailsWidthPx, 132d, maxWidth);
+
+			PropertiesColumn.Width = new GridLength(detailsWidth);
+		}
+
 		private void LayoutButton_Click(object sender, RoutedEventArgs e)
 		{
 			if (sender is not FrameworkElement { Tag: string tag } || !Enum.TryParse<PreviewPaneLayout>(tag, out var layout))
@@ -115,7 +129,12 @@ namespace Files.App.UserControls
 		}
 
 		private void Root_SizeChanged(object sender, SizeChangedEventArgs e)
-			=> Context.IsHorizontal = Root.ActualWidth >= Root.ActualHeight;
+		{
+			Context.IsHorizontal = Root.ActualWidth >= Root.ActualHeight;
+
+			if (PaneSettingsService.Layout is PreviewPaneLayout.Bottom)
+				ApplyBottomDetailsWidth();
+		}
 
 		private void MenuFlyoutItem_Tapped(object sender, TappedRoutedEventArgs e)
 			=> ViewModel?.UpdateSelectedItemPreviewAsync(true);
