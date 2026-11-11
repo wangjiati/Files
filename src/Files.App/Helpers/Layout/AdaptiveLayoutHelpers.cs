@@ -12,6 +12,12 @@ namespace Files.App.Helpers
 		private static IContentPageContext ContentPageContext { get; } = Ioc.Default.GetRequiredService<IContentPageContext>();
 		private static IWindowsIniService WindowsIniService { get; } = Ioc.Default.GetRequiredService<IWindowsIniService>();
 
+		private const int PredictionCacheCapacity = 256;
+
+		private static readonly object predictionCacheLock = new();
+		private static readonly LinkedList<KeyValuePair<string, FolderLayoutModes>> predictionCacheEntries = new();
+		private static readonly Dictionary<string, LinkedListNode<KeyValuePair<string, FolderLayoutModes>>> predictionCacheIndex = new(StringComparer.OrdinalIgnoreCase);
+
 		// Predicts the layout from desktop.ini or a small directory sample, so navigation opens in the right layout without a post-enumeration switch
 		public static bool TryPredictLayout(string? path, out FolderLayoutModes layout)
 		{
@@ -54,6 +60,92 @@ namespace Files.App.Helpers
 			catch (Exception ex) when (ex is SystemIO.IOException or UnauthorizedAccessException or ArgumentException)
 			{
 				return false;
+			}
+		}
+
+		// Serves a prefetched prediction without touching the disk; a miss keeps the default layout
+		// and ApplyAdaptativeLayout corrects it after enumeration
+		public static bool TryGetCachedPredictLayout(string? path, out FolderLayoutModes layout)
+		{
+			layout = FolderLayoutModes.DetailsView;
+
+			var key = NormalizeCacheKey(path);
+			if (key is null)
+				return false;
+
+			lock (predictionCacheLock)
+			{
+				if (predictionCacheIndex.TryGetValue(key, out var node))
+				{
+					predictionCacheEntries.Remove(node);
+					predictionCacheEntries.AddFirst(node);
+					layout = node.Value.Value;
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// Warms the prediction cache off the UI thread; the caller's token drops the remaining work on navigation
+		public static Task PrefetchPredictLayoutsAsync(IEnumerable<string?> paths, CancellationToken ct)
+			=> Task.Run(() =>
+			{
+				try
+				{
+					foreach (var path in paths)
+					{
+						ct.ThrowIfCancellationRequested();
+						if (TryGetCachedPredictLayout(path, out _))
+							continue;
+						if (TryPredictLayout(path, out var layout))
+							AddCachedPrediction(path, layout);
+					}
+				}
+				catch (OperationCanceledException) when (ct.IsCancellationRequested)
+				{
+					// Navigation moved on; the rest of the prefetch is abandoned.
+				}
+			}, ct);
+
+		private static void AddCachedPrediction(string? path, FolderLayoutModes layout)
+		{
+			var key = NormalizeCacheKey(path);
+			if (key is null)
+				return;
+
+			lock (predictionCacheLock)
+			{
+				if (predictionCacheIndex.TryGetValue(key, out var node))
+				{
+					predictionCacheEntries.Remove(node);
+					predictionCacheEntries.AddFirst(node);
+					node.Value = new(key, layout);
+					return;
+				}
+
+				predictionCacheIndex.Add(key, predictionCacheEntries.AddFirst(new KeyValuePair<string, FolderLayoutModes>(key, layout)));
+				if (predictionCacheIndex.Count > PredictionCacheCapacity)
+				{
+					var last = predictionCacheEntries.Last!;
+					predictionCacheEntries.RemoveLast();
+					predictionCacheIndex.Remove(last.Value.Key);
+				}
+			}
+		}
+
+		private static string? NormalizeCacheKey(string? path)
+		{
+			if (string.IsNullOrEmpty(path))
+				return null;
+
+			try
+			{
+				return SystemIO.Path.GetFullPath(path);
+			}
+			catch (Exception ex) when (ex is ArgumentException or SystemIO.IOException or NotSupportedException or UnauthorizedAccessException)
+			{
+				return null;
 			}
 		}
 

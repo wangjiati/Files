@@ -270,7 +270,7 @@ namespace Files.App.Helpers
 			if (viewOverrides?.LayoutMode is null &&
 				IsAdaptiveLayoutEnabled && !preferencesItem.IsAdaptiveLayoutOverridden &&
 				isDefaultLayout is not false &&
-				AdaptiveLayoutHelpers.TryPredictLayout(path, out var resolvedLayout) &&
+				AdaptiveLayoutHelpers.TryGetCachedPredictLayout(path, out var resolvedLayout) &&
 				(isDefaultLayout ?? IsPathUsingDefaultLayout(path)))
 			{
 				preferencesItem.LayoutMode = resolvedLayout;

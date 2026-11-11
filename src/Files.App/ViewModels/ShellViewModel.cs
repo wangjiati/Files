@@ -2539,7 +2539,15 @@ namespace Files.App.ViewModels
 				if (Interlocked.Exchange(ref desktopIniUpdateTask, null) is Task task)
 					await task;
 
-				AdaptiveLayoutHelpers.ApplyAdaptativeLayout(folderSettings, filesAndFolders.ToList());
+				var enumeratedItems = filesAndFolders.ToList();
+
+				AdaptiveLayoutHelpers.ApplyAdaptativeLayout(folderSettings, enumeratedItems);
+
+				// Warm layout predictions for the first subdirectories so the next navigation hits the cache;
+				// this load's token cancels the walk once navigation moves on
+				_ = AdaptiveLayoutHelpers.PrefetchPredictLayoutsAsync(
+					enumeratedItems.Where(item => item.IsFolder).Select(item => item.ItemPath).Distinct().Take(64),
+					semaphoreCTS.Token);
 			}
 			finally
 			{
