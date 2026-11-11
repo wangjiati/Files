@@ -4,6 +4,7 @@
 using Files.App.ViewModels.Properties;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 
@@ -27,9 +28,17 @@ namespace Files.App.ViewModels.Previews
 		{
 			using IRandomAccessStream stream = await PreviewFile.OpenAsync(FileAccessMode.Read);
 
+			var decoder = await BitmapDecoder.CreateAsync(stream);
+			bool landscape = decoder.PixelWidth >= decoder.PixelHeight;
+
 			await MainWindow.Instance.DispatcherQueue.EnqueueOrInvokeAsync(async () =>
 			{
-				BitmapImage bitmap = new();
+				BitmapImage bitmap = new() { DecodePixelType = DecodePixelType.Logical };
+				if (landscape)
+					bitmap.DecodePixelWidth = Math.Min(1024, (int)decoder.PixelWidth);
+				else
+					bitmap.DecodePixelHeight = Math.Min(1024, (int)decoder.PixelHeight);
+				stream.Seek(0);
 				await bitmap.SetSourceAsync(stream);
 				ImageSource = bitmap;
 			});
