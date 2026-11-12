@@ -43,6 +43,9 @@ namespace Files.App.Actions
 
 				if (await FilesystemTasks.Wrap(() => StorageArchiveService.IsEncryptedAsync(archive.Path)))
 				{
+					if (App.AppModel.IsMainWindowClosed)
+						return;
+
 					DecompressArchiveDialogViewModel decompressArchiveViewModel = new(archive)
 					{
 						IsArchiveEncrypted = true,

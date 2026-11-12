@@ -42,11 +42,10 @@ namespace Files.App.Utils.Storage
 			if (history is not null)
 			{
 				histories.RemoveRange(index + 1, histories.Count - index - 1);
-				if (decreaseIndex)
+				if (histories.Remove(history) && decreaseIndex)
 				{
 					--index;
 				}
-				histories.Remove(history);
 			}
 		}
 

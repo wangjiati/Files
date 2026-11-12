@@ -548,7 +548,7 @@ namespace Files.App.Views
 					case PreviewPaneLayout.RightTabs:
 					default:
 						InfoPaneSizer.ChangeCursor(SizeWestEastCursor);
-						var paneWidth = new GridLength(Math.Max(300d, EffectiveVerticalSizePx));
+						var paneWidth = new GridLength(Math.Max(InfoPaneSettingsService.MinPaneWidthPx, EffectiveVerticalSizePx));
 						if (InfoPaneColumnDefinition.Width != paneWidth)
 							InfoPaneColumnDefinition.Width = paneWidth;
 						GoToPanePositionState("InfoPanePositionRight");

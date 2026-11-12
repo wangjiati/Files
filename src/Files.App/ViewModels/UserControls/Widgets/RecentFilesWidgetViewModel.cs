@@ -338,6 +338,9 @@ namespace Files.App.ViewModels.UserControls.Widgets
 				BaseStorageFile? file = await FilesystemTasks.WrapNullable(() => StorageFileExtensions.DangerousGetFileFromPathAsync(itemPath));
 				if (file is null)
 				{
+					if (App.AppModel.IsMainWindowClosed)
+						return;
+
 					ContentDialog dialog = new()
 					{
 						Title = Strings.CannotAccessPropertiesTitle.GetLocalizedResource(),

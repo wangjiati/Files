@@ -57,6 +57,9 @@ namespace Files.App.Actions
 			var password = string.Empty;
 			Encoding? encoding = null;
 
+			if (App.AppModel.IsMainWindowClosed)
+				return;
+
 			DecompressArchiveDialogViewModel decompressArchiveViewModel = new(archive)
 			{
 				IsArchiveEncrypted = isArchiveEncrypted,

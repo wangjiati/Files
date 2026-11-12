@@ -47,6 +47,9 @@ namespace Files.App.Actions
 			}
 			catch (Exception ex)
 			{
+				if (App.AppModel.IsMainWindowClosed)
+					return;
+
 				// Only show the error dialog if no other popups are open
 				if (!VisualTreeHelper.GetOpenPopupsForXamlRoot(MainWindow.Instance.Content.XamlRoot).Any())
 				{

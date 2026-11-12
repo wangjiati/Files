@@ -92,6 +92,9 @@ namespace Files.App.Helpers
 			}
 			catch (Exception ex)
 			{
+				if (App.AppModel.IsMainWindowClosed)
+					return;
+
 				var errorDialog = new ContentDialog()
 				{
 					Title = Strings.FailedToRotateImage.GetLocalizedResource(),

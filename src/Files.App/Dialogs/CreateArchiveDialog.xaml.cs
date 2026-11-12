@@ -85,6 +85,9 @@ namespace Files.App.Dialogs
 
 		public new Task<ContentDialogResult> ShowAsync()
 		{
+			if (App.AppModel.IsMainWindowClosed)
+				return Task.FromResult(ContentDialogResult.None);
+
 			return SetContentDialogRoot(this).ShowAsync().AsTask();
 		}
 

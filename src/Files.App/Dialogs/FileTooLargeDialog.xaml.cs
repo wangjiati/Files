@@ -28,6 +28,9 @@ namespace Files.App.Dialogs
 
 		public new async Task<DialogResult> ShowAsync()
 		{
+			if (App.AppModel.IsMainWindowClosed)
+				return DialogResult.None;
+
 			return (DialogResult)await SetContentDialogRoot(this).TryShowAsync();
 		}
 
