@@ -246,9 +246,16 @@ namespace Files.App.Views.Layouts
 			}
 
 			var newSelectedItems = ListViewBase.SelectedItems.Cast<object>().ToList();
-			FileList_SelectionChanged(ListViewBase, new SelectionChangedEventArgs(
-				oldSelectedItems.Except(newSelectedItems).ToList(),
-				newSelectedItems.Except(oldSelectedItems).ToList()));
+			var removedItems = oldSelectedItems.Except(newSelectedItems).ToList();
+			var addedItems = newSelectedItems.Except(oldSelectedItems).ToList();
+			if (newSelectedItems.Count > 0 && addedItems.Count == 0)
+			{
+				// Same-set or shrink-only restore: the former per-item adds still
+				// raised a selection-change notification, so carry the resulting
+				// selection instead of an empty delta
+				addedItems = newSelectedItems;
+			}
+			FileList_SelectionChanged(ListViewBase, new SelectionChangedEventArgs(removedItems, addedItems));
 		}
 
 		protected virtual void ItemManipulationModel_InvertSelectionInvoked(object? sender, EventArgs e)

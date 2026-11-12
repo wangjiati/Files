@@ -353,7 +353,10 @@ namespace Files.App.Views.Layouts
 
 		protected override void OnSelectionChanged(SelectionChangedEventArgs e)
 		{
-			if (e.AddedItems.Count > 0)
+			// Match the net effect of the former per-item restore path: the
+			// selection-change notification fires whenever the resulting
+			// selection is non-empty, not only when items were added
+			if (SelectedItems?.Count > 0)
 				columnsOwner?.HandleSelectionChange(this);
 
 			if (SelectedItems?.Count == 1 && SelectedItem?.PrimaryItemAttribute is StorageItemTypes.Folder)

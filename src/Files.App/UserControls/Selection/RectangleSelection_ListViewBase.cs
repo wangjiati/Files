@@ -64,35 +64,14 @@ namespace Files.App.UserControls.Selection
 				var rect = new System.Drawing.Rectangle((int)Canvas.GetLeft(selectionRectangle), (int)Math.Min(originDragPoint.Y, currentPoint.Position.Y + verticalOffset), (int)selectionRectangle.Width, (int)Math.Abs(originDragPoint.Y - (currentPoint.Position.Y + verticalOffset)));
 
 				// The strategies are idempotent for items whose rectangle intersection did
-				// not change, so only those items need a strategy call per move.
-				foreach (var item in itemsPosition.ToList())
-				{
-					var isIntersecting = rect.IntersectsWith(item.Value);
-					if (isIntersecting == intersectingItems.Contains(item.Key))
-					{
-						continue;
-					}
-
-					try
-					{
-						if (isIntersecting)
-						{
-							selectionStrategy!.HandleIntersectionWithItem(item.Key);
-							intersectingItems.Add(item.Key);
-						}
-						else
-						{
-							selectionStrategy!.HandleNoIntersectionWithItem(item.Key);
-							intersectingItems.Remove(item.Key);
-						}
-					}
-					catch (ArgumentException)
-					{
-						// Item is not present in the ItemsSource
-						itemsPosition.Remove(item.Key);
-						intersectingItems.Remove(item.Key);
-					}
-				}
+				// not change, so only those items need a strategy call per move
+				// (see SelectionIntersectionTracker).
+				SelectionIntersectionTracker.ApplyIntersectionChanges(
+					itemsPosition,
+					rect,
+					intersectingItems,
+					item => selectionStrategy!.HandleIntersectionWithItem(item),
+					item => selectionStrategy!.HandleNoIntersectionWithItem(item));
 				if (currentPoint.Position.Y > uiElement.ActualHeight - 20)
 				{
 					// Scroll down the list if pointer is at the bottom
