@@ -304,6 +304,7 @@ namespace Files.App.UnitTests
 			Ioc.Default.ConfigureServices(new ServiceCollection()
 				.AddSingleton<IUserSettingsService>(userSettings)
 				.AddSingleton<ILayoutSettingsService>(new LayoutSettingsService(userSettings.GetSharingContext()))
+				.AddSingleton<IFoldersSettingsService>(new FoldersSettingsService(userSettings.GetSharingContext()))
 				.BuildServiceProvider());
 			var path = Path.Combine(directory.Path, "user_settings.db");
 			const string originalFilePath = @"D:\Documents";

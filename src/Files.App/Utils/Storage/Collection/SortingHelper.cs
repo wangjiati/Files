@@ -28,6 +28,65 @@ namespace Files.App.Utils.Storage
 			};
 		}
 
+		/// <summary>
+		/// Builds a comparison equivalent to the ordering produced by <see cref="OrderFileList"/> with the
+		/// same options, including the folder/file priority clause, the file-tag empty-last clause and the
+		/// natural-name tiebreak. Used to place single items into an already ordered list.
+		/// </summary>
+		public static Comparison<ListedItem> GetFileListComparison(SortOption directorySortOption, SortDirection directorySortDirection,
+			bool sortDirectoriesAlongsideFiles, bool sortFilesFirst)
+		{
+			var orderFunc = GetSortFunc(directorySortOption);
+			var naturalStringComparer = NaturalStringComparer.GetForProcessor();
+			var descending = directorySortDirection == SortDirection.Descending;
+
+			return (x, y) =>
+			{
+				if (!sortDirectoriesAlongsideFiles)
+				{
+					var priority = Prioritize(x).CompareTo(Prioritize(y));
+					if (priority != 0)
+						return priority;
+				}
+
+				// FileTag sorting keeps untagged items last regardless of the direction
+				if (directorySortOption == SortOption.FileTag)
+				{
+					var emptyLast = string.IsNullOrEmpty(orderFunc(x) as string).CompareTo(string.IsNullOrEmpty(orderFunc(y) as string));
+					if (emptyLast != 0)
+						return emptyLast;
+				}
+
+				var result = directorySortOption == SortOption.Name
+					? naturalStringComparer.Compare(orderFunc(x), orderFunc(y))
+					: CompareSortKeys(orderFunc(x), orderFunc(y));
+				if (result != 0)
+					return descending ? -result : result;
+
+				if (directorySortOption == SortOption.Name)
+					return 0;
+
+				result = naturalStringComparer.Compare(OrderByNameFunc(x), OrderByNameFunc(y));
+				return descending ? -result : result;
+			};
+
+			// Mirrors PrioritizeFilesOrFolders in OrderFileList
+			bool Prioritize(ListedItem item)
+				=> (item.PrimaryItemAttribute == StorageItemTypes.File || item.IsShortcut || item.IsArchive) ^ sortFilesFirst;
+		}
+
+		// Mirrors OrderBy(orderFunc): Comparer<object>.Default orders nulls first, then by IComparable
+		private static int CompareSortKeys(object? x, object? y)
+		{
+			if (x is null && y is null)
+				return 0;
+			if (x is null)
+				return -1;
+			if (y is null)
+				return 1;
+			return ((IComparable)x).CompareTo(y);
+		}
+
 		public static IEnumerable<ListedItem> OrderFileList(IList<ListedItem> filesAndFolders, SortOption directorySortOption, SortDirection directorySortDirection,
 			bool sortDirectoriesAlongsideFiles, bool sortFilesFirst)
 		{
