@@ -276,6 +276,8 @@ K1 轮 2 B 首次尝试：进程出窗后 ~1.3 s、harness 首次 `SetWindowPos`
 
 使用产物：B 侧 dev 构建（`.agents/worktrees/perf-fixes-batch2/src/Files.App/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/`，Data 目录在其旁）。
 
+> 产物口径注记（2026-11-12 12:45 补）：该 bin 路径下的 exe 已被 12:27 打包尝试以 `ad615f3e3` 重建（= `dac765f37` + 2 个 docs-only 提交，代码等价；现件版本戳 `4.3.3.2+ad615f3e3…`，723,968 B）。§5.1-5.3 的测量（≤12:24）用的是重建前的 `dac765f37` 戳原件；本清单复测与 12:29 后的启动压测用的是该重建件。
+
 - [ ] **RightTabs 反复切换应瞬时**（C1/C2 后预览重建不卡顿；程序化无法触发 tab 切换）。
 - [ ] **旋转后显新图**：`%TEMP%\perf-smoke-images\perf-img-portrait-3000x4000.png` 等横/竖图切换后显示新解码位图，无残留旧图。
 - [ ] **媒体/Shell 目录每次重建无黑屏**：含大量媒体/Shell 项的目录进出与布局重建无黑屏闪烁。
