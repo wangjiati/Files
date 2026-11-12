@@ -3,6 +3,7 @@
 
 using Files.App.UserControls.FilePreviews;
 using Files.App.ViewModels.Previews;
+using Files.App.ViewModels.Properties;
 using Files.Shared.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -22,6 +23,14 @@ namespace Files.App.ViewModels.UserControls
 
 		private CancellationTokenSource? loadCancellationTokenSource;
 		private Files.App.UserControls.Menus.FileTagsContextMenu? cachedTagsContextMenu;
+
+		/// <summary>
+		/// Full and basic preview results for the current selection, so switching between the
+		/// Details and Preview tabs (or leaving and re-entering the tabs layout) reuses the
+		/// already built control instead of rerunning the whole preview pipeline.
+		/// </summary>
+		private PreviewCacheEntry? fullPreviewCache;
+		private PreviewCacheEntry? basicPreviewCache;
 
 		/// <summary>
 		/// Value indicating if the pane currently shows the basic preview instead of a real one
@@ -63,6 +72,7 @@ namespace Files.App.ViewModels.UserControls
 
 				if (SetProperty(ref selectedItem, value))
 				{
+					ClearPreviewCaches();
 					UpdateTagsItems();
 					SetDriveItem();
 					OnPropertyChanged(nameof(LoadTagsList));
@@ -193,8 +203,9 @@ namespace Files.App.ViewModels.UserControls
 					if (contentPageContext.SelectedItems.Count == 1)
 						tempSelectedItem = contentPageContext.SelectedItems.First();
 
-					// Don't update preview pane when the selected item changes too frequently
-					const int delayBeforeUpdatingPreviewPane = 100;
+					// Don't update preview pane when the selected item changes too frequently.
+					// 200ms (raised from 100ms): cached tab switches absorb repeated reloads.
+					const int delayBeforeUpdatingPreviewPane = 200;
 					await Task.Delay(delayBeforeUpdatingPreviewPane);
 					if (tempSelectedItem is not null && !tempSelectedItem.Equals(contentPageContext.SelectedItem))
 						return;
@@ -236,13 +247,17 @@ namespace Files.App.ViewModels.UserControls
 				return;
 			}
 
-			var control = await GetBuiltInPreviewControlAsync(item, downloadItem);
+			var cacheKey = GetPreviewCacheKey(item);
+			var control = await GetBuiltInPreviewControlAsync(item, downloadItem, token);
 
 			if (token.IsCancellationRequested)
 				return;
 
 			if (control is not null)
 			{
+				if (cacheKey is { } key && IsPreviewControlCacheable(control))
+					fullPreviewCache = new(key, control, SnapshotFileDetails(item));
+
 				PreviewPaneContent = control;
 				PreviewPaneState = SelectedDriveItem is not null ? PreviewPaneStates.DriveStorageDetailsAvailable : PreviewPaneStates.PreviewAndDetailsAvailable;
 				return;
@@ -260,9 +275,14 @@ namespace Files.App.ViewModels.UserControls
 			PreviewPaneState = SelectedDriveItem is not null ? PreviewPaneStates.DriveStorageDetailsAvailable : PreviewPaneStates.PreviewAndDetailsAvailable;
 		}
 
-		private async Task<UserControl?> GetBuiltInPreviewControlAsync(ListedItem item, bool downloadItem)
+		private Task<UserControl?> GetBuiltInPreviewControlAsync(ListedItem item, bool downloadItem)
+			=> GetBuiltInPreviewControlAsync(item, downloadItem, CancellationToken.None);
+
+		private async Task<UserControl?> GetBuiltInPreviewControlAsync(ListedItem item, bool downloadItem, CancellationToken token)
 		{
 			ShowCloudItemButton = false;
+
+			token.ThrowIfCancellationRequested();
 
 			if (item.IsRecycleBinItem)
 			{
@@ -270,6 +290,7 @@ namespace Files.App.ViewModels.UserControls
 				{
 					var model = new FolderPreviewViewModel(item);
 					await model.LoadAsync();
+					token.ThrowIfCancellationRequested();
 
 					return new FolderPreview(model);
 				}
@@ -277,6 +298,7 @@ namespace Files.App.ViewModels.UserControls
 				{
 					var model = new BasicPreviewViewModel(item);
 					await model.LoadAsync();
+					token.ThrowIfCancellationRequested();
 
 					return new BasicPreview(model);
 				}
@@ -286,6 +308,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new ShortcutPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new BasicPreview(model);
 			}
@@ -294,6 +317,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new ArchivePreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new BasicPreview(model);
 			}
@@ -302,6 +326,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new FolderPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				if (contentPageContext.SelectedItems.Count == 0)
 					item.FileTags ??= FileTagsHelper.ReadFileTag(item.ItemPath!);
@@ -327,6 +352,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new MediaPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new MediaPreview(model);
 			}
@@ -335,6 +361,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new MarkdownPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new MarkdownPreview(model);
 			}
@@ -343,6 +370,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new ImagePreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new ImagePreview(model);
 			}
@@ -351,6 +379,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new TextPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new TextPreview(model);
 			}
@@ -375,6 +404,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new RichTextPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new RichTextPreview(model);
 			}
@@ -383,6 +413,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new CodePreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new CodePreview(model);
 			}
@@ -393,11 +424,13 @@ namespace Files.App.ViewModels.UserControls
 			{
 				var model = new ShellPreviewViewModel(item);
 				await model.LoadAsync();
+				token.ThrowIfCancellationRequested();
 
 				return new ShellPreview(model);
 			}
 
 			var control = await TextPreviewViewModel.TryLoadAsTextAsync(item);
+			token.ThrowIfCancellationRequested();
 
 			return control ?? null;
 		}
@@ -429,21 +462,21 @@ namespace Files.App.ViewModels.UserControls
 				SelectedItem?.FileDetails?.Clear();
 				var token = CreatePreviewLoadToken();
 
+				var useBasicPreview = infoPaneSettingsService.Layout is PreviewPaneLayout.RightTabs &&
+					SelectedTab != InfoPaneTabs.Preview &&
+					SelectedItem?.PrimaryItemAttribute != StorageItemTypes.Folder;
+
+				if (TryRestoreCachedPreview(useBasicPreview))
+					return;
+
 				try
 				{
 					PreviewPaneState = PreviewPaneStates.LoadingPreview;
 
-					if (infoPaneSettingsService.Layout is not PreviewPaneLayout.RightTabs ||
-						SelectedTab == InfoPaneTabs.Preview ||
-						SelectedItem?.PrimaryItemAttribute == StorageItemTypes.Folder)
-					{
+					if (!useBasicPreview)
 						await LoadPreviewControlAsync(token, downloadItem);
-					}
 					else
-					{
 						await LoadBasicPreviewAsync(token);
-						return;
-					}
 				}
 				catch (Exception e)
 				{
@@ -488,6 +521,10 @@ namespace Files.App.ViewModels.UserControls
 					PreviewPaneState = PreviewPaneStates.LoadingPreview;
 
 					SelectedItem = currentFolder;
+
+					if (TryRestoreCachedPreview(basicPreview: false))
+						return;
+
 					await LoadPreviewControlAsync(token, downloadItem);
 				}
 				catch (Exception e)
@@ -567,19 +604,91 @@ namespace Files.App.ViewModels.UserControls
 				if (SelectedItem is not { } selectedItem)
 					throw new InvalidOperationException("The preview pane does not have a selected item.");
 
+				var cacheKey = GetPreviewCacheKey(selectedItem);
 				var basicModel = new BasicPreviewViewModel(selectedItem);
 				await basicModel.LoadAsync();
 
 				if (token.IsCancellationRequested)
 					return;
 
-				PreviewPaneContent = new BasicPreview(basicModel);
+				var control = new BasicPreview(basicModel);
+				if (cacheKey is { } key)
+					basicPreviewCache = new(key, control, SnapshotFileDetails(selectedItem));
+
+				PreviewPaneContent = control;
 				PreviewPaneState = SelectedDriveItem is not null ? PreviewPaneStates.DriveStorageDetailsAvailable : PreviewPaneStates.PreviewAndDetailsAvailable;
 			}
 			catch (Exception ex)
 			{
 				Debug.WriteLine(ex);
 			}
+		}
+
+		/// <summary>
+		/// Identity of a cached preview: the item path, the current on-disk modification time
+		/// (the ListedItem value can be stale after in-place edits such as image rotation), and
+		/// the cloud sync status (a hydrated cloud file must not reuse its online-only preview).
+		/// </summary>
+		private readonly record struct PreviewCacheKey(string ItemPath, DateTimeOffset ModifiedUtc, CloudDriveSyncStatus SyncStatus);
+
+		private sealed record PreviewCacheEntry(PreviewCacheKey Key, UserControl Control, ObservableCollection<FileProperty> FileDetails);
+
+		private static PreviewCacheKey? GetPreviewCacheKey(ListedItem item)
+		{
+			try
+			{
+				var modifiedUtc = SystemIO.File.GetLastWriteTimeUtc(item.ItemPath!);
+				if (modifiedUtc == DateTime.MinValue)
+					return null;
+
+				return new PreviewCacheKey(item.ItemPath!, modifiedUtc, item.SyncStatusUI.SyncStatus);
+			}
+			catch (Exception)
+			{
+				// Non-filesystem paths (FTP, zip entries) cannot be keyed; treat as a cache miss.
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Preview controls whose state survives being detached from and re-parented into the
+		/// pane. Media (MediaPlayer source is disposed on unload), Shell (the COM handler is
+		/// torn down on unload) and RichText (the document stream is single-consumption)
+		/// previews are rebuilt instead of cached.
+		/// </summary>
+		private static bool IsPreviewControlCacheable(UserControl control)
+			=> control is BasicPreview or FolderPreview or ImagePreview or TextPreview or MarkdownPreview or CodePreview;
+
+		private static ObservableCollection<FileProperty> SnapshotFileDetails(ListedItem item)
+			=> item.FileDetails is { } details ? new ObservableCollection<FileProperty>(details) : [];
+
+		private bool TryRestoreCachedPreview(bool basicPreview)
+		{
+			var entry = basicPreview ? basicPreviewCache : fullPreviewCache;
+
+			// Check the slot before touching the disk: an empty cache must not pay for a
+			// synchronous stat, which can stall the UI thread on unreachable network paths.
+			if (entry is null || SelectedItem is not { } item)
+				return false;
+
+			if (GetPreviewCacheKey(item) is not { } key || entry.Key != key)
+				return false;
+
+			// Mirror what a cold full-preview run does before dispatching to the preview factories.
+			if (!basicPreview)
+				ShowCloudItemButton = false;
+
+			item.FileDetails = new ObservableCollection<FileProperty>(entry.FileDetails);
+			PreviewPaneContent = entry.Control;
+			PreviewPaneState = SelectedDriveItem is not null ? PreviewPaneStates.DriveStorageDetailsAvailable : PreviewPaneStates.PreviewAndDetailsAvailable;
+
+			return true;
+		}
+
+		private void ClearPreviewCaches()
+		{
+			fullPreviewCache = null;
+			basicPreviewCache = null;
 		}
 
 		private CancellationToken CreatePreviewLoadToken()
