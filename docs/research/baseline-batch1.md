@@ -111,3 +111,95 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .superpowers\sdd\2026-11-11-
 ```
 
 应用启动与冷启动/内存采样在本机须经 `.superpowers\sdd\2026-11-11-performance-fixes-batch1\request-runner.ps1`（计划任务上下文 + TMP 重定向）执行，直接在本会话 Shell 启动会命中 SmartScreen/TEMP 限制（见第 0 节注记）。
+
+## 4. 修复后（dev A/B 对照）——2026-11-12 任务 3
+
+> 追加章节，不改上文基线原文。修复内容 = M2 预览图解码上限（`51e2078ed`）+ C5 布局预测缓存/后台预取（`5f15dcad1`）。
+
+### 4.0 产物与口径
+
+| 项 | 值 |
+| --- | --- |
+| DEV-BASE（修复前） | `d975e5b6c` 于独立 worktree `.agents/worktrees/perf-baseline-devbuild` 构建 |
+| DEV-FIXED（修复后） | `5f15dcad1`（本分支 HEAD）于 `.agents/worktrees/perf-fixes-batch1` 构建 |
+| 构建命令（两侧同配置） | `msbuild -restore src/Files.App/Files.App.csproj -p:Configuration=Debug -p:Platform=x64 -p:Distribution=Portable -p:RuntimeIdentifier=win-x64 -v:quiet -clp:ErrorsOnly`（VS DevShell 7ac2ee5b） |
+| 产物路径（两侧同相对路径） | `src\Files.App\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\Files.exe`（各 723,968 B，ver 4.3.3.2，解包自包含 dev 形态；非 `-t:Publish`） |
+| 打包阻断 | `Build-Internal.ps1 -PortableOnly` 在 **TMP 重定向下**仍失败于 "Run unit tests"：`System.UnauthorizedAccessException` at `System.IO.Pipes.NamedPipeClientStream.TryConnect`（MTP IPC 管道，机器级策略；第 0 节注记 1 的独立宿主 429/429 全绿证据不变）。故按裁决改 dev 口径 A/B，**本批无便携 Release 产物**，便携基线数字仅作参照行 |
+| 测量口径 | 与第 0/1/2 节同 harness/同目录/同轮次/同参数/同计划任务通道；Explorer 参照沿用第 2 节已录数据未重测；测量期间无构建负载、全程前台逐条驱动 |
+| 原始记录 | `.superpowers/sdd/2026-11-11-performance-fixes-batch1/measure-results.txt` |
+
+### 4.1 K4 冷启动到可交互（5 次取中位，启动参数=测量目录）
+
+| 产物 | 轮 1-5 (ms) | 中位 | 均值 | min/max | 全部出窗 |
+| --- | --- | --- | --- | --- | --- |
+| DEV-BASE | 1706 / 1613 / 1596 / 1595 / 1619 | **1613** | 1625.8 | 1595 / 1706 | 是 |
+| DEV-FIXED | 1652 / 1629 / 1618 / 1608 / 1612 | **1618** | 1623.8 | 1608 / 1652 | 是 |
+| （参照：便携 Release 4.3.3.2 基线，第 1 节） | 890/835/901/883/835 | 883 | 868.8 | 835 / 901 | 是 |
+
+判定：dev 同配置 A/B **持平**（Δ+5 ms，+0.3%，轮间噪声内），符合预期 (b) 持平或略降。dev Debug（JIT）绝对值高于便携 Release（AOT）约 0.7 s 属配置差异，不作前后依据。
+
+### 4.2 K5 空闲资源（加载测量目录后空闲 60 s，3 轮）
+
+| 指标（中位） | DEV-BASE | DEV-FIXED | Δ |
+| --- | --- | --- | --- |
+| WorkingSet64 (MB) | 455.5（455.5/464.9/455.5） | **457.3**（457.3/462.4/455.5） | +1.8（+0.4%） |
+| PrivateMemorySize64 (MB) | 323.6（323.6/326.7/322.8） | **327.1**（321.6/333.3/327.1） | +3.5（+1.1%） |
+| Threads | 132（132/133/131） | **132**（132/133/130） | 0 |
+| Handles | 3,544（3544/3565/3541） | **3,567**（3585/3567/3548） | +23（+0.6%） |
+
+判定：**持平**（C5 新增 256 条 LRU 字典/链表在噪声内不可见），符合预期 (a)。注：DEV-FIXED 首次 Mem 采样 3 轮中第 3 轮进程于空闲期消失（疑 CloseMainWindow 延迟关闭与下轮启动的单实例交接竞态），事件日志/WER 无崩溃证据，剔除该次后复测得上表干净 3 轮。
+
+### 4.3 K1 窗口拖动（每轮新启动，200 步，r=150 px；p50/p95/max，ms）
+
+| 产物 | 轮 1 | 轮 2 | 轮 3 | 补充轮 4 | 补充轮 5 | 补充轮 6 | p50 中位 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| DEV-BASE | 9.04/11.33/24.31 | 9.01/11.63/30.62 | 9.26/14.58/203.48 | 9.37/12.08/44.17 | 8.80/11.55/47.62 | 9.52/11.71/32.95 | **9.15** |
+| DEV-FIXED | **20.03**/26.25/309.37 | 9.75/12.70/31.94 | **20.02**/25.55/374.75 | 9.68/12.06/34.46 | 8.85/11.21/22.37 | 9.05/10.90/22.23 | **9.72** |
+
+**异常注记（如实记录，未定论）**：DEV-FIXED 轮 1/3 为慢轮：其出窗时间 2584/2569 ms（其余轮与本测量全部 13 次启动均 ~1480-1610 ms），且整轮分布整体上移 ~10 ms（min 15.3 vs 常态 ~6.6）。补充 3 轮与"同进程先测后静置 15 s 再测"探针（move1 p50=9.46 → 静置后 move2 p50=11.42，出窗 1549 ms）均未复现慢轮，稳态拖动与 DEV-BASE 持平；慢轮时序上集中于本轮测量开局（第 1/3 次 DEV-FIXED 启动）。机制上 M2（本目录无图片，未触发）与 C5（本目录无子目录，预取为空操作）均无致慢路径，暂判环境性启动竞态而非修复回归；判定取**持平**（排除慢轮后 ~9.4 vs 9.15），慢轮现象已留档待复测观察。
+
+### 4.4 K2 窗口 resize（每轮新启动，200 步，amp=120 px；p50/p95/max，ms）
+
+| 产物 | 轮 1 | 轮 2 | 轮 3 | p50 中位 |
+| --- | --- | --- | --- | --- |
+| DEV-BASE | 15.91/18.98/20.77 | 15.41/20.40/43.32 | 15.19/17.98/69.28 | **15.41** |
+| DEV-FIXED | 16.38/24.36/81.65 | 15.15/17.98/24.64 | 15.40/17.71/20.76 | **15.40** |
+
+判定：**持平**（K1/K2 本批不修，仅同口径建立 dev 参照，窗口拖动属批次 2）。参照：第 2 节 Explorer 同机参照 K1 p50 ~2.2 ms、K2 p95 ~32-33 ms（便携 Release Files：K1 ~10.5、K2 p95 ~36-38）。
+
+### 4.5 预期方向对照（任务 3 步骤 1 逐项）
+
+| 项 | 预期 | 实测 | 判定 |
+| --- | --- | --- | --- |
+| (a) K5 空闲 RSS/线程/句柄 | 持平或略降 | 持平（Δ≤1.1%） | 符合 |
+| (b) K4 冷启动中位 | 持平或略降 | 持平（Δ+0.3%） | 符合 |
+| (c) 导航 p50/p95（K3/C5） | 显著下降（修复前每次导航 UI 线程同步 desktop.ini 读+≤200 项枚举 → 修复后命中缓存零磁盘 I/O） | **待用户复测**（见 4.7-M-c） | — |
+| (d) RightTabs 图片切换峰值/滞留（K6/M2） | 大幅下降（单张解码 ≤17 MB vs 原 48 MB+；本机 100% DPI 下 1024 px 逻辑解码约 3 MB） | **待用户复测**（见 4.7-M-d） | — |
+| K1/K2 | 不修仅记录 | 持平（9.15→9.72 排除慢轮 ~9.4；15.41→15.40） | 符合 |
+
+### 4.6 冒烟（自动化部分，DEV-FIXED，通道启动）
+
+| 场景 | 出窗 (ms) | t+5 s | t+15 s | 结果 |
+| --- | --- | --- | --- | --- |
+| 图目录（含 4000×3000 横图/3000×4000 竖图） | 1480 | 进程 1/带窗 | 进程 1/带窗 | 通过 |
+| 纯文档目录（30 文本/md） | 1533 | 进程 1/带窗 | 进程 1/带窗 | 通过 |
+| 深层未预取目录首进（L1\L2\L3，120 PNG） | 1530 | 进程 1/带窗 | 进程 1/带窗 | 通过 |
+| 同深层目录二次进入 | 1480 | 进程 1/带窗 | 进程 1/带窗 | 通过 |
+
+崩溃证据：测量窗口内 Application 事件日志 Error/Critical 0 条（提及 Files.exe 亦 0）、WER ReportArchive/ReportQueue 新增 0。视觉项（布局预测正确性、横/竖图显示、首进允许一次布局切换、二进不切换）→ 用户冒烟清单。
+
+### 4.7 待用户复测清单（手动项，不虚构数字）
+
+使用产物：DEV-FIXED（`.agents/worktrees/perf-fixes-batch1/src/Files.App/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/`）。
+
+- [ ] **M-c 目录往返导航（K3/C5）**：`%TEMP%\perf-baseline-dir` ↔ `%TEMP%\perf-baseline-dir-b`（后者已按同法生成：200×546 B、109,200 B），Alt+←/→ 往返 20 次。预期方向：p50/p95 显著下降且导航期间 UI 可即时中断（修复前每次导航 UI 线程同步 I/O；修复后预测命中路径零磁盘 I/O）。
+- [ ] **M-d 图片预览切换（K6/M2）**：布局 RightTabs + InfoPane（C1 已收窄勿用 RightSplit 口径）；`%TEMP%\perf-smoke-images\perf-img-landscape-4000x3000.png`（52,411 B）Details↔Preview 10 次。预期方向：RSS 峰值与 30 s 滞留大幅下降（1024 px 逻辑解码 ≈3 MB@100% DPI，上限 ≤17 MB；原 ≈48 MB+）；顺带确认横/竖图（portrait-3000x4000.png）显示正常、无重载/闪烁。
+- [ ] **M-e 首次进入未预取深层文件夹（C5 回退预期）**：`%TEMP%\perf-smoke-deep\L1\L2\L3`（3 层、120 PNG、>60% 媒体 → 预测 GridView）。预期：首次允许一次"默认→校正"切换（已接受回退），二次进入不再切换；顺带观察 K1 慢轮现象是否复现（拖动跟手性）。
+- [ ] 视觉冒烟：三目录列表渲染、缩略图、无卡顿回归。
+
+### 4.8 打包阻断证据链（如实报告，不宣称打包完成）
+
+1. 尝试 1（任务 0，无 TMP 重定向）：`build-task.log`，失败于 "Run unit tests"，exit -532462766。
+2. 尝试 2（任务 3 夜间，TMP 重定向）：`build-task3.log`/`build-task3-status.txt`（DONE code=1，2026-11-12T00:28:09），同点同异常。
+3. 尝试 3（本日 08:25，TMP 重定向 + 干净工作树）：`build-task3b.log`/`build-task3b-status.txt`（DONE code=1，2026-11-12T08:25:16），同点同异常：`Microsoft.Testing.Platform.IPC.NamedPipeClient.ConnectAsync` → `NamedPipeClientStream.TryConnect` → `UnauthorizedAccessException`。
+4. 反证非代码回归：同套 429 项单测独立宿主 + TMP 重定向 429/429 全绿（任务 0，`standalone-tests-tmpredirect.log`）；计划任务逃逸重跑 `dotnet test` 亦同样失败（机器级策略）。对照：`standalone-tests-run2.log` 为无重定向对照运行（92 例 TEMP 建目录被拒失败）。
