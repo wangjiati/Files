@@ -2187,7 +2187,10 @@ namespace Files.App.ViewModels
 							BaseStorageFolder? matchingStorageFolder = await GetFolderFromPathAsync(item.GetRequiredPath(), token);
 							if (matchingStorageFolder is not null)
 							{
-								if (matchingStorageFolder.DisplayName != item.Name && !matchingStorageFolder.DisplayName.StartsWith("$R", StringComparison.Ordinal))
+								// Compare against the raw name that the assignment below replaces, so an unchanged
+								// display-name resolution never triggers a name update or reorder pass
+								if (!string.Equals(matchingStorageFolder.DisplayName, item.ItemNameRaw, StringComparison.Ordinal)
+									&& !matchingStorageFolder.DisplayName.StartsWith("$R", StringComparison.Ordinal))
 								{
 									token.ThrowIfCancellationRequested();
 									await dispatcherQueue.EnqueueOrInvokeAsync(() =>
