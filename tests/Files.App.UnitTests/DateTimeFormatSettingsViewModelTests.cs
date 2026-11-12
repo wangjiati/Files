@@ -7,6 +7,7 @@ using Files.App.Data.Enums;
 using Files.App.Data.Items;
 using Files.App.Services.DateTimeFormatter;
 using Files.App.Services.Settings;
+using Files.App.Utils.Serialization.Implementation;
 using Files.App.ViewModels.Settings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -361,6 +362,9 @@ namespace Files.App.UnitTests
 					customPattern: null,
 					includeSubdirectories: true));
 
+			// Settings writes are debounced: flush pending writes so a fresh service
+			// instance (like a restarted app) reads them from disk.
+			SettingsFlushDebouncer.FlushAll();
 			var reloaded = new GeneralSettingsService(new UserSettingsService().GetSharingContext(), volumes);
 
 			Assert.AreEqual(1, reloaded.DateTimeFormatDirectoryRules.Count);

@@ -7,6 +7,7 @@ using Files.App.Data.Enums;
 using Files.App.Data.Items;
 using Files.App.Services.DateTimeFormatter;
 using Files.App.Services.Settings;
+using Files.App.Utils.Serialization.Implementation;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -175,6 +176,10 @@ namespace Files.App.UnitTests
 
 		private static IGeneralSettingsService LoadSettings()
 		{
+			// Settings writes are debounced: flush pending writes so a fresh service
+			// instance (like a restarted app) reads them from disk.
+			SettingsFlushDebouncer.FlushAll();
+
 			var userSettings = new UserSettingsService();
 
 			return new GeneralSettingsService(userSettings.GetSharingContext());

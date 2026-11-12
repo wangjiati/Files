@@ -3,6 +3,7 @@
 
 #if DISTRIBUTION_MSIX
 using Files.App.Server;
+using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Files.App.Utils.Serialization.Implementation;
@@ -14,6 +15,11 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 	private readonly JsonSerializerContext context;
 	private readonly Dictionary<string, JsonElement> defaults = [];
 	private readonly Lock gate = new();
+	// Null Data removes a key; a JSON null remains a stored value (mirrors the server store).
+	private readonly record struct PendingSettingChange(long Version, JsonElement? Data);
+	private readonly Dictionary<string, PendingSettingChange> pendingWrites = new(StringComparer.Ordinal);
+	private long pendingVersion;
+	private readonly SettingsFlushDebouncer flushDebouncer;
 	private Dictionary<string, JsonElement> cache;
 	private int cacheVersion;
 	internal event Action<string, JsonElement>? Changed;
@@ -24,6 +30,7 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 		this.serializer = serializer;
 		this.context = context;
 		cache = ReadValues();
+		flushDebouncer = new(HasPendingWrites, PushPendingWritesToServer);
 		App.ServerChanged += OnServerChanged;
 	}
 
@@ -45,26 +52,42 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 	public bool SetValue<TValue>(string key, TValue? value)
 	{
 		var element = GetElementFromValue(value);
-		var changed = Server.SettingsService.SetSetting(fileName, key, SettingsValueCodec.Encode(element));
+		bool changed;
 		lock (gate)
 		{
-			var localChanged = !cache.TryGetValue(key, out var old) || !JsonElement.DeepEquals(old, element);
+			changed = !cache.TryGetValue(key, out var old) || !JsonElement.DeepEquals(old, element);
 			cache[key] = element;
 			cacheVersion++;
 			defaults.Remove(key);
-			return changed || localChanged;
+			if (changed)
+				pendingWrites[key] = new(++pendingVersion, element);
 		}
+
+		if (changed)
+			flushDebouncer.ScheduleFlush();
+
+		// The server result is not available synchronously anymore; the local cache
+		// comparison decides, which is equivalent absent concurrent writers.
+		return changed;
 	}
 
 	public bool RemoveKey(string key)
 	{
-		var changed = Server.SettingsService.RemoveSetting(fileName, key);
+		bool removed;
 		lock (gate)
 		{
-			cache.Remove(key);
-			cacheVersion++;
+			removed = cache.Remove(key);
+			if (removed)
+			{
+				cacheVersion++;
+				pendingWrites[key] = new(++pendingVersion, null);
+			}
 		}
-		return changed;
+
+		if (removed)
+			flushDebouncer.ScheduleFlush();
+
+		return removed;
 	}
 
 	public bool ImportSettings(object? import)
@@ -77,6 +100,11 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 		};
 		if (values is null)
 			return false;
+
+		// The import replaces the whole store; flush first so stale pending writes
+		// cannot be pushed over imported values afterwards.
+		flushDebouncer.Flush();
+
 		var changed = Server.SettingsService.ImportSettings(fileName, SettingsValueCodec.EncodeObject(values));
 		var flushed = FlushSettings();
 		var fresh = ReadValues();
@@ -88,9 +116,66 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 		return changed && flushed;
 	}
 
-	public IDictionary<string, JsonElement> ExportSettings() => ReadValues();
+	public IDictionary<string, JsonElement> ExportSettings()
+	{
+		// Exports read from the server; flush first so pending writes are included.
+		flushDebouncer.Flush();
 
-	public bool FlushSettings() => Server.SettingsService.FlushSettings(fileName);
+		return ReadValues();
+	}
+
+	public bool FlushSettings() => flushDebouncer.Flush() && Server.SettingsService.FlushSettings(fileName);
+
+	private bool HasPendingWrites()
+	{
+		lock (gate)
+			return pendingWrites.Count > 0;
+	}
+
+	private bool PushPendingWritesToServer()
+	{
+		while (true)
+		{
+			KeyValuePair<string, PendingSettingChange>[] batch;
+			lock (gate)
+			{
+				if (pendingWrites.Count == 0)
+					return true;
+
+				batch = [.. pendingWrites];
+			}
+
+			try
+			{
+				foreach (var op in batch)
+				{
+					if (op.Value.Data is { } element)
+						Server.SettingsService.SetSetting(fileName, op.Key, SettingsValueCodec.Encode(element));
+					else
+						Server.SettingsService.RemoveSetting(fileName, op.Key);
+
+					lock (gate)
+					{
+						// A newer local edit for the same key must stay pending.
+						if (pendingWrites.TryGetValue(op.Key, out var current) && current.Version == op.Value.Version)
+							pendingWrites.Remove(op.Key);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				// Unsent writes remain pending and are retried by the next change or flush.
+				App.Logger.LogWarning(ex, "Could not push pending settings writes for {SettingsFileName}.", fileName);
+				return false;
+			}
+
+			lock (gate)
+			{
+				if (pendingWrites.Count == 0)
+					return true;
+			}
+		}
+	}
 
 	private JsonTypeInfo<T?> GetTypeInfo<T>() => context.GetTypeInfo(typeof(T)) as JsonTypeInfo<T?>
 		?? throw new InvalidOperationException($"JSON serialization metadata is missing for {typeof(T)}.");
@@ -127,6 +212,15 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 					{
 						if (version != cacheVersion)
 							continue;
+						// Re-apply local writes not yet pushed to the server, mirroring the
+						// server's own read merge, so pending values are never reverted.
+						foreach (var op in pendingWrites)
+						{
+							if (op.Value.Data is { } element)
+								fresh[op.Key] = element;
+							else
+								fresh.Remove(op.Key);
+						}
 						var previous = cache;
 						cache = fresh;
 						cacheVersion++;

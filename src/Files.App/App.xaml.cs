@@ -3,6 +3,7 @@
 
 using Files.App.Helpers;
 using Files.App.Helpers.Application;
+using Files.App.Utils.Serialization.Implementation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -75,7 +76,12 @@ namespace Files.App
 			AppDomain.CurrentDomain.UnhandledException += (sender, e) => AppLifecycleHelper.HandleAppUnhandledException(e.ExceptionObject as Exception, false, "AppDomain.UnhandledException");
 			TaskScheduler.UnobservedTaskException += (sender, e) => AppLifecycleHelper.HandleAppUnhandledException(e.Exception, false, "TaskScheduler.UnobservedTaskException");
 			AppDomain.CurrentDomain.ProcessExit += static (_, _) =>
+			{
+				// Every terminal path (graceful close, Environment.Exit after an unhandled
+				// exception) funnels here: persist debounced settings writes before anything else.
+				SafetyExtensions.IgnoreExceptions(() => SettingsFlushDebouncer.FlushAll(TimeSpan.FromSeconds(3)));
 				SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetService<FileLoggerProvider>()?.TryCompleteAndFlush(TimeSpan.FromSeconds(2)));
+			};
 		}
 
 		/// <summary>
@@ -328,6 +334,9 @@ namespace Files.App
 			}
 			finally
 			{
+				// Persist debounced settings writes (e.g. session tabs) before the server
+				// session is torn down; ProcessExit covers the remaining exit paths.
+				SafetyExtensions.IgnoreExceptions(() => SettingsFlushDebouncer.FlushAll(TimeSpan.FromSeconds(3)), Logger);
 				await SafetyExtensions.IgnoreExceptions(async () => await Ioc.Default.GetRequiredService<IAppServerService>().DisposeAsync(), Logger);
 				_isWindowTeardownCompleted = true;
 				MainWindow.Instance.Close();

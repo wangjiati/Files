@@ -111,7 +111,7 @@ namespace Files.App.Utils.Serialization.Implementation
 			return data.TryRemove(key, out _) && SaveSettings(data);
 		}
 
-		public bool FlushSettings()
+		public virtual bool FlushSettings()
 		{
 			// The settings are always flushed automatically, return true.
 			return true;
@@ -140,7 +140,7 @@ namespace Files.App.Utils.Serialization.Implementation
 			}
 		}
 
-		public IDictionary<string, JsonElement> ExportSettings()
+		public virtual IDictionary<string, JsonElement> ExportSettings()
 		{
 			return GetFreshSettings();
 		}
