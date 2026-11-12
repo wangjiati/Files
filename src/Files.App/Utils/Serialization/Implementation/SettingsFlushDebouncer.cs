@@ -98,6 +98,31 @@ namespace Files.App.Utils.Serialization.Implementation
 			return flushed;
 		}
 
+		/// <summary>
+		/// Disposes the debounce timer and removes the instance from the registry.
+		/// Test teardown only: production databases are app-lifetime singletons that
+		/// rely on the registry keeping exit-path flush reachable, so it never shrinks.
+		/// </summary>
+		internal void Dispose()
+		{
+			// Wait for an in-flight callback so it cannot fire on a disposed timer.
+			using var callbacksDone = new ManualResetEvent(false);
+			if (flushTimer.Dispose(callbacksDone))
+				callbacksDone.WaitOne(TimeSpan.FromSeconds(5));
+
+			instances.TryRemove(this, out _);
+		}
+
+		/// <summary>
+		/// Disposes every registered debouncer's timer and clears the registry.
+		/// Test teardown only.
+		/// </summary>
+		internal static void ResetForTests()
+		{
+			foreach (var instance in instances.Keys)
+				instance.Dispose();
+		}
+
 		private void StopTimer()
 		{
 			lock (gate)

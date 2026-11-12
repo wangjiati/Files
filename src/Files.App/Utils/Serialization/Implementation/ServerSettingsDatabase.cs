@@ -13,6 +13,7 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 	private readonly string fileName;
 	private readonly IJsonSettingsSerializer serializer;
 	private readonly JsonSerializerContext context;
+	private readonly IServerSettingsClient serverClient;
 	private readonly Dictionary<string, JsonElement> defaults = [];
 	private readonly Lock gate = new();
 	// Null Data removes a key; a JSON null remains a stored value (mirrors the server store).
@@ -25,16 +26,22 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 	internal event Action<string, JsonElement>? Changed;
 
 	public ServerSettingsDatabase(string fileName, IJsonSettingsSerializer serializer, JsonSerializerContext context)
+		: this(fileName, serializer, context, new WinRtServerSettingsClient())
+	{
+	}
+
+	internal ServerSettingsDatabase(string fileName, IJsonSettingsSerializer serializer, JsonSerializerContext context, IServerSettingsClient serverClient)
 	{
 		this.fileName = fileName;
 		this.serializer = serializer;
 		this.context = context;
+		this.serverClient = serverClient;
 		cache = ReadValues();
 		flushDebouncer = new(HasPendingWrites, PushPendingWritesToServer);
 		App.ServerChanged += OnServerChanged;
 	}
 
-	private Dictionary<string, JsonElement> ReadValues() => SettingsValueCodec.DecodeObject(Server.SettingsService.GetSettings(fileName));
+	private Dictionary<string, JsonElement> ReadValues() => SettingsValueCodec.DecodeObject(serverClient.GetSettings(fileName));
 
 	public TValue? GetValue<TValue>(string key, TValue? defaultValue = default)
 	{
@@ -102,10 +109,13 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 			return false;
 
 		// The import replaces the whole store; flush first so stale pending writes
-		// cannot be pushed over imported values afterwards.
+		// cannot be pushed over imported values afterwards. A failed pre-flush is not
+		// fatal here: unsent writes stay in pendingWrites and the post-import flush
+		// pushes them after the imported data, so they survive as post-import edits
+		// and the failure surfaces through the returned flush result.
 		flushDebouncer.Flush();
 
-		var changed = Server.SettingsService.ImportSettings(fileName, SettingsValueCodec.EncodeObject(values));
+		var changed = serverClient.ImportSettings(fileName, SettingsValueCodec.EncodeObject(values));
 		var flushed = FlushSettings();
 		var fresh = ReadValues();
 		lock (gate)
@@ -118,13 +128,30 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 
 	public IDictionary<string, JsonElement> ExportSettings()
 	{
-		// Exports read from the server; flush first so pending writes are included.
-		flushDebouncer.Flush();
+		// Exports read from the server; flush first so pending writes are included. When
+		// the flush fails, export the persisted state and record it: pending values stay
+		// pending and reach the next export or exit flush.
+		if (!flushDebouncer.Flush())
+		{
+			App.Logger.LogWarning(
+				"Could not flush pending settings writes for {SettingsFileName} before export; the export reflects the last persisted state.",
+				fileName);
+		}
 
 		return ReadValues();
 	}
 
-	public bool FlushSettings() => flushDebouncer.Flush() && Server.SettingsService.FlushSettings(fileName);
+	public bool FlushSettings() => flushDebouncer.Flush() && serverClient.FlushSettings(fileName);
+
+	/// <summary>
+	/// Test teardown only: detaches the static change subscription and disposes the
+	/// debouncer. Production databases live for the process lifetime.
+	/// </summary>
+	internal void DisposeForTests()
+	{
+		App.ServerChanged -= OnServerChanged;
+		flushDebouncer.Dispose();
+	}
 
 	private bool HasPendingWrites()
 	{
@@ -150,9 +177,9 @@ internal sealed class ServerSettingsDatabase : IJsonSettingsDatabase
 				foreach (var op in batch)
 				{
 					if (op.Value.Data is { } element)
-						Server.SettingsService.SetSetting(fileName, op.Key, SettingsValueCodec.Encode(element));
+						serverClient.SetSetting(fileName, op.Key, SettingsValueCodec.Encode(element));
 					else
-						Server.SettingsService.RemoveSetting(fileName, op.Key);
+						serverClient.RemoveSetting(fileName, op.Key);
 
 					lock (gate)
 					{

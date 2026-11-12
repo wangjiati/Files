@@ -44,32 +44,42 @@ namespace Files.App.Utils.Serialization.Implementation
 
 		public override bool SetValue<TValue>(string key, TValue? newValue) where TValue : default
 		{
-			_settingsCache ??= GetFreshSettings();
 			var newElement = GetElementFromValue(newValue);
 
-			if (_settingsCache.TryAdd(key, newElement))
+			// Mutate the cache and mark pending atomically: ImportSettings replaces the
+			// cache under the same gate, so a racing write can never be discarded by the
+			// replacement or leave the pending flag referring to dropped content.
+			lock (pendingGate)
 			{
+				_settingsCache ??= GetFreshSettings();
+
+				if (_settingsCache.TryAdd(key, newElement))
+				{
+					MarkPendingWrite();
+					return true;
+				}
+
+				if (JsonElement.DeepEquals(_settingsCache[key], newElement))
+					return false;
+
+				_settingsCache[key] = newElement;
 				MarkPendingWrite();
 				return true;
 			}
-
-			if (JsonElement.DeepEquals(_settingsCache[key], newElement))
-				return false;
-
-			_settingsCache[key] = newElement;
-			MarkPendingWrite();
-			return true;
 		}
 
 		public override bool RemoveKey(string key)
 		{
-			_settingsCache ??= GetFreshSettings();
+			lock (pendingGate)
+			{
+				_settingsCache ??= GetFreshSettings();
 
-			if (!_settingsCache.TryRemove(key, out _))
-				return false;
+				if (!_settingsCache.TryRemove(key, out _))
+					return false;
 
-			MarkPendingWrite();
-			return true;
+				MarkPendingWrite();
+				return true;
+			}
 		}
 
 		public override bool FlushSettings()
@@ -79,26 +89,40 @@ namespace Files.App.Utils.Serialization.Implementation
 
 		public override bool ImportSettings(object? import)
 		{
-			// Imports replace the whole store; flush first so a failed import cannot lose pending writes.
-			flushDebouncer.Flush();
-
-			if (base.ImportSettings(import))
+			// Imports replace the whole store. The whole import runs under the pending gate
+			// so a concurrent SetValue/RemoveKey (serialized on the same gate) either
+			// completes before the pre-import flush — and is replaced, as any pre-import
+			// state must be — or lands on the imported cache afterwards and survives.
+			// The pending flush is called directly instead of through the debouncer:
+			// acquiring the debouncer's flush gate while holding the pending gate could
+			// deadlock against a concurrent debounce flush.
+			lock (pendingGate)
 			{
-				// Take the replacement under the pending gate so a concurrent flush cannot
-				// serialize the pre-import cache over the imported data.
-				lock (pendingGate)
-					_settingsCache = GetFreshSettings();
+				if (!FlushPendingWrites())
+					// Pending writes could not be persisted; keep them pending and let the
+					// caller retry rather than discarding them with the store replacement.
+					return false;
+
+				if (!base.ImportSettings(import))
+					return false;
+
+				_settingsCache = GetFreshSettings();
 
 				return true;
 			}
-
-			return false;
 		}
 
 		public override IDictionary<string, JsonElement> ExportSettings()
 		{
-			// Exports read from disk; flush first so pending writes are included.
-			flushDebouncer.Flush();
+			// Exports read from disk; flush first so pending writes are included. When the
+			// flush fails, export the on-disk state and record it: pending values stay
+			// pending and reach the next export or exit flush.
+			if (!flushDebouncer.Flush())
+			{
+				App.Logger.LogWarning(
+					"Could not flush pending settings writes to {SettingsFile} before export; the export reflects the last persisted state.",
+					SettingsSerializer.FilePath);
+			}
 
 			return base.ExportSettings();
 		}
