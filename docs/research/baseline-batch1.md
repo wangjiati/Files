@@ -210,3 +210,82 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .superpowers\sdd\2026-11-11-
 2. 尝试 2（任务 3 夜间，TMP 重定向）：`build-task3.log`/`build-task3-status.txt`（DONE code=1，2026-11-12T00:28:09），同点同异常。
 3. 尝试 3（本日 08:25，TMP 重定向 + 干净工作树）：`build-task3b.log`/`build-task3b-status.txt`（DONE code=1，2026-11-12T08:25:16），同点同异常：`Microsoft.Testing.Platform.IPC.NamedPipeClient.ConnectAsync` → `NamedPipeClientStream.TryConnect` → `UnauthorizedAccessException`。
 4. 反证非代码回归：同套 429 项单测独立宿主 + TMP 重定向 429/429 全绿（任务 0，`standalone-tests-tmpredirect.log`）；计划任务逃逸重跑 `dotnet test` 亦同样失败（机器级策略）。对照：`standalone-tests-run2.log` 为无重定向对照运行（92 例 TEMP 建目录被拒失败）。
+
+## 5. 批次 2 前后对照（K1/K2/场景 D）——2026-11-12 任务 5
+
+> 追加章节，不改上文原文。批次 2 修复 = C1 预览切换重载收敛 + C2a InfoPane ApplyLayout 幂等化 + C2b resize 设置写去抖/LoadPaneChanged 节流 + K1 移动早退（cbeeec5a0/76206f9f3/9df8b8241/dac765f37）。
+
+### 5.0 产物与口径
+
+| 项 | 值 |
+| --- | --- |
+| A 侧（批次 2 前） | 批次 1 修复构建：worktree `perf-fixes-batch1` 树干净 @ `e0ebdc27f`（自 `5f15dcad1` 仅 2 个 docs-only 提交，代码等价）；`Files.exe` 723,968 B，ProductVersion `4.3.3.2+5f15dcad1…`（版本戳证实源提交） |
+| B 侧（批次 2 后） | 本 worktree `perf-fixes-batch2` @ `dac765f37` 干净重建：`dotnet restore Files.slnx` → 清 `Files.App`/`Files.App.Server` obj+bin → 同 §4.0 命令（DevShell 7ac2ee5b，Debug x64 Portable RID win-x64）；`Files.exe` 723,968 B，版本戳 `4.3.3.2+dac765f37…`，exit 0 |
+| 通道 | 原批次 1 计划任务 `perf-escape-runner` 已不存在，重建为 `perf-b2-runner`（同交互会话/同用户/ LIMITED）；全部被测进程（Files 两侧 + explorer.exe 参照）启动均在通道内，零直接 Start-Process；测量脚本同 harness 同参数（200 步/r150/amp120） |
+| 设置存储（场景 D） | 便携形态设置在 exe 旁 `…\win-x64\Data\settings\user_settings.json`（`PortableAppRuntimeEnvironment`，两侧各自独立）；两侧启动前预置 `IsInfoPaneEnabled:true`（否则 `Page_SizeChanged` 对 `InfoPane is null` 早退，场景 D 无写可测——实测发现并留档） |
+| 场景 D 替代口径 | 人工拖动不可用，以编程 resize 序列替代：同步 `SetWindowPos` 逐帧改变尺寸 10 s（帧间 8 ms 上限，实际由同步节奏决定 ~267-813 帧）。两个变体：正弦 700×650±120（跨“内容列钉 MinWidth”边界）与单调收缩 740→590（全程钉 MinWidth）；窗口需 >450×450（`LoadPaneChanged` isBigEnough 阈值）面板才加载 |
+| 原始记录 | `.superpowers/sdd/2026-11-12-performance-fixes-batch2/b2-results.txt`（主仓库，不入库）；测量期间无构建负载，全部前台逐条驱动、逐条落盘 |
+
+### 5.1 K1 窗口拖动（每轮新启动，200 步，r=150 px；p50/p95/max，ms）
+
+| 产物 | 轮 1 | 轮 2 | 轮 3 | p50 中位 | p95 中位 |
+| --- | --- | --- | --- | --- | --- |
+| A（批次 2 前） | 10.07/12.63/59.29 | 10.83/36.59/205.35 | 10.21/12.19/27.35 | **10.21** | 12.63 |
+| B（批次 2 后） | 7.02/19.59/107.85 | 6.73/9.07/53.07 | 6.61/8.26/9.69 | **6.73** | 9.07 |
+| explorer.exe（同日复核 1 轮） | 0.97/1.84/3.78 | — | — | 0.97 | 1.84 |
+
+- B vs A：p50 **10.21 → 6.73（-34%）**；p95 中位 12.63 → 9.07；max 尾部 205 → 108。与 Explorer 参照差距由 ~10.5× 收窄至 ~6.9×。Explorer 复核与 §2 基线（~2.2）同量级方向一致。
+- 与 §4.3 批次 1 对照：批次 1 两臂 ~9.15/9.72（互持平），批次 2 B 臂 6.73 为首个显著下降，与“K1 早退消除每次移动 ~185 个窗口管理器调用”的预期方向一致。
+- 注：B 轮 1 p95 19.59 与一次 107.85 尖峰集中在该轮（轮 2/3 干净至 max 53/9.7）；未复现批次 1 的“慢轮整体上移”形态。
+
+### 5.2 K2 窗口 resize（每轮新启动，200 步，amp=120 px；p50/p95/max，ms）
+
+| 产物 | 轮 1 | 轮 2 | 轮 3 | p50 中位 | p95 中位 |
+| --- | --- | --- | --- | --- | --- |
+| A（批次 2 前） | 13.77/17.92/23.26 | 15.34/18.37/248.45 | 14.64/18.87/228.74 | **14.64** | 18.37 |
+| B（批次 2 后） | 12.16/37.37/320.96 | 11.09/13.63/19.91 | 12.03/14.29/39.28 | **12.03** | 14.29 |
+
+- B vs A：p50 **-18%**、p95 中位 **-22%**（18.37 → 14.29）。A 侧两轮出现 ~230-250 ms 尖峰（与 §2 便携 Release 203 ms 尖峰同向）；B 侧轮 2/3 max ≤40 ms 干净，但轮 1 出现一次 320.96 ms 尖峰——长尾未完全消除。
+- Explorer 参照（§2，同期同机）：p50 ~3.4、p95 ~32-33。本批 dev 口径 B p95（14.29）已低于 §2 Explorer p95 参照；p50（12.03）仍高于 Explorer p50。
+- 判定：**部分达标**——p95/max 对 Explorer 参照占优/持平，p50 差距仍 ~3.5×。
+
+### 5.3 场景 D：连续拖窗 resize 10 s 的设置文件 mtime 变化次数
+
+前提发现（如实留档）：`Page_SizeChanged` 在 `InfoPane is null` 时早退；且窗口需 >450×450 面板才加载。故两侧设置文件预置 `IsInfoPaneEnabled:true`、基准窗 700×650/740×650（内容列 208 MinWidth 处于受压状态）。计数口径：40 ms 轮询 `user_settings.json` mtime 变化次数（基线取静置后、burst 开始前）。
+
+| 变体 | A（批次 2 前） | B（批次 2 后） | 目标 |
+| --- | --- | --- | --- |
+| 正弦 700×650±120（跨钉/不钉边界，~5 个钉相） | **148**（146 during + 2 settle） | **5**（4+1，offsets 3286/4845/6320/8079/10500 ms，约每钉相 1 次） | — |
+| 单调收缩 740→590（全程钉 MinWidth，720-813 帧） | **73**（全部 during） | **1**（offset 6023 ms） | ≤2：**达标** |
+
+- 正弦变体每次越界后 300 ms 稳定 flush 一次是防抖语义下的合法行为（值确实变了）；A 侧同序列每 ~40-80 ms 一次持续写。B 侧单调连续钉压场景 1 次 ≤2 达标；A→B 写放大降幅 30×-73×。
+
+### 5.4 B 侧一次启动崩溃（如实记录，未定论）
+
+K1 轮 2 B 首次尝试：进程出窗后 ~1.3 s、harness 首次 `SetWindowPos` 之前自行退出。证据：Application 日志 `Application Error`——Files.exe 4.3.3.2，出错模块 `CoreMessagingXP.dll` 12.6.5.0，异常 `0xc000027b`，pid 0x8FC8（36808），2026-11-12T12:01:47；WER ReportArchive 留档。对照：自 2026-11-11 22:00 以来全部测量启动（批次 1 十三次 + 本日 A 侧三次 + B 侧其余各次）无任何 Files.exe 崩溃记录，仅此一次，重试同轮即成功。疑点指向 B（批次 2 改动面含 DispatcherQueue 定时器与 AppWindow.Changed 挂钩），但不能排除启动竞态；建议批次 2 收尾时以 Release/多轮启动压测复核（见任务报告疑虑）。
+
+### 5.5 冒烟（自动部分，B，通道启动，双目录参数）
+
+| 场景 | 出窗 (ms) | t+5 s | t+15 s | 结果 |
+| --- | --- | --- | --- | --- |
+| 双目录（perf-baseline-dir + perf-baseline-dir-b） | 1530 | 进程 1/带窗/ws 389 MB | 进程 1/带窗/ws 389 MB（持平） | 通过 |
+
+事件日志本测量窗口内除 §5.4 一例外无新增 Files.exe 崩溃；正常关闭无残留进程。
+
+### 5.6 待用户复测清单（手动项，不虚构数字）
+
+使用产物：B 侧 dev 构建（`.agents/worktrees/perf-fixes-batch2/src/Files.App/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/`，Data 目录在其旁）。
+
+- [ ] **RightTabs 反复切换应瞬时**（C1/C2 后预览重建不卡顿；程序化无法触发 tab 切换）。
+- [ ] **旋转后显新图**：`%TEMP%\perf-smoke-images\perf-img-portrait-3000x4000.png` 等横/竖图切换后显示新解码位图，无残留旧图。
+- [ ] **媒体/Shell 目录每次重建无黑屏**：含大量媒体/Shell 项的目录进出与布局重建无黑屏闪烁。
+- [ ] **明暗主题切换后 Markdown 恢复检查**（任务 4 审查要求的主题项）：切明/暗主题后 Markdown 预览恢复正常配色，无陈旧配色残留。
+- [ ] K1 拖动跟手性主观复核（自动 p50 已 -34%）：拖动窗口应明显跟手；顺带观察是否复现批次 1 §4.3 慢轮现象与 §5.4 类启动闪退。
+
+### 5.7 判定汇总
+
+| KPI | 目标 | A（前） | B（后） | 判定 |
+| --- | --- | --- | --- | --- |
+| K1 拖动 p50 | ≤10 ms | 10.21 | **6.73（-34%）** | dev 口径**达标**（vs Explorer 0.97 仍 6.9×；Release 口径因打包阻断未复核） |
+| K2 resize p95 | ≤ Explorer | 18.37 | **14.29（-22%）** | **部分达标**（p95 优于 §2 Explorer 参照 32-33；p50 12.03 仍高于 Explorer ~3.4） |
+| 场景 D 写次数 | B ≤2（连续钉压） | 73（钉压）/148（正弦） | **1** / 5 | **达标**（连续钉压 1 ≤2；正弦每钉相 1 次属防抖合法语义） |
