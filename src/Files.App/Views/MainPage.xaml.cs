@@ -108,6 +108,10 @@ namespace Files.App.Views
 
 		private async Task AppRunningAsAdminPromptAsync()
 		{
+			// Queued at page load; the window can already be closed when this runs.
+			if (App.AppModel.IsMainWindowClosed)
+				return;
+
 			var runningAsAdminPrompt = new ContentDialog
 			{
 				Title = Strings.FilesRunningAsAdmin.ToLocalized(),

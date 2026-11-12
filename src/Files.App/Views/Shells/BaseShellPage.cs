@@ -865,6 +865,11 @@ namespace Files.App.Views.Shells
 				drivesViewModel.ShowUserConsentOnInit = false;
 				await DispatcherQueue.EnqueueOrInvokeAsync(async () =>
 				{
+					// The queued callback can run after the window was closed; accessing its
+					// UI then throws RO_E_CLOSED during teardown.
+					if (App.AppModel.IsMainWindowClosed)
+						return;
+
 					var dialog = DynamicDialogFactory.GetFor_ConsentDialog();
 
 					if (ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8))

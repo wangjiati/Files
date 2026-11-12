@@ -49,6 +49,11 @@ namespace Files.App.Utils.FileTags
 				{
 					await SafetyExtensions.IgnoreExceptions(() => MainWindow.Instance.DispatcherQueue.EnqueueOrInvokeAsync(async () =>
 					{
+						// The queued callback can run after the window was closed; accessing its
+						// UI then throws RO_E_CLOSED during teardown.
+						if (App.AppModel.IsMainWindowClosed)
+							return;
+
 						ContentDialog dialog = new()
 						{
 							Title = Strings.ErrorApplyingTagTitle.GetLocalizedResource(),
