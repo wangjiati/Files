@@ -416,11 +416,49 @@ namespace Files.App.Views.Layouts
 
 		protected override void OnSelectionChanged(SelectionChangedEventArgs e)
 		{
-			foreach (var item in e.AddedItems)
-				SetCheckboxSelectionState(item);
+			if (e.AddedItems.Count + e.RemovedItems.Count > CheckboxBatchUpdateThreshold)
+			{
+				BatchSetCheckboxSelectionState(e);
+			}
+			else
+			{
+				foreach (var item in e.AddedItems)
+					SetCheckboxSelectionState(item);
 
+				foreach (var item in e.RemovedItems)
+					SetCheckboxSelectionState(item);
+			}
+		}
+
+		[DynamicWindowsRuntimeCast(typeof(GridViewItem))]
+		private void BatchSetCheckboxSelectionState(SelectionChangedEventArgs e)
+		{
+			var itemsPanelRoot = FileList.ItemsPanelRoot;
+			if (itemsPanelRoot is null)
+			{
+				foreach (var item in e.AddedItems)
+					SetCheckboxSelectionState(item);
+
+				foreach (var item in e.RemovedItems)
+					SetCheckboxSelectionState(item);
+				return;
+			}
+
+			var changedItems = new HashSet<object>();
+			foreach (var item in e.AddedItems)
+				changedItems.Add(item);
 			foreach (var item in e.RemovedItems)
-				SetCheckboxSelectionState(item);
+				changedItems.Add(item);
+
+			// ListedItem uses reference equality, so one snapshot replaces a per-item
+			// SelectedItems scan for every changed item
+			var selectedItems = new HashSet<object>(FileList.SelectedItems);
+
+			foreach (var container in itemsPanelRoot.Children.OfType<GridViewItem>())
+			{
+				if (FileList.ItemFromContainer(container) is { } item && changedItems.Contains(item))
+					SetCheckboxSelectionState(item, container, selectedItems.Contains(item));
+			}
 		}
 
 		[DynamicWindowsRuntimeCast(typeof(GridViewItem))]
@@ -869,7 +907,7 @@ namespace Files.App.Views.Layouts
 
 		[DynamicWindowsRuntimeCast(typeof(GridViewItem))]
 		[DynamicWindowsRuntimeCast(typeof(CheckBox))]
-		private void SetCheckboxSelectionState(object item, GridViewItem? lviContainer = null)
+		private void SetCheckboxSelectionState(object item, GridViewItem? lviContainer = null, bool? isSelected = null)
 		{
 			var container = lviContainer ?? FileList.ContainerFromItem(item) as GridViewItem;
 			if (container is not null)
@@ -881,7 +919,7 @@ namespace Files.App.Views.Layouts
 					checkbox.Checked -= ItemSelected_Checked;
 					checkbox.Unchecked -= ItemSelected_Unchecked;
 
-					checkbox.IsChecked = FileList.SelectedItems.Contains(item);
+					checkbox.IsChecked = isSelected ?? FileList.SelectedItems.Contains(item);
 
 					checkbox.Checked += ItemSelected_Checked;
 					checkbox.Unchecked += ItemSelected_Unchecked;
