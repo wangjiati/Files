@@ -23,6 +23,7 @@
 	NavigationCacheMode="Required"
 	PointerReleased="Page_PointerReleased"
 	SizeChanged="Page_SizeChanged"
+	Unloaded="Page_Unloaded"
 	mc:Ignorable="d">
 
 	<Page.Resources>
