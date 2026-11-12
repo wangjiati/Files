@@ -281,7 +281,14 @@ namespace Files.App
 			// exception escaping such a handler fail-fast the process (ui-xaml#10447 family),
 			// skipping the finally/ProcessExit settings flush. Guard them until process exit.
 			if (SynchronizationContext.Current is { } syncContext)
+			{
 				SynchronizationContext.SetSynchronizationContext(new TeardownSafeSynchronizationContext(syncContext));
+				Logger.LogInformation($"Teardown sync context guard installed over {syncContext.GetType().Name}.");
+			}
+			else
+			{
+				Logger.LogWarning("Teardown sync context guard skipped: no current context.");
+			}
 
 			_ = SafetyExtensions.IgnoreExceptions(() => Ioc.Default.GetRequiredService<IAppServerService>().SetWindowHandleAsync(0), Logger);
 			Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().UnregisterKey();

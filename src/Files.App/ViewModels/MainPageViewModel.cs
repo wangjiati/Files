@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -334,6 +335,9 @@ namespace Files.App.ViewModels
 			if (sessionTabs is null || sessionTabs.Count == 0)
 				return;
 
+			if (App.AppModel.IsMainWindowClosed)
+				return;
+
 			var savedIndex = UserSettingsService.GeneralSettingsService.LastSessionSelectedTabIndex;
 			if (savedIndex < 0 || savedIndex >= sessionTabs.Count)
 				savedIndex = sessionTabs.Count - 1;
@@ -345,6 +349,15 @@ namespace Files.App.ViewModels
 			// Append the remaining tabs in their original order without changing the selection.
 			for (int i = 0; i < sessionTabs.Count; i++)
 			{
+				// Restoring more tabs cannot be persisted anymore (the session snapshot is
+				// taken when the window closes), and building pages during teardown posts
+				// work into the dispatcher that is being shut down.
+				if (App.AppModel.IsMainWindowClosed)
+				{
+					App.Logger.LogInformation($"Session tab restoration stopped at tab {i}/{sessionTabs.Count}: window closed.");
+					return;
+				}
+
 				if (i == savedIndex)
 					continue;
 
