@@ -35,6 +35,8 @@
 
 **中位 883 ms**；均值 868.8 ms；min 835 / max 901 ms。每轮均观察到主窗口句柄（handleSeen=True）；启动参数为测量目录路径（跳过首页直达目录）。
 
+> 注：出窗判定为 50 ms 轮询（第 0 节注记 3），轮询分辨率 ±50 ms，Δ 低于此量级不具区分力。
+
 ### K5 空闲资源（加载测量目录后空闲 60 s，3 轮取中位）
 
 | 指标 | 轮 1 | 轮 2 | 轮 3 | 中位 |
@@ -83,6 +85,11 @@
 ### M-c 目录往返导航（关联 K3 / C5）
 
 - 前提：便携 Release 构建；两个固定本地目录：`%TEMP%\perf-baseline-dir`（200 项，本文口径）与 `%TEMP%\perf-baseline-dir-b`（同规格姊妹目录：200 个 ~546 B 文本文件，复测时按同法生成）。
+- 姊妹目录一行生成命令（同 §0 首目录规格：`perf-file-0001.txt`…`perf-file-0200.txt`，每个 546 B，共 109,200 B）：
+
+  ```powershell
+  New-Item -ItemType Directory -Force "$env:TEMP\perf-baseline-dir-b" | Out-Null; 1..200 | ForEach-Object { [System.IO.File]::WriteAllText(('{0}\perf-baseline-dir-b\perf-file-{1:d4}.txt' -f $env:TEMP, $_), 'x' * 546, [System.Text.Encoding]::ASCII) }
+  ```
 - 操作：在两目录间以 Alt+←/→（或地址栏）往返 **20 次**。
 - 记录：往返 p50/p95（秒表或录屏逐帧）；导航期间 UI 是否可即时中断；是否观察到卡顿帧。
 - 基线体感：（留空）
@@ -125,7 +132,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .superpowers\sdd\2026-11-11-
 | 构建命令（两侧同配置） | `msbuild -restore src/Files.App/Files.App.csproj -p:Configuration=Debug -p:Platform=x64 -p:Distribution=Portable -p:RuntimeIdentifier=win-x64 -v:quiet -clp:ErrorsOnly`（VS DevShell 7ac2ee5b） |
 | 产物路径（两侧同相对路径） | `src\Files.App\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\Files.exe`（各 723,968 B，ver 4.3.3.2，解包自包含 dev 形态；非 `-t:Publish`） |
 | 打包阻断 | `Build-Internal.ps1 -PortableOnly` 在 **TMP 重定向下**仍失败于 "Run unit tests"：`System.UnauthorizedAccessException` at `System.IO.Pipes.NamedPipeClientStream.TryConnect`（MTP IPC 管道，机器级策略；第 0 节注记 1 的独立宿主 429/429 全绿证据不变）。故按裁决改 dev 口径 A/B，**本批无便携 Release 产物**，便携基线数字仅作参照行 |
-| 测量口径 | 与第 0/1/2 节同 harness/同目录/同轮次/同参数/同计划任务通道；Explorer 参照沿用第 2 节已录数据未重测；测量期间无构建负载、全程前台逐条驱动 |
+| 测量口径 | 与第 0/1/2 节同 harness/同目录/补测后两侧各 6 轮/同参数/同计划任务通道；Explorer 参照沿用第 2 节已录数据未重测；测量期间无构建负载、全程前台逐条驱动 |
 | 原始记录 | `.superpowers/sdd/2026-11-11-performance-fixes-batch1/measure-results.txt` |
 
 ### 4.1 K4 冷启动到可交互（5 次取中位，启动参数=测量目录）

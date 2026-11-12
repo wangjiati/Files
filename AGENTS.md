@@ -272,3 +272,9 @@ These are marshaller-level semantics, not a guarantee about every cross-process 
 - [C#/WinRT Native AOT and trimming guidance](https://github.com/microsoft/CsWinRT/blob/2.3.1.260716.1/docs/aot-trimming.md)
 
 Recheck version-dependent details when upgrading C#/WinRT; do not turn an observation about one projection or transport into a universal WinRT rule.
+
+## 本地环境注记
+
+- PowerShell 文本读写须用 .NET 显式 UTF-8 API（如 `[System.IO.File]::ReadAllText`/`WriteAllText` 搭配 `UTF8Encoding($false)`）；本机 `Get-Content`/`Set-Content` 默认 GBK，会损坏 UTF-8 中文内容。
+- 本构建机 `dotnet test` 的 MTP IPC 命名管道被机器级策略阻断（`UnauthorizedAccessException`）；打包验证须改用独立宿主 + TMP 重定向口径，或换机执行。
+- VS DevShell 实例 ID 以 `vswhere` 实测为准，勿硬编码示例 ID。

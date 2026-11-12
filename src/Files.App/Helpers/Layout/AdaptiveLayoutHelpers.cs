@@ -96,10 +96,17 @@ namespace Files.App.Helpers
 					foreach (var path in paths)
 					{
 						ct.ThrowIfCancellationRequested();
-						if (TryGetCachedPredictLayout(path, out _))
-							continue;
-						if (TryPredictLayout(path, out var layout))
-							AddCachedPrediction(path, layout);
+						try
+						{
+							if (TryGetCachedPredictLayout(path, out _))
+								continue;
+							if (TryPredictLayout(path, out var layout))
+								AddCachedPrediction(path, layout);
+						}
+						catch (Exception)
+						{
+							// Fire-and-forget walk: skip a path that fails unexpectedly; it is simply not cached.
+						}
 					}
 				}
 				catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -141,7 +148,13 @@ namespace Files.App.Helpers
 
 			try
 			{
-				return SystemIO.Path.GetFullPath(path);
+				var fullPath = SystemIO.Path.GetFullPath(path);
+				var trimmed = fullPath.TrimEnd('\\');
+
+				// Keep drive roots in "C:\" form; "\" (current drive root) stays as-is
+				if (trimmed.Length is 2 && trimmed.EndsWith(':'))
+					return trimmed + '\\';
+				return trimmed.Length is 0 ? fullPath : trimmed;
 			}
 			catch (Exception ex) when (ex is ArgumentException or SystemIO.IOException or NotSupportedException or UnauthorizedAccessException)
 			{
