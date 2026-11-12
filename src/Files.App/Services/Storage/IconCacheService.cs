@@ -1,10 +1,10 @@
 // Copyright (c) Files Community
 // SPDX-License-Identifier: MPL-2.0
 
+using Files.App.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -13,8 +13,11 @@ namespace Files.App.Services
 {
 	internal sealed class IconCacheService : IIconCacheService
 	{
-		private readonly ConcurrentDictionary<string, byte[]?> _cache = new();
-		private readonly ConcurrentDictionary<string, BitmapImage> _imageCache = new();
+		// Both caches are LRU-bounded; a DPI or size change simply ages old keys out instead of growing forever.
+		private const int MaxCachedIcons = 1024;
+
+		private readonly LruCache<string, byte[]?> _cache = new(MaxCachedIcons);
+		private readonly LruCache<string, BitmapImage> _imageCache = new(MaxCachedIcons);
 
 		public async Task<byte[]?> GetIconAsync(string? itemPath, string? extension, bool isFolder, uint size)
 		{
@@ -37,7 +40,7 @@ namespace Files.App.Services
 				return null;
 			}
 
-			_cache.TryAdd(key, icon);
+			_cache.Set(key, icon);
 			return icon;
 		}
 
@@ -57,7 +60,7 @@ namespace Files.App.Services
 
 			var image = await data.ToBitmapAsync();
 			if (image is not null)
-				_imageCache.TryAdd(key, image);
+				_imageCache.Set(key, image);
 
 			return image;
 		}

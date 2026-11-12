@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Files Community
 // Licensed under the MIT License.
 
-using System.Collections.Concurrent;
+using Files.App.Helpers;
 using System.IO;
 using Windows.Win32;
 using Windows.Win32.Storage.FileSystem;
@@ -10,11 +10,18 @@ namespace Files.App.Services.SizeProvider
 {
 	public sealed partial class CachedSizeProvider : ISizeProvider
 	{
-		private readonly ConcurrentDictionary<string, ulong> sizes = new();
+		private const int MaxCachedPaths = 4096;
+
+		private readonly LruCache<string, ulong> sizes = new(MaxCachedPaths);
 
 		public event EventHandler<SizeChangedEventArgs>? SizeChanged;
 
-		public Task CleanAsync() => Task.CompletedTask;
+		// Session-level cache: dropping the oldest half is enough, misses are recalculated on demand.
+		public Task CleanAsync()
+		{
+			sizes.EvictOldest(sizes.Count / 2);
+			return Task.CompletedTask;
+		}
 
 		public Task ClearAsync()
 		{
@@ -25,13 +32,13 @@ namespace Files.App.Services.SizeProvider
 		public async Task UpdateAsync(string path, CancellationToken cancellationToken)
 		{
 			await Task.Yield();
-			if (!sizes.ContainsKey(path))
+			if (!sizes.TryGetValue(path, out _))
 				RaiseSizeChanged(path, 0, SizeChangedValueState.None);
 
 			var stopwatch = Stopwatch.StartNew();
 			ulong size = await Calculate(path);
 
-			sizes[path] = size;
+			sizes.Set(path, size);
 			RaiseSizeChanged(path, size, SizeChangedValueState.Final);
 
 			async Task<ulong> Calculate(string path, int level = 0)
@@ -81,7 +88,7 @@ namespace Files.App.Services.SizeProvider
 						if (level <= 3)
 						{
 							await Task.Yield();
-							sizes[localPath] = localSize;
+							sizes.Set(localPath, localSize);
 						}
 						if (level is 0 && stopwatch.ElapsedMilliseconds > 500)
 						{

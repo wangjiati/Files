@@ -5,6 +5,11 @@ namespace Files.App.Utils.Storage
 {
 	public sealed partial class StorageHistoryWrapper : IDisposable
 	{
+		/// <summary>
+		/// Maximum number of history entries retained; adding more discards the oldest ones.
+		/// </summary>
+		public const int MaxHistoryCount = 100;
+
 		private int index = -1;
 
 		private List<IStorageHistory> histories = [];
@@ -21,6 +26,14 @@ namespace Files.App.Utils.Storage
 				++index;
 				histories.Insert(index, history);
 				histories.RemoveRange(index + 1, histories.Count - index - 1);
+
+				if (histories.Count > MaxHistoryCount)
+				{
+					// Discard the oldest entries and shift index along so it keeps pointing at the current history.
+					var discardCount = histories.Count - MaxHistoryCount;
+					histories.RemoveRange(0, discardCount);
+					index -= discardCount;
+				}
 			}
 		}
 
