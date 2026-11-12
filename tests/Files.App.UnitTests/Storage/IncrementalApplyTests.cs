@@ -364,6 +364,101 @@ namespace Files.App.UnitTests.Storage
 				"a wholesale reorder must fall back to Reset");
 		}
 
+		// Review round 1: real comparison ties (equal names under Name sort have no tiebreak).
+		// New items must keep the rebuild order inside the group, not merely an append position.
+		[TestMethod]
+		public void TiedComparisonKeys_GroupContentsMatchTheRebuild()
+		{
+			var comparison = SortingHelper.GetFileListComparison(SortOption.Name, SortDirection.Ascending, sortDirectoriesAlongsideFiles: false, sortFilesFirst: false);
+			Comparison<GroupedCollection<ListedItem>> groupComparison = (x, y) => string.Compare(x.Model.Key, y.Model.Key, StringComparison.Ordinal);
+
+			var collection = new GroupableBulkConcurrentObservableCollection<ListedItem>
+			{
+				ItemGroupKeySelector = item => item.ItemNameRaw?.Length > 0 ? item.ItemNameRaw[..1].ToUpperInvariant() : null,
+			};
+
+			// All items compare equal ("dup.txt" under Name sort): a full-tie group
+			var b = CreateItem("dup.txt");
+			var c = CreateItem("dup.txt");
+			var x = CreateItem("dup.txt");
+
+			// Incoming state as UpdateItemGroup's append can leave it: comparison-sorted with the
+			// ties NOT in target order (group [B, C, X] while the target orders X before C)
+			collection.BeginBulkOperation();
+			collection.AddRange([b, c, x]);
+			collection.EndBulkOperation();
+
+			var target = new List<ListedItem> { b, x, c };
+			Assert.AreEqual(0, comparison(b, x), "the fixture must be a real comparison tie");
+			var summary = collection.TryApplyOrderedChanges(target, comparison, groupComparison);
+
+			Assert.IsNotNull(summary);
+			Assert.IsTrue(target.SequenceEqual(collection.ToList()), "the flat list must equal the target exactly");
+			var group = collection.GroupedCollection!.Single();
+			Assert.IsTrue(target.SequenceEqual(group), "group contents must match the rebuild (tie order included), not the append order");
+		}
+
+		// Review round 1: anchor the selection interaction of incremental batches. A bound ListView
+		// clears its selection on Reset, removes deselected items on single-item Remove and keeps the
+		// rest; this model mirrors those semantics over the raised events.
+		[TestMethod]
+		public void IncrementalBatches_PreserveSelectionAndDropRemovedItems()
+		{
+			var comparison = SortingHelper.GetFileListComparison(SortOption.Name, SortDirection.Ascending, sortDirectoriesAlongsideFiles: false, sortFilesFirst: false);
+
+			var collection = new GroupableBulkConcurrentObservableCollection<ListedItem>();
+			var a = CreateItem("a.txt");
+			var b = CreateItem("b.txt");
+			var c = CreateItem("c.txt");
+			var d = CreateItem("d.txt");
+			var e = CreateItem("e.txt");
+			var source = new List<ListedItem> { a, b, c, d, e };
+
+			collection.BeginBulkOperation();
+			collection.AddRange(SortingHelper.OrderFileList(source, SortOption.Name, SortDirection.Ascending, false, false).ToList());
+			collection.EndBulkOperation();
+
+			var resets = 0;
+			selection.Clear();
+			selection.UnionWith([b, d, e]);
+			collection.CollectionChanged += (_, args) =>
+			{
+				if (args.Action == NotifyCollectionChangedAction.Reset)
+				{
+					resets++;
+					selection.Clear();
+				}
+				else if (args.Action == NotifyCollectionChangedAction.Remove && args.OldItems is not null)
+				{
+					foreach (var removed in args.OldItems)
+						selection.Remove((ListedItem)removed!);
+				}
+			};
+
+			// Watcher batch: d is deleted, f arrives
+			var f = CreateItem("f.txt");
+			source.Remove(d);
+			source.Add(f);
+			var target = SortingHelper.OrderFileList(source, SortOption.Name, SortDirection.Ascending, false, false).ToList();
+
+			Assert.IsNotNull(collection.TryApplyOrderedChanges(target, comparison));
+
+			Assert.AreEqual(0, resets, "an incremental batch must not raise Reset (which would clear the control selection)");
+			Assert.IsTrue(selection.SetEquals([b, e]), "surviving selected items must stay selected and the removed one must leave the selection");
+			Assert.IsTrue(target.SequenceEqual(collection.ToList()));
+
+			// Contrast: the Reset rebuild the fallback path performs clears the modeled selection
+			collection.BeginBulkOperation();
+			collection.Clear();
+			collection.AddRange(target);
+			collection.EndBulkOperation();
+
+			Assert.AreEqual(1, resets);
+			Assert.AreEqual(0, selection.Count, "the Reset rebuild clears the control selection (previous behavior)");
+		}
+
+		private readonly HashSet<ListedItem> selection = new(ReferenceEqualityComparer.Instance);
+
 		private static List<ListedItem> CreateItems(Random rng, int count = 60)
 		{
 			var items = new List<ListedItem>(count);

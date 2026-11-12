@@ -39,10 +39,14 @@ namespace Files.App.Utils.Storage
 
 		/// <summary>
 		/// Applies the difference between the current items and <paramref name="target"/> using single-item
-		/// change notifications only, without a Reset. Items end up at their exact position in
-		/// <paramref name="target"/> (the flat list, each group's contents, and the group order all match a
-		/// Clear+AddRange rebuild followed by ordering), so already realized containers are preserved.
-		/// Must be called on the thread that owns the collection.
+		/// change notifications only, without a Reset, so already realized containers survive. The flat list
+		/// ends up equal to <paramref name="target"/> element by element. Inserted items are placed inside
+		/// their group (and new groups among the existing groups) at their rebuild position, so the group
+		/// structure matches a Clear+AddRange rebuild as long as this method is the only mutator of the
+		/// groups since the last rebuild: comparison-equal items keep their target order. Items appended to a
+		/// group by other paths (see <see cref="UpdateItemGroup"/>) keep their appended position among
+		/// comparison-equal items, which is still a valid sorted order but may differ from the rebuild tie
+		/// order. Must be called on the thread that owns the collection.
 		/// </summary>
 		/// <param name="target">The desired contents and order. Must be ordered by <paramref name="comparison"/>.</param>
 		/// <param name="comparison">A comparison consistent with the ordering of <paramref name="target"/>.</param>
@@ -154,6 +158,8 @@ namespace Files.App.Utils.Storage
 			isApplyingOrderedChanges = true;
 			try
 			{
+				var groupFirstTargetIndex = new Dictionary<GroupedCollection<T>, int>();
+
 				foreach (var item in removedItems)
 				{
 					Remove(item);
@@ -167,7 +173,7 @@ namespace Files.App.Utils.Storage
 						continue;
 
 					Insert(index, item);
-					InsertIntoGroup(item, comparison, groupComparison, groupsByKey);
+					InsertIntoGroup(item, targetIndexOf, index, groupsByKey, groupFirstTargetIndex, groupComparison);
 				}
 
 				if (IsGrouped && GroupedCollection is not null)
@@ -263,7 +269,10 @@ namespace Files.App.Utils.Storage
 			}
 		}
 
-		private void InsertIntoGroup(T item, Comparison<T> comparison, Comparison<GroupedCollection<T>>? groupComparison, Dictionary<string, GroupedCollection<T>> groupsByKey)
+		// Places the item at its rebuild position: after every group member that precedes it in the
+		// target list. Comparison-equal members keep their target order this way, matching what a
+		// Clear+AddRange rebuild produces even under full comparison ties.
+		private void InsertIntoGroup(T item, Dictionary<object, int> targetIndexOf, int itemTargetIndex, Dictionary<string, GroupedCollection<T>> groupsByKey, Dictionary<GroupedCollection<T>, int> groupFirstTargetIndex, Comparison<GroupedCollection<T>>? groupComparison)
 		{
 			if (GroupedCollection is null)
 				return;
@@ -277,7 +286,16 @@ namespace Files.App.Utils.Storage
 
 			if (groupsByKey.TryGetValue(key, out var group))
 			{
-				group.Insert(GetUpperBound(group, item, comparison), item);
+				var index = 0;
+				for (var member = 0; member < group.Count; member++)
+				{
+					if (targetIndexOf.TryGetValue(group[member]!, out var memberIndex) && memberIndex < itemTargetIndex)
+						index++;
+				}
+
+				group.Insert(index, item);
+				if (groupFirstTargetIndex.TryGetValue(group, out var knownFirst) && itemTargetIndex < knownFirst)
+					groupFirstTargetIndex[group] = itemTargetIndex;
 				return;
 			}
 
@@ -291,42 +309,43 @@ namespace Files.App.Utils.Storage
 				GetGroupHeaderInfo.Invoke(group);
 
 			groupsByKey[key] = group;
+			groupFirstTargetIndex[group] = itemTargetIndex;
 
 			if (groupComparison is not null && GroupedCollection.Count > 0)
-				GroupedCollection.Insert(GetGroupUpperBound(groupComparison, group), group);
+				GroupedCollection.Insert(GetNewGroupIndex(groupComparison, group, itemTargetIndex, groupFirstTargetIndex, targetIndexOf), group);
 			else
 				GroupedCollection.Add(group);
 		}
 
-		private static int GetUpperBound(IList<T> items, T item, Comparison<T> comparison)
+		// Counts the groups the rebuild would place before a new group: every group comparing less,
+		// plus equal-comparing groups whose first member appears earlier in the target list.
+		private int GetNewGroupIndex(Comparison<GroupedCollection<T>> groupComparison, GroupedCollection<T> newGroup, int newGroupFirstIndex,
+			Dictionary<GroupedCollection<T>, int> groupFirstTargetIndex, Dictionary<object, int> targetIndexOf)
 		{
-			// Insert after every entry that compares equal, matching stable-sort append semantics
-			var low = 0;
-			var high = items.Count;
-			while (low < high)
+			var index = 0;
+			foreach (var existing in GroupedCollection!.ToList())
 			{
-				var mid = (low + high) / 2;
-				if (comparison(items[mid], item) <= 0)
-					low = mid + 1;
-				else
-					high = mid;
+				var order = groupComparison(existing, newGroup);
+				if (order < 0 || (order == 0 && GetGroupFirstTargetIndex(existing, groupFirstTargetIndex, targetIndexOf) < newGroupFirstIndex))
+					index++;
 			}
-			return low;
+			return index;
 		}
 
-		private int GetGroupUpperBound(Comparison<GroupedCollection<T>> groupComparison, GroupedCollection<T> group)
+		private static int GetGroupFirstTargetIndex(GroupedCollection<T> group, Dictionary<GroupedCollection<T>, int> groupFirstTargetIndex, Dictionary<object, int> targetIndexOf)
 		{
-			var low = 0;
-			var high = GroupedCollection!.Count;
-			while (low < high)
+			if (groupFirstTargetIndex.TryGetValue(group, out var cached))
+				return cached;
+
+			var first = int.MaxValue;
+			foreach (var member in group.ToList())
 			{
-				var mid = (low + high) / 2;
-				if (groupComparison(GroupedCollection[mid], group) <= 0)
-					low = mid + 1;
-				else
-					high = mid;
+				if (targetIndexOf.TryGetValue(member!, out var memberIndex))
+					first = Math.Min(first, memberIndex);
 			}
-			return low;
+
+			groupFirstTargetIndex[group] = first;
+			return first;
 		}
 
 		public Action<GroupedCollection<T>>? GetGroupHeaderInfo { get; set; }
