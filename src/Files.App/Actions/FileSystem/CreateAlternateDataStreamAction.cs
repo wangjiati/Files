@@ -57,7 +57,7 @@ namespace Files.App.Actions
 				if (isReadOnly)
 					Win32Helper.UnsetFileAttribute(itemPath, System.IO.FileAttributes.ReadOnly);
 
-				if (!Win32Helper.WriteStringToFile($"{itemPath}:{userInput}", ""))
+				if (!Win32Helper.WriteStringToFile($"{itemPath}:{userInput}", "") && !App.AppModel.IsMainWindowClosed)
 				{
 					var dialog = new ContentDialog
 					{
@@ -88,6 +88,9 @@ namespace Files.App.Actions
 				await context.ShellPage.Refresh_Click();
 			else if (ApplicationSettingsService.ShowDataStreamsAreHiddenPrompt)
 			{
+				if (App.AppModel.IsMainWindowClosed)
+					return;
+
 				var dialog = new ContentDialog
 				{
 					Title = Strings.DataStreamsAreHiddenTitle.GetLocalizedResource(),

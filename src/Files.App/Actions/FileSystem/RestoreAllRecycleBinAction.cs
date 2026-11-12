@@ -55,6 +55,9 @@ namespace Files.App.Actions
 			// Show error dialog when failed
 			if (!result)
 			{
+				if (App.AppModel.IsMainWindowClosed)
+					return;
+
 				var errorDialog = new ContentDialog()
 				{
 					Title = Strings.FailedToRestore.GetLocalizedResource(),

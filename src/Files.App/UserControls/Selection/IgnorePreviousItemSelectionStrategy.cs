@@ -19,6 +19,7 @@ namespace Files.App.UserControls.Selection
 				if (!selectedItems.Contains(item))
 				{
 					selectedItems.Add(item);
+					RecordItemAdded(item);
 				}
 			}
 			catch (COMException) // List is being modified
@@ -30,7 +31,11 @@ namespace Files.App.UserControls.Selection
 		{
 			try
 			{
-				selectedItems.Remove(item);
+				if (selectedItems.Contains(item))
+				{
+					selectedItems.Remove(item);
+					RecordItemRemoved(item);
+				}
 			}
 			catch (COMException) // List is being modified
 			{

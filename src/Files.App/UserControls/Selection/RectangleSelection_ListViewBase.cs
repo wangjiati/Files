@@ -22,8 +22,8 @@ namespace Files.App.UserControls.Selection
 		private DispatcherQueueTimer? timer;
 		private Point originDragPoint;
 		private Dictionary<object, System.Drawing.Rectangle> itemsPosition;
+		private HashSet<object> intersectingItems = [];
 		private List<object>? prevSelectedItems;
-		private List<object>? prevSelectedItemsDrag;
 		private ItemSelectionStrategy? selectionStrategy;
 
 		public RectangleSelection_ListViewBase(ListViewBase uiElement, Rectangle selectionRectangle, SelectionChangedEventHandler? selectionChanged = null)
@@ -63,27 +63,15 @@ namespace Files.App.UserControls.Selection
 				// Selected area considering scrolled offset
 				var rect = new System.Drawing.Rectangle((int)Canvas.GetLeft(selectionRectangle), (int)Math.Min(originDragPoint.Y, currentPoint.Position.Y + verticalOffset), (int)selectionRectangle.Width, (int)Math.Abs(originDragPoint.Y - (currentPoint.Position.Y + verticalOffset)));
 
-				var selectedItemsBeforeChange = uiElement.SelectedItems.ToArray();
-
-				foreach (var item in itemsPosition.ToList())
-				{
-					try
-					{
-						if (rect.IntersectsWith(item.Value))
-						{
-							selectionStrategy!.HandleIntersectionWithItem(item.Key);
-						}
-						else
-						{
-							selectionStrategy!.HandleNoIntersectionWithItem(item.Key);
-						}
-					}
-					catch (ArgumentException)
-					{
-						// Item is not present in the ItemsSource
-						itemsPosition.Remove(item);
-					}
-				}
+				// The strategies are idempotent for items whose rectangle intersection did
+				// not change, so only those items need a strategy call per move
+				// (see SelectionIntersectionTracker).
+				SelectionIntersectionTracker.ApplyIntersectionChanges(
+					itemsPosition,
+					rect,
+					intersectingItems,
+					item => selectionStrategy!.HandleIntersectionWithItem(item),
+					item => selectionStrategy!.HandleNoIntersectionWithItem(item));
 				if (currentPoint.Position.Y > uiElement.ActualHeight - 20)
 				{
 					// Scroll down the list if pointer is at the bottom
@@ -99,14 +87,13 @@ namespace Files.App.UserControls.Selection
 
 				if (selectionChanged is not null)
 				{
-					var currentSelectedItemsDrag = uiElement.SelectedItems.Cast<object>().ToList();
-					if (prevSelectedItemsDrag is null || !prevSelectedItemsDrag.SequenceEqual(currentSelectedItemsDrag))
+					// Trigger SelectionChanged once per move with only the applied changes
+					// instead of materializing and diffing the whole selection
+					if (selectionStrategy!.AppliedAddedItems.Count > 0 || selectionStrategy.AppliedRemovedItems.Count > 0)
 					{
-						// Trigger SelectionChanged event if the selection has changed
-						var removedItems = selectedItemsBeforeChange.Except(currentSelectedItemsDrag).ToList();
-						selectionChanged(sender, new SelectionChangedEventArgs(removedItems, currentSelectedItemsDrag));
-						prevSelectedItemsDrag = currentSelectedItemsDrag;
+						selectionChanged(sender, new SelectionChangedEventArgs(selectionStrategy.AppliedRemovedItems.ToList(), selectionStrategy.AppliedAddedItems.ToList()));
 					}
+					selectionStrategy.ResetAppliedChanges();
 				}
 			}
 		}
@@ -119,6 +106,7 @@ namespace Files.App.UserControls.Selection
 			}
 
 			itemsPosition.Clear();
+			intersectingItems.Clear();
 
 			scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
 			scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
@@ -217,8 +205,6 @@ namespace Files.App.UserControls.Selection
 
 			selectionStrategy = null;
 			selectionState = SelectionState.Inactive;
-
-			prevSelectedItemsDrag = null;
 
 			e.Handled = true;
 		}

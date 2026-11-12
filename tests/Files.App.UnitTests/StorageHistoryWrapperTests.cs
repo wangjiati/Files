@@ -119,6 +119,56 @@ namespace Files.App.UnitTests
 			Assert.AreEqual(1, Current(wrapper).Id);
 		}
 
+		[TestMethod]
+		public void History_RemoveUnmatchedEntry_IndexUnchanged()
+		{
+			using var wrapper = new StorageHistoryWrapper();
+			wrapper.AddHistory(new HistoryStub(1));
+			wrapper.AddHistory(new HistoryStub(2));
+			wrapper.AddHistory(new HistoryStub(3));
+
+			// Removing an entry that is not in the stack must not move the current pointer.
+			wrapper.RemoveHistory(new HistoryStub(999));
+
+			Assert.IsTrue(wrapper.CanUndo());
+			Assert.IsFalse(wrapper.CanRedo());
+			Assert.AreEqual(3, Current(wrapper).Id);
+		}
+
+		[TestMethod]
+		public void History_RemoveTailEntryAlreadyDiscarded_IndexUnchanged()
+		{
+			using var wrapper = new StorageHistoryWrapper();
+			wrapper.AddHistory(new HistoryStub(1));
+			wrapper.AddHistory(new HistoryStub(2));
+			var tailEntry = new HistoryStub(3);
+			wrapper.AddHistory(tailEntry);
+			wrapper.DecreaseIndex();
+
+			// The redo tail (including tailEntry) is discarded first; the miss must not decrement the index.
+			wrapper.RemoveHistory(tailEntry);
+
+			Assert.IsTrue(wrapper.CanUndo());
+			Assert.IsFalse(wrapper.CanRedo());
+			Assert.AreEqual(2, Current(wrapper).Id);
+		}
+
+		[TestMethod]
+		public void History_RemoveCurrentEntry_PointsAtPreviousEntry()
+		{
+			using var wrapper = new StorageHistoryWrapper();
+			wrapper.AddHistory(new HistoryStub(1));
+			wrapper.AddHistory(new HistoryStub(2));
+			var currentEntry = new HistoryStub(3);
+			wrapper.AddHistory(currentEntry);
+
+			wrapper.RemoveHistory(currentEntry);
+
+			Assert.IsTrue(wrapper.CanUndo());
+			Assert.IsFalse(wrapper.CanRedo());
+			Assert.AreEqual(2, Current(wrapper).Id);
+		}
+
 		private static HistoryStub Current(StorageHistoryWrapper wrapper)
 			=> (HistoryStub)wrapper.GetCurrentHistory();
 

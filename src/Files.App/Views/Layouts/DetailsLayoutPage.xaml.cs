@@ -465,13 +465,51 @@ namespace Files.App.Views.Layouts
 
 		protected override void OnSelectionChanged(SelectionChangedEventArgs e)
 		{
-			foreach (var item in e.AddedItems)
-				SetCheckboxSelectionState(item);
+			if (e.AddedItems.Count + e.RemovedItems.Count > CheckboxBatchUpdateThreshold)
+			{
+				BatchSetCheckboxSelectionState(e);
+			}
+			else
+			{
+				foreach (var item in e.AddedItems)
+					SetCheckboxSelectionState(item);
 
-			foreach (var item in e.RemovedItems)
-				SetCheckboxSelectionState(item);
+				foreach (var item in e.RemovedItems)
+					SetCheckboxSelectionState(item);
+			}
 
 			UpdateSelectAllCheckboxState();
+		}
+
+		[DynamicWindowsRuntimeCast(typeof(ListViewItem))]
+		private void BatchSetCheckboxSelectionState(SelectionChangedEventArgs e)
+		{
+			var itemsPanelRoot = FileList.ItemsPanelRoot;
+			if (itemsPanelRoot is null)
+			{
+				foreach (var item in e.AddedItems)
+					SetCheckboxSelectionState(item);
+
+				foreach (var item in e.RemovedItems)
+					SetCheckboxSelectionState(item);
+				return;
+			}
+
+			var changedItems = new HashSet<object>();
+			foreach (var item in e.AddedItems)
+				changedItems.Add(item);
+			foreach (var item in e.RemovedItems)
+				changedItems.Add(item);
+
+			// ListedItem uses reference equality, so one snapshot replaces a per-item
+			// SelectedItems scan for every changed item
+			var selectedItems = new HashSet<object>(FileList.SelectedItems);
+
+			foreach (var container in itemsPanelRoot.Children.OfType<ListViewItem>())
+			{
+				if (FileList.ItemFromContainer(container) is { } item && changedItems.Contains(item))
+					SetCheckboxSelectionState(item, container, selectedItems.Contains(item));
+			}
 		}
 
 		private bool _suppressSelectAllCheckboxEvents;
@@ -1346,19 +1384,19 @@ namespace Files.App.Views.Layouts
 
 		[DynamicWindowsRuntimeCast(typeof(ListViewItem))]
 		[DynamicWindowsRuntimeCast(typeof(CheckBox))]
-		private void SetCheckboxSelectionState(object item, ListViewItem? lviContainer = null)
+		private void SetCheckboxSelectionState(object item, ListViewItem? lviContainer = null, bool? isSelected = null)
 		{
 			var container = lviContainer ?? FileList.ContainerFromItem(item) as ListViewItem;
 			if (container is not null)
 			{
-				var checkbox = container.FindDescendant("SelectionCheckbox") as CheckBox;
+				var checkbox = GetSelectionCheckbox(container);
 				if (checkbox is not null)
 				{
 					// Temporarily disable events to avoid selecting wrong items
 					checkbox.Checked -= ItemSelected_Checked;
 					checkbox.Unchecked -= ItemSelected_Unchecked;
 
-					checkbox.IsChecked = FileList.SelectedItems.Contains(item);
+					checkbox.IsChecked = isSelected ?? FileList.SelectedItems.Contains(item);
 
 					checkbox.Checked += ItemSelected_Checked;
 					checkbox.Unchecked += ItemSelected_Unchecked;

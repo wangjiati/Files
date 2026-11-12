@@ -203,6 +203,14 @@ namespace Files.App.ViewModels
 		private DirectoryFilterSpec lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 		private IReadOnlyList<ListedItem>? queryViewItems;
 
+		// Incremental apply baseline: the last committed presentation of FilesAndFolders. Only batches that
+		// still match it (same directory, sort settings, filter and query view) may skip the Reset rebuild.
+		private bool hasIncrementalApplyBaseline;
+		private string? incrementalApplyBaselineDirectory;
+		private DirectoryFilterSpec incrementalApplyBaselineFilterSpec = DirectoryFilterSpec.Empty;
+		private (SortOption Option, SortDirection Direction, bool AlongsideFiles, bool FilesFirst)? incrementalApplyBaselineSort;
+		private bool incrementalApplyBaselineQueryView;
+
 		/// <summary>
 		/// True while a SQL query result view is active; FilesAndFolders shows the query
 		/// result instead of the directory items, so export must treat it like search.
@@ -271,6 +279,7 @@ namespace Files.App.ViewModels
 				DirectoryFilter = DirectoryFilterSpec.Empty;
 				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 				ResetQueryView();
+				InvalidateIncrementalApplyBaseline();
 			}
 
 			var isLibrary = false;
@@ -989,6 +998,7 @@ namespace Files.App.ViewModels
 			filesAndFolders.Clear();
 			FilesAndFolders.Clear();
 			FoldersCount = 0;
+			InvalidateIncrementalApplyBaseline();
 			ResetQueryView();
 			CancelSearch();
 		}
@@ -1456,22 +1466,50 @@ namespace Files.App.ViewModels
 							lastCommittedFilterSpec = spec;
 							pendingSearchResults.Clear();
 
-							FilesAndFolders.BeginBulkOperation();
-							try
+							// Batches that still match the last committed presentation are applied incrementally:
+							// only the added, removed and moved items raise single-item notifications, so realized
+							// containers survive a batch. The first presentation keeps the Reset rebuild below.
+							var incrementalSummary = CanApplyFilesAndFoldersIncrementally(spec, isQueryView)
+								? FilesAndFolders.TryApplyOrderedChanges(displayedFilesAndFolders, GetItemListComparison(), GetGroupListComparison())
+								: null;
+
+							if (incrementalSummary is not null)
 							{
-								FilesAndFolders.Clear();
-								FilesAndFolders.AddRange(displayedFilesAndFolders);
 								FoldersCount = displayedFoldersCount;
 
-								if (folderSettings.DirectoryGroupOption != GroupOption.None)
-									OrderGroups();
+								if (!incrementalSummary.IsEmpty)
+									App.Logger.LogInformation("Applied file batch changes incrementally: items={ItemCount}, +{Added}, -{Removed}, ~{Moved}",
+										displayedFilesAndFolders.Count, incrementalSummary.AddedItems, incrementalSummary.RemovedItems, incrementalSummary.MovedItems);
 							}
-							finally
+							else
 							{
-								// Trigger CollectionChanged with NotifyCollectionChangedAction.Reset
-								// once loading is completed so that UI can be updated
-								FilesAndFolders.EndBulkOperation();
+								if (hasIncrementalApplyBaseline)
+									App.Logger.LogInformation("Applied file batch changes with reset: items={ItemCount}", displayedFilesAndFolders.Count);
+
+								FilesAndFolders.BeginBulkOperation();
+								try
+								{
+									FilesAndFolders.Clear();
+									FilesAndFolders.AddRange(displayedFilesAndFolders);
+									FoldersCount = displayedFoldersCount;
+
+									if (folderSettings.DirectoryGroupOption != GroupOption.None)
+										OrderGroups();
+								}
+								finally
+								{
+									// Trigger CollectionChanged with NotifyCollectionChangedAction.Reset
+									// once loading is completed so that UI can be updated
+									FilesAndFolders.EndBulkOperation();
+								}
 							}
+
+							hasIncrementalApplyBaseline = true;
+							incrementalApplyBaselineDirectory = WorkingDirectory;
+							incrementalApplyBaselineFilterSpec = spec;
+							incrementalApplyBaselineSort = (folderSettings.DirectorySortOption, folderSettings.DirectorySortDirection,
+								folderSettings.SortDirectoriesAlongsideFiles, folderSettings.SortFilesFirst);
+							incrementalApplyBaselineQueryView = isQueryView;
 
 							UpdateEmptyTextType();
 							UpdateNetworkAvailabilityInfoBar();
@@ -1581,6 +1619,56 @@ namespace Files.App.ViewModels
 			}
 
 			FilesAndFolders.GroupedCollection.IsSorted = true;
+		}
+
+		private bool CanApplyFilesAndFoldersIncrementally(DirectoryFilterSpec spec, bool isQueryView)
+		{
+			// Only batches of an already presented view may go incremental: the same directory, the same
+			// sort settings (a different order moves every item) and the same filter/query projection. Any
+			// first presentation, navigation or settings change falls back to the Reset rebuild.
+			return hasIncrementalApplyBaseline
+				&& !isQueryView
+				&& !incrementalApplyBaselineQueryView
+				&& spec == incrementalApplyBaselineFilterSpec
+				&& incrementalApplyBaselineSort == (folderSettings.DirectorySortOption, folderSettings.DirectorySortDirection,
+					folderSettings.SortDirectoriesAlongsideFiles, folderSettings.SortFilesFirst)
+				&& string.Equals(incrementalApplyBaselineDirectory, WorkingDirectory, StringComparison.OrdinalIgnoreCase);
+		}
+
+		private void InvalidateIncrementalApplyBaseline()
+			=> hasIncrementalApplyBaseline = false;
+
+		private Comparison<ListedItem> GetItemListComparison()
+			=> SortingHelper.GetFileListComparison(folderSettings.DirectorySortOption, folderSettings.DirectorySortDirection,
+				folderSettings.SortDirectoriesAlongsideFiles, folderSettings.SortFilesFirst);
+
+		private Comparison<GroupedCollection<ListedItem>>? GetGroupListComparison()
+		{
+			if (!FilesAndFolders.IsGrouped)
+				return null;
+
+			// Mirrors the group ordering in OrderGroups
+			var descending = folderSettings.DirectoryGroupDirection == SortDirection.Descending;
+			var bySize = folderSettings.DirectoryGroupOption == GroupOption.Size;
+
+			return (x, y) =>
+			{
+				if (bySize)
+				{
+					// Always show file sections below folders
+					var foldersFirst = (x.First().PrimaryItemAttribute != StorageItemTypes.Folder || x.First().IsArchive)
+						.CompareTo(y.First().PrimaryItemAttribute != StorageItemTypes.Folder || y.First().IsArchive);
+					if (foldersFirst != 0)
+						return foldersFirst;
+				}
+
+				var result = x.Model.SortIndexOverride.CompareTo(y.Model.SortIndexOverride);
+				if (result != 0)
+					return descending ? -result : result;
+
+				result = string.Compare(x.Model.Text, y.Model.Text, StringComparison.CurrentCulture);
+				return descending ? -result : result;
+			};
 		}
 
 		public async Task GroupOptionsUpdatedAsync(CancellationToken token)
@@ -2099,7 +2187,10 @@ namespace Files.App.ViewModels
 							BaseStorageFolder? matchingStorageFolder = await GetFolderFromPathAsync(item.GetRequiredPath(), token);
 							if (matchingStorageFolder is not null)
 							{
-								if (matchingStorageFolder.DisplayName != item.Name && !matchingStorageFolder.DisplayName.StartsWith("$R", StringComparison.Ordinal))
+								// Compare against the raw name that the assignment below replaces, so an unchanged
+								// display-name resolution never triggers a name update or reorder pass
+								if (!string.Equals(matchingStorageFolder.DisplayName, item.ItemNameRaw, StringComparison.Ordinal)
+									&& !matchingStorageFolder.DisplayName.StartsWith("$R", StringComparison.Ordinal))
 								{
 									token.ThrowIfCancellationRequested();
 									await dispatcherQueue.EnqueueOrInvokeAsync(() =>
@@ -2515,6 +2606,7 @@ namespace Files.App.ViewModels
 				IsLoadingItems = true;
 
 				filesAndFolders.Clear();
+				InvalidateIncrementalApplyBaseline();
 				desktopIniUpdateTask = null;
 
 				ItemLoadStatusChanged?.Invoke(this, new ItemLoadStatusChangedEventArgs() { Status = ItemLoadStatusChangedEventArgs.ItemLoadStatus.InProgress });
@@ -3846,6 +3938,7 @@ namespace Files.App.ViewModels
 		public async Task AddSearchResultsToCollectionAsync(ObservableCollection<ListedItem> searchItems, string currentSearchPath)
 		{
 			filesAndFolders.Clear();
+			InvalidateIncrementalApplyBaseline();
 			RefreshDateLabels(searchItems);
 			filesAndFolders.AddRange(searchItems);
 
@@ -3861,6 +3954,7 @@ namespace Files.App.ViewModels
 			var currentSearchCTS = searchCTS = new CancellationTokenSource();
 			var token = currentSearchCTS.Token;
 			filesAndFolders.Clear();
+			InvalidateIncrementalApplyBaseline();
 			dateLabelFormatters = ResolveDateLabelFormatters();
 			IsLoadingItems = true;
 			IsSearchResults = true;

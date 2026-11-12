@@ -158,6 +158,12 @@ namespace Files.App.Utils.Storage
 					var destinationName = destination.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Last();
 					var sourceName = source.Path.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Last();
 
+					if (App.AppModel.IsMainWindowClosed)
+					{
+						fsProgress.ReportStatus(FileSystemStatusCode.InProgress | FileSystemStatusCode.Generic);
+						return null;
+					}
+
 					ContentDialog dialog = new()
 					{
 						Title = Strings.ErrorDialogThisActionCannotBeDone.GetLocalizedResource(),
@@ -377,6 +383,12 @@ namespace Files.App.Utils.Storage
 				{
 					var destinationName = destination.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Last();
 					var sourceName = source.Path.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Last();
+
+					if (App.AppModel.IsMainWindowClosed)
+					{
+						fsProgress.ReportStatus(FileSystemStatusCode.InProgress | FileSystemStatusCode.Generic);
+						return null;
+					}
 
 					ContentDialog dialog = new()
 					{

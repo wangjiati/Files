@@ -12,7 +12,6 @@ namespace Files.App.UserControls.Selection
 		public ExtendPreviousItemSelectionStrategy(ICollection<object> selectedItems, List<object> prevSelectedItems) : base(selectedItems)
 		{
 			this.prevSelectedItems = prevSelectedItems;
-			this.prevSelectedItems = prevSelectedItems;
 		}
 
 		public override void HandleIntersectionWithItem(object item)
@@ -22,6 +21,7 @@ namespace Files.App.UserControls.Selection
 				if (!selectedItems.Contains(item))
 				{
 					selectedItems.Add(item);
+					RecordItemAdded(item);
 				}
 			}
 			catch (COMException) // List is being modified
@@ -34,9 +34,10 @@ namespace Files.App.UserControls.Selection
 			try
 			{
 				// Restore selection on items not intersecting with the rectangle
-				if (!prevSelectedItems.Contains(item))
+				if (!prevSelectedItems.Contains(item) && selectedItems.Contains(item))
 				{
 					selectedItems.Remove(item);
+					RecordItemRemoved(item);
 				}
 			}
 			catch (COMException) // List is being modified

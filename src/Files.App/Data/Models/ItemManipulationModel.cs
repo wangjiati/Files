@@ -17,6 +17,8 @@ namespace Files.App.Data.Models
 
 		public event EventHandler<ListedItem>? RemoveSelectedItemInvoked;
 
+		public event EventHandler<IList<ListedItem>>? SetSelectedItemsInvoked;
+
 		public event EventHandler? FocusSelectedItemsInvoked;
 
 		public event EventHandler? StartRenameItemInvoked;
@@ -87,8 +89,9 @@ namespace Files.App.Data.Models
 
 		public void SetSelectedItems(List<ListedItem> items)
 		{
-			ClearSelection();
-			AddSelectedItems(items);
+			// The batch event lets the layout replace the selection with a single
+			// SelectionChanged instead of one event per item
+			SetSelectedItemsInvoked?.Invoke(this, items);
 		}
 
 		public void FocusSelectedItems()

@@ -77,14 +77,13 @@ namespace Files.App.Views
 				FlowDirection = FlowDirection.RightToLeft;
 			}
 
-			ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-			UserSettingsService.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
-			ContentPageContext.PropertyChanged += ContentPageContext_PropertyChanged;
+			// The singleton sources outlive this page; subscriptions are paired so they can be
+			// detached when the frame discards or caches the page tree (M5 retention fix)
+			AttachToSingletonEvents();
 
 			_updateDateDisplayTimer = DispatcherQueue.CreateTimer();
 			_updateDateDisplayTimer.Interval = TimeSpan.FromSeconds(1);
 			_updateDateDisplayTimer.Tick += UpdateDateDisplayTimer_Tick;
-			App.AppModel.PropertyChanged += AppModel_PropertyChanged;
 
 			_paneSizeWriteDebounceTimer = DispatcherQueue.CreateTimer();
 			_paneSizeWriteDebounceTimer.Interval = PaneSizeWriteDebounceInterval;
@@ -97,6 +96,33 @@ namespace Files.App.Views
 			FindName(nameof(InnerNavigationToolbar));
 			FindName(nameof(TabControl));
 			FindName(nameof(NavToolbar));
+		}
+
+		private void AttachToSingletonEvents()
+		{
+			SingletonEventPair.Attach(ViewModel, ViewModel_PropertyChanged);
+			UserSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
+			UserSettingsService.OnSettingChangedEvent += UserSettingsService_OnSettingChangedEvent;
+			SingletonEventPair.Attach(ContentPageContext, ContentPageContext_PropertyChanged);
+			SingletonEventPair.Attach(App.AppModel, AppModel_PropertyChanged);
+		}
+
+		private void DetachFromSingletonEvents()
+		{
+			App.Logger.LogInformation("MainPage: detaching from singleton event sources");
+
+			SingletonEventPair.Detach(ViewModel, ViewModel_PropertyChanged);
+			UserSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
+			SingletonEventPair.Detach(ContentPageContext, ContentPageContext_PropertyChanged);
+			SingletonEventPair.Detach(App.AppModel, AppModel_PropertyChanged);
+
+			// Release the singleton VM's references to this page's tab bar so a discarded tree is collectable
+			TabControl.DragArea.SizeChanged -= TabControl_SizeChanged;
+			TabControl.SizeChanged -= TabControl_SizeChanged;
+			TabControl.CurrentInstanceChanged -= MultitaskingControl_CurrentInstanceChanged;
+			if (ReferenceEquals(ViewModel.MultitaskingControl, TabControl))
+				ViewModel.MultitaskingControl = null;
+			ViewModel.MultitaskingControls.Remove(TabControl);
 		}
 
 		private void NumberedTabKeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs e)
@@ -153,14 +179,37 @@ namespace Files.App.Views
 
 		private void HorizontalMultitaskingControl_Loaded(object sender, RoutedEventArgs e)
 		{
-			TabControl.DragArea.SizeChanged += (_, _) => MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
-			TabControl.SizeChanged += (_, _) => MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
-			if (ViewModel.MultitaskingControl is not TabBar)
+			AttachToTabBarEvents();
+		}
+
+		// Attached from two points: OnNavigatedTo closes the window where tab restoration raises
+		// CurrentInstanceChanged before the deferred TabBar enters the tree (its Loaded runs at
+		// the layout pass), and the Loaded handler covers repeated loads of a cached page.
+		// Every pairing and the ReferenceEquals takeover guard is idempotent under either order.
+		private void AttachToTabBarEvents()
+		{
+			TabControl.DragArea.SizeChanged -= TabControl_SizeChanged;
+			TabControl.DragArea.SizeChanged += TabControl_SizeChanged;
+			TabControl.SizeChanged -= TabControl_SizeChanged;
+			TabControl.SizeChanged += TabControl_SizeChanged;
+
+			// Take over the singleton VM's tab bar reference so a previous page's tree is not pinned by it
+			if (!ReferenceEquals(ViewModel.MultitaskingControl, TabControl))
 			{
 				ViewModel.MultitaskingControl = TabControl;
-				ViewModel.MultitaskingControls.Add(TabControl);
-				ViewModel.MultitaskingControl.CurrentInstanceChanged += MultitaskingControl_CurrentInstanceChanged;
+				ViewModel.MultitaskingControls.RemoveAll(control => !ReferenceEquals(control, TabControl));
 			}
+
+			if (!ViewModel.MultitaskingControls.Contains(TabControl))
+				ViewModel.MultitaskingControls.Add(TabControl);
+
+			TabControl.CurrentInstanceChanged -= MultitaskingControl_CurrentInstanceChanged;
+			TabControl.CurrentInstanceChanged += MultitaskingControl_CurrentInstanceChanged;
+		}
+
+		private void TabControl_SizeChanged(object sender, SizeChangedEventArgs e)
+		{
+			MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
 		}
 
 		private int SetTitleBarDragRegion(InputNonClientPointerSource source, SizeInt32 size, double scaleFactor, Func<UIElement, RectInt32?, RectInt32> getScaledRect)
@@ -291,6 +340,10 @@ namespace Files.App.Views
 
 		protected override void OnNavigatedTo(NavigationEventArgs e)
 		{
+			// A cached page navigated to again must re-attach before tab restoration raises events
+			AttachToSingletonEvents();
+			AttachToTabBarEvents();
+
 			_ = ViewModel.OnNavigatedToAsync(e);
 		}
 
@@ -298,6 +351,7 @@ namespace Files.App.Views
 		{
 			FlushPendingPaneSizeWrite();
 			MainWindow.Instance.AppWindow.Changed -= AppWindow_Changed;
+			DetachFromSingletonEvents();
 			base.OnNavigatedFrom(e);
 		}
 
@@ -389,6 +443,11 @@ namespace Files.App.Views
 		{
 			ViewModel.OnPageLoaded();
 
+			// Loaded can fire again for a cached page; re-attach and re-apply settings-driven
+			// state that may have changed while the page was detached
+			AttachToSingletonEvents();
+			ApplySidebarWidthState();
+
 			// The frame can re-create this page, so keep the subscription idempotent and detachable
 			MainWindow.Instance.AppWindow.Changed -= AppWindow_Changed;
 			MainWindow.Instance.AppWindow.Changed += AppWindow_Changed;
@@ -407,6 +466,12 @@ namespace Files.App.Views
 			{
 				DispatcherQueue.TryEnqueue(async () => await AppRunningAsAdminPromptAsync());
 			}
+		}
+
+		private void Page_Unloaded(object sender, RoutedEventArgs e)
+		{
+			// The frame can discard this tree (rebuild) while the singleton sources live on
+			DetachFromSingletonEvents();
 		}
 
 		private void PreviewPane_Loaded(object sender, RoutedEventArgs e)
@@ -548,7 +613,7 @@ namespace Files.App.Views
 					case PreviewPaneLayout.RightTabs:
 					default:
 						InfoPaneSizer.ChangeCursor(SizeWestEastCursor);
-						var paneWidth = new GridLength(Math.Max(300d, EffectiveVerticalSizePx));
+						var paneWidth = new GridLength(Math.Max(InfoPaneSettingsService.MinPaneWidthPx, EffectiveVerticalSizePx));
 						if (InfoPaneColumnDefinition.Width != paneWidth)
 							InfoPaneColumnDefinition.Width = paneWidth;
 						GoToPanePositionState("InfoPanePositionRight");

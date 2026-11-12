@@ -64,14 +64,16 @@ namespace Files.App.Views.Properties
 
 		private void Page_Loaded(object sender, RoutedEventArgs e)
 		{
+			// Loaded can re-run on the same page instance, so keep the subscriptions idempotent
+			AppThemeModeService.AppThemeModeChanged -= AppThemeModeService_AppThemeModeChanged;
 			AppThemeModeService.AppThemeModeChanged += AppThemeModeService_AppThemeModeChanged;
+			Window.Closed -= Window_Closed;
 			Window.Closed += Window_Closed;
 
 			AppThemeModeService.ApplyResources();
 			UpdatePageLayout(this.Width);
 			PropertiesSidebar.SelectedItem = MainPropertiesViewModel.SelectedNavigationItem;
 			Window.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
-			// Loaded can re-run on the same page instance, so keep the subscription idempotent
 			Window.AppWindow.Changed -= AppWindow_Changed;
 			Window.AppWindow.Changed += AppWindow_Changed;
 		}

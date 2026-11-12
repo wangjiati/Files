@@ -25,6 +25,10 @@ namespace Files.App.Views.Layouts
 
 		private const int KEY_DOWN_MASK = 0x8000;
 
+		// Above this many changed items, syncing selection checkboxes by walking the
+		// realized containers once beats per-item container lookups and selection scans
+		protected const int CheckboxBatchUpdateThreshold = 4;
+
 		// Fields
 
 		protected int NextRenameIndex = 0;
@@ -73,6 +77,7 @@ namespace Files.App.Views.Layouts
 			ItemManipulationModel.InvertSelectionInvoked += ItemManipulationModel_InvertSelectionInvoked;
 			ItemManipulationModel.AddSelectedItemInvoked += ItemManipulationModel_AddSelectedItemInvoked;
 			ItemManipulationModel.RemoveSelectedItemInvoked += ItemManipulationModel_RemoveSelectedItemInvoked;
+			ItemManipulationModel.SetSelectedItemsInvoked += ItemManipulationModel_SetSelectedItemsInvoked;
 			ItemManipulationModel.FocusSelectedItemsInvoked += ItemManipulationModel_FocusSelectedItemsInvoked;
 			ItemManipulationModel.StartRenameItemInvoked += ItemManipulationModel_StartRenameItemInvoked;
 			ItemManipulationModel.ScrollIntoViewInvoked += ItemManipulationModel_ScrollIntoViewInvoked;
@@ -92,6 +97,7 @@ namespace Files.App.Views.Layouts
 			ItemManipulationModel.InvertSelectionInvoked -= ItemManipulationModel_InvertSelectionInvoked;
 			ItemManipulationModel.AddSelectedItemInvoked -= ItemManipulationModel_AddSelectedItemInvoked;
 			ItemManipulationModel.RemoveSelectedItemInvoked -= ItemManipulationModel_RemoveSelectedItemInvoked;
+			ItemManipulationModel.SetSelectedItemsInvoked -= ItemManipulationModel_SetSelectedItemsInvoked;
 			ItemManipulationModel.FocusSelectedItemsInvoked -= ItemManipulationModel_FocusSelectedItemsInvoked;
 			ItemManipulationModel.StartRenameItemInvoked -= ItemManipulationModel_StartRenameItemInvoked;
 			ItemManipulationModel.ScrollIntoViewInvoked -= ItemManipulationModel_ScrollIntoViewInvoked;
@@ -211,6 +217,45 @@ namespace Files.App.Views.Layouts
 		protected virtual void ItemManipulationModel_ClearSelectionInvoked(object? sender, EventArgs e)
 		{
 			ListViewBase.SelectedItems.Clear();
+		}
+
+		protected virtual void ItemManipulationModel_SetSelectedItemsInvoked(object? sender, IList<ListedItem> e)
+		{
+			// Per-item adds each raise SelectionChanged, which re-materializes the whole
+			// selection for every item. Apply the batch with the page handler suppressed,
+			// then raise it once with the applied change.
+			var oldSelectedItems = ListViewBase.SelectedItems.Cast<object>().ToList();
+
+			// Mirror the rectangle-selection drag: unsubscribe while mutating
+			ListViewBase.SelectionChanged -= FileList_SelectionChanged;
+			try
+			{
+				ListViewBase.SelectedItems.Clear();
+
+				// ListedItem uses reference equality, so one set replaces per-item scans
+				var availableItems = new HashSet<ListedItem>(ListViewBase.Items.Cast<ListedItem>());
+				foreach (var item in e)
+				{
+					if (item is not null && availableItems.Contains(item))
+						ListViewBase.SelectedItems.Add(item);
+				}
+			}
+			finally
+			{
+				ListViewBase.SelectionChanged += FileList_SelectionChanged;
+			}
+
+			var newSelectedItems = ListViewBase.SelectedItems.Cast<object>().ToList();
+			var removedItems = oldSelectedItems.Except(newSelectedItems).ToList();
+			var addedItems = newSelectedItems.Except(oldSelectedItems).ToList();
+			if (newSelectedItems.Count > 0 && addedItems.Count == 0)
+			{
+				// Same-set or shrink-only restore: the former per-item adds still
+				// raised a selection-change notification, so carry the resulting
+				// selection instead of an empty delta
+				addedItems = newSelectedItems;
+			}
+			FileList_SelectionChanged(ListViewBase, new SelectionChangedEventArgs(removedItems, addedItems));
 		}
 
 		protected virtual void ItemManipulationModel_InvertSelectionInvoked(object? sender, EventArgs e)
