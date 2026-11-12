@@ -12,9 +12,18 @@ namespace Files.App.UserControls
 {
 	public sealed partial class InfoPane : UserControl
 	{
+		private static readonly InputSystemCursor SizeNorthSouthCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth);
+		private static readonly InputSystemCursor SizeWestEastCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
+
 		private readonly IInfoPaneSettingsService PaneSettingsService;
 
 		private readonly ICommandManager Commands;
+
+		private PreviewPaneLayout? _appliedLayout;
+		private InfoPaneTabs _appliedSelectedTab;
+		private double _appliedSplitRatio;
+		private double _appliedBottomDetailsWidthPx;
+		private string? _appliedOrientationState;
 
 		private IContentPageContext contentPageContext { get; } = Ioc.Default.GetRequiredService<IContentPageContext>();
 
@@ -33,6 +42,18 @@ namespace Files.App.UserControls
 
 		public void ApplyLayout(PreviewPaneLayout layout)
 		{
+			// Re-clicking the active layout button unchecks it without raising a settings change, so re-sync the buttons before the early exit.
+			LayoutRightSplitButton.IsChecked = layout is PreviewPaneLayout.RightSplit;
+			LayoutBottomButton.IsChecked = layout is PreviewPaneLayout.Bottom;
+			LayoutRightTabsButton.IsChecked = layout is PreviewPaneLayout.RightTabs;
+
+			// Skip when neither the layout nor its settings-driven inputs changed.
+			if (_appliedLayout == layout &&
+				_appliedSelectedTab == ViewModel.SelectedTab &&
+				_appliedSplitRatio == PaneSettingsService.SplitRatio &&
+				_appliedBottomDetailsWidthPx == PaneSettingsService.BottomDetailsWidthPx)
+				return;
+
 			// The tabs visual state collapses the details when the preview tab is selected.
 			if (layout is not PreviewPaneLayout.RightTabs && ViewModel.SelectedTab != InfoPaneTabs.Details)
 				ViewModel.SelectedTab = InfoPaneTabs.Details;
@@ -42,10 +63,10 @@ namespace Files.App.UserControls
 				case PreviewPaneLayout.RightSplit:
 				default:
 					(MinWidth, MinHeight) = (300, 0);
-					VisualStateManager.GoToState(this, "Vertical", true);
+					GoToOrientationState("Vertical");
 					RowSplitter.Visibility = Visibility.Visible;
 					ColumnSplitter.Visibility = Visibility.Collapsed;
-					RowSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
+					RowSplitter.ChangeCursor(SizeNorthSouthCursor);
 					RootPropertiesScrollViewer.Margin = new Thickness(0, 8, 0, 0);
 					PreviewColumn.Width = new(2, GridUnitType.Star);
 					PropertiesColumn.Width = new(3, GridUnitType.Star);
@@ -55,7 +76,7 @@ namespace Files.App.UserControls
 					break;
 				case PreviewPaneLayout.RightTabs:
 					(MinWidth, MinHeight) = (300, 0);
-					VisualStateManager.GoToState(this, "Vertical", true);
+					GoToOrientationState("Vertical");
 					RowSplitter.Visibility = Visibility.Collapsed;
 					ColumnSplitter.Visibility = Visibility.Collapsed;
 					RootPropertiesScrollViewer.Margin = new Thickness(0);
@@ -70,10 +91,10 @@ namespace Files.App.UserControls
 					break;
 				case PreviewPaneLayout.Bottom:
 					(MinWidth, MinHeight) = (0, 140);
-					VisualStateManager.GoToState(this, "Horizontal", true);
+					GoToOrientationState("Horizontal");
 					ColumnSplitter.Visibility = Visibility.Visible;
 					RowSplitter.Visibility = Visibility.Collapsed;
-					ColumnSplitter.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
+					ColumnSplitter.ChangeCursor(SizeWestEastCursor);
 					RootPropertiesScrollViewer.Margin = new Thickness(8, 0, 0, 0);
 					ApplyBottomDetailsWidth();
 					break;
@@ -82,9 +103,19 @@ namespace Files.App.UserControls
 			// The details/preview selector only applies when the two panes share the same area.
 			TabSelectorPanel.Visibility = layout is PreviewPaneLayout.RightTabs ? Visibility.Visible : Visibility.Collapsed;
 
-			LayoutRightSplitButton.IsChecked = layout is PreviewPaneLayout.RightSplit;
-			LayoutBottomButton.IsChecked = layout is PreviewPaneLayout.Bottom;
-			LayoutRightTabsButton.IsChecked = layout is PreviewPaneLayout.RightTabs;
+			_appliedLayout = layout;
+			_appliedSelectedTab = ViewModel.SelectedTab;
+			_appliedSplitRatio = PaneSettingsService.SplitRatio;
+			_appliedBottomDetailsWidthPx = PaneSettingsService.BottomDetailsWidthPx;
+		}
+
+		private void GoToOrientationState(string stateName)
+		{
+			if (_appliedOrientationState == stateName)
+				return;
+
+			VisualStateManager.GoToState(this, stateName, true);
+			_appliedOrientationState = stateName;
 		}
 
 		private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)

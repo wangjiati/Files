@@ -36,6 +36,9 @@ namespace Files.App.Views
 
 		private const int HTCAPTION = 2;
 
+		private static readonly InputSystemCursor SizeWestEastCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
+		private static readonly InputSystemCursor SizeNorthSouthCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth);
+
 		private bool keyReleased = true;
 
 		private DispatcherQueueTimer _updateDateDisplayTimer;
@@ -43,6 +46,7 @@ namespace Files.App.Views
 
 		private readonly Dictionary<TabBarItem, double> _sidebarScrollByTab = new();
 		private TabBarItem? _previousSidebarTab;
+		private string? _appliedPanePositionState;
 
 		[DynamicWindowsRuntimeCast(typeof(MenuFlyout))]
 		public MainPage()
@@ -448,7 +452,7 @@ namespace Files.App.Views
 		{
 			if (InfoPane is null || !ViewModel.ShouldPreviewPaneBeActive)
 			{
-				VisualStateManager.GoToState(this, "InfoPanePositionNone", true);
+				GoToPanePositionState("InfoPanePositionNone");
 			}
 			else
 			{
@@ -462,17 +466,30 @@ namespace Files.App.Views
 					case PreviewPaneLayout.RightSplit:
 					case PreviewPaneLayout.RightTabs:
 					default:
-						InfoPaneSizer.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast));
-						InfoPaneColumnDefinition.Width = new(Math.Max(300d, infoPaneSettingsService.VerticalSizePx));
-						VisualStateManager.GoToState(this, "InfoPanePositionRight", true);
+						InfoPaneSizer.ChangeCursor(SizeWestEastCursor);
+						var paneWidth = new GridLength(Math.Max(300d, infoPaneSettingsService.VerticalSizePx));
+						if (InfoPaneColumnDefinition.Width != paneWidth)
+							InfoPaneColumnDefinition.Width = paneWidth;
+						GoToPanePositionState("InfoPanePositionRight");
 						break;
 					case PreviewPaneLayout.Bottom:
-						InfoPaneSizer.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth));
-						InfoPaneRowDefinition.Height = new(infoPaneSettingsService.HorizontalSizePx);
-						VisualStateManager.GoToState(this, "InfoPanePositionBottom", true);
+						InfoPaneSizer.ChangeCursor(SizeNorthSouthCursor);
+						var paneHeight = new GridLength(infoPaneSettingsService.HorizontalSizePx);
+						if (InfoPaneRowDefinition.Height != paneHeight)
+							InfoPaneRowDefinition.Height = paneHeight;
+						GoToPanePositionState("InfoPanePositionBottom");
 						break;
 				}
 			}
+		}
+
+		private void GoToPanePositionState(string stateName)
+		{
+			if (_appliedPanePositionState == stateName)
+				return;
+
+			VisualStateManager.GoToState(this, stateName, true);
+			_appliedPanePositionState = stateName;
 		}
 
 		private void PaneSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
