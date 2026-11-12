@@ -118,9 +118,11 @@ namespace Files.App.Views.Properties
 			}
 		}
 
+		// Drag region rects are window-relative, so pure position or z-order changes need no recompute (#19028)
 		private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs e)
 		{
-			Window.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
+			if (e.DidSizeChange || e.DidPresenterChange || e.DidVisibilityChange)
+				Window.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
 		}
 
 		public override async Task<bool> SaveChangesAsync()

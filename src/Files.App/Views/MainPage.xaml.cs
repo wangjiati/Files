@@ -7,6 +7,7 @@ using Files.App.Controls;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -169,6 +170,13 @@ namespace Files.App.Views
 			return height;
 		}
 
+		// Drag region rects are window-relative, so pure position or z-order changes need no recompute (#19028)
+		private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
+		{
+			if (args.DidSizeChange || args.DidPresenterChange || args.DidVisibilityChange)
+				MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
+		}
+
 		// Caption regions live in a dedicated child window
 		private void AttachTitleBarMessageMonitor()
 		{
@@ -285,6 +293,7 @@ namespace Files.App.Views
 		protected override void OnNavigatedFrom(NavigationEventArgs e)
 		{
 			FlushPendingPaneSizeWrite();
+			MainWindow.Instance.AppWindow.Changed -= AppWindow_Changed;
 			base.OnNavigatedFrom(e);
 		}
 
@@ -376,7 +385,9 @@ namespace Files.App.Views
 		{
 			ViewModel.OnPageLoaded();
 
-			MainWindow.Instance.AppWindow.Changed += (_, _) => MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
+			// The frame can re-create this page, so keep the subscription idempotent and detachable
+			MainWindow.Instance.AppWindow.Changed -= AppWindow_Changed;
+			MainWindow.Instance.AppWindow.Changed += AppWindow_Changed;
 
 			MainWindow.Instance.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
 
@@ -423,7 +434,10 @@ namespace Files.App.Views
 
 			// Ticks dispatched during dispatcher queue shutdown crash in CoreMessaging
 			if (App.AppModel.IsMainWindowClosed)
+			{
 				_updateDateDisplayTimer.Stop();
+				MainWindow.Instance.AppWindow.Changed -= AppWindow_Changed;
+			}
 			else if (InfoPane is not null && InfoPane.IsLoaded)
 				_updateDateDisplayTimer.Start();
 		}
