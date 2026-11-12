@@ -54,6 +54,14 @@
 - [ ] 三处各自上限实装 + 边界（撤销栈截断后 index 语义正确；图标清理触发点不引入高频重解码）
 - [ ] 构建验证；commit "Bound the size, history, and icon caches"
 
+### 任务 5：S2 关窗后集合访问崩溃修复（任务 1 压测新发现，插队执行）
+
+**文件：** src/Files.App/Views/Layouts/BaseLayoutPage.cs（SetSelectedItemsOnNavigation 延续）、src/Files.App/Views/Shells/ShellPanesPage.cs（FocusActivePane/GetPane）按审计定位
+
+- [ ] 关窗守卫（IsMainWindowClosed）或已拆集合防御，使该延续在窗口关闭后安全放弃；正常路径零变化
+- [ ] 通道压测 ≥30 次（对照任务 1 前的 2/30），目标 0 复现且 0 条 1026 事件
+- [ ] commit "Guard navigation selection continuation against closed window"
+
 ### 任务 4：批次 3 测量与收尾
 
 - [ ] K5 长会话场景（开关 30 个标签/执行 50 次操作/翻滚大目录后空闲 RSS 斜率 vs 批次 2 构建）；设置写压测（滑块类连续改 100 次 → user_settings.json mtime 次数 ≤2）
