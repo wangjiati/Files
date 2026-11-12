@@ -47,6 +47,17 @@ namespace Files.App.Views
 		private readonly Dictionary<TabBarItem, double> _sidebarScrollByTab = new();
 		private TabBarItem? _previousSidebarTab;
 		private string? _appliedPanePositionState;
+		private (bool IsInfoPaneRealized, PreviewPaneLayout Layout, double VerticalSizePx, double HorizontalSizePx, bool ShouldPreviewPaneBeActive)? _appliedPaneLayoutInputs;
+
+		// Pane size settings accumulate locally while the window is resized and are written once it settles
+		private static readonly TimeSpan PaneSizeWriteDebounceInterval = TimeSpan.FromMilliseconds(300);
+		private DispatcherQueueTimer _paneSizeWriteDebounceTimer;
+		private double? _pendingVerticalSizePx;
+		private double? _pendingHorizontalSizePx;
+
+		// Pending values shadow the persisted settings while a debounced resize is in flight
+		private double EffectiveVerticalSizePx => _pendingVerticalSizePx ?? UserSettingsService.InfoPaneSettingsService.VerticalSizePx;
+		private double EffectiveHorizontalSizePx => _pendingHorizontalSizePx ?? UserSettingsService.InfoPaneSettingsService.HorizontalSizePx;
 
 		[DynamicWindowsRuntimeCast(typeof(MenuFlyout))]
 		public MainPage()
@@ -73,6 +84,11 @@ namespace Files.App.Views
 			_updateDateDisplayTimer.Interval = TimeSpan.FromSeconds(1);
 			_updateDateDisplayTimer.Tick += UpdateDateDisplayTimer_Tick;
 			App.AppModel.PropertyChanged += AppModel_PropertyChanged;
+
+			_paneSizeWriteDebounceTimer = DispatcherQueue.CreateTimer();
+			_paneSizeWriteDebounceTimer.Interval = PaneSizeWriteDebounceInterval;
+			_paneSizeWriteDebounceTimer.IsRepeating = false;
+			_paneSizeWriteDebounceTimer.Tick += (_, _) => FlushPendingPaneSizeWrite();
 
 			ApplySidebarWidthState();
 
@@ -266,6 +282,12 @@ namespace Files.App.Views
 			_ = ViewModel.OnNavigatedToAsync(e);
 		}
 
+		protected override void OnNavigatedFrom(NavigationEventArgs e)
+		{
+			FlushPendingPaneSizeWrite();
+			base.OnNavigatedFrom(e);
+		}
+
 		protected override async void OnPreviewKeyDown(KeyRoutedEventArgs e) => await OnPreviewKeyDownAsync(e);
 
 		[DynamicWindowsRuntimeCast(typeof(DependencyObject))]
@@ -380,6 +402,7 @@ namespace Files.App.Views
 		private void PreviewPane_Unloaded(object sender, RoutedEventArgs e)
 		{
 			_updateDateDisplayTimer.Stop();
+			FlushPendingPaneSizeWrite();
 		}
 
 		private void UpdateDateDisplayTimer_Tick(object sender, object e)
@@ -394,6 +417,9 @@ namespace Files.App.Views
 		{
 			if (e.PropertyName != nameof(AppModel.IsMainWindowClosed))
 				return;
+
+			// Persist any pane resize still in flight before the dispatcher winds down
+			FlushPendingPaneSizeWrite();
 
 			// Ticks dispatched during dispatcher queue shutdown crash in CoreMessaging
 			if (App.AppModel.IsMainWindowClosed)
@@ -413,7 +439,7 @@ namespace Files.App.Views
 				case PreviewPaneLayout.RightTabs:
 					if (ContentColumn.ActualWidth == ContentColumn.MinWidth)
 					{
-						UserSettingsService.InfoPaneSettingsService.VerticalSizePx += e.NewSize.Width - e.PreviousSize.Width;
+						QueueVerticalSizePxWrite(e.NewSize.Width - e.PreviousSize.Width);
 						UpdatePositioning();
 					}
 
@@ -421,13 +447,50 @@ namespace Files.App.Views
 				case PreviewPaneLayout.Bottom:
 					if (ContentRow.ActualHeight == ContentRow.MinHeight)
 					{
-						UserSettingsService.InfoPaneSettingsService.HorizontalSizePx += e.NewSize.Height - e.PreviousSize.Height;
+						QueueHorizontalSizePxWrite(e.NewSize.Height - e.PreviousSize.Height);
 						UpdatePositioning();
 					}
 
 					break;
 				default:
 					break;
+			}
+		}
+
+		// The clamp ranges mirror InfoPaneSettingsService so accumulated values match per-tick writes
+		private void QueueVerticalSizePxWrite(double delta)
+		{
+			_pendingVerticalSizePx = Math.Clamp(EffectiveVerticalSizePx + delta, 300d, 500d);
+			RestartPaneSizeWriteDebounce();
+		}
+
+		private void QueueHorizontalSizePxWrite(double delta)
+		{
+			_pendingHorizontalSizePx = Math.Max(100d, EffectiveHorizontalSizePx + delta);
+			RestartPaneSizeWriteDebounce();
+		}
+
+		private void RestartPaneSizeWriteDebounce()
+		{
+			// Restarting on every tick makes the timer fire once, 300ms after the last one
+			_paneSizeWriteDebounceTimer.Stop();
+			_paneSizeWriteDebounceTimer.Start();
+		}
+
+		private void FlushPendingPaneSizeWrite()
+		{
+			_paneSizeWriteDebounceTimer.Stop();
+
+			if (_pendingVerticalSizePx is double verticalSizePx)
+			{
+				_pendingVerticalSizePx = null;
+				UserSettingsService.InfoPaneSettingsService.VerticalSizePx = verticalSizePx;
+			}
+
+			if (_pendingHorizontalSizePx is double horizontalSizePx)
+			{
+				_pendingHorizontalSizePx = null;
+				UserSettingsService.InfoPaneSettingsService.HorizontalSizePx = horizontalSizePx;
 			}
 		}
 
@@ -467,14 +530,14 @@ namespace Files.App.Views
 					case PreviewPaneLayout.RightTabs:
 					default:
 						InfoPaneSizer.ChangeCursor(SizeWestEastCursor);
-						var paneWidth = new GridLength(Math.Max(300d, infoPaneSettingsService.VerticalSizePx));
+						var paneWidth = new GridLength(Math.Max(300d, EffectiveVerticalSizePx));
 						if (InfoPaneColumnDefinition.Width != paneWidth)
 							InfoPaneColumnDefinition.Width = paneWidth;
 						GoToPanePositionState("InfoPanePositionRight");
 						break;
 					case PreviewPaneLayout.Bottom:
 						InfoPaneSizer.ChangeCursor(SizeNorthSouthCursor);
-						var paneHeight = new GridLength(infoPaneSettingsService.HorizontalSizePx);
+						var paneHeight = new GridLength(EffectiveHorizontalSizePx);
 						if (InfoPaneRowDefinition.Height != paneHeight)
 							InfoPaneRowDefinition.Height = paneHeight;
 						GoToPanePositionState("InfoPanePositionBottom");
@@ -496,6 +559,9 @@ namespace Files.App.Views
 		{
 			if (InfoPane is not null)
 			{
+				// The completed splitter drag supersedes any window-resize delta still pending
+				FlushPendingPaneSizeWrite();
+
 				switch (UserSettingsService.InfoPaneSettingsService.Layout)
 				{
 					case PreviewPaneLayout.RightSplit or PreviewPaneLayout.RightTabs:
@@ -505,6 +571,9 @@ namespace Files.App.Views
 						UserSettingsService.InfoPaneSettingsService.HorizontalSizePx = InfoPane.ActualHeight;
 						break;
 				}
+
+				// A drag can end outside the clamped setting, which fires no change event; the next LoadPaneChanged must re-apply
+				_appliedPaneLayoutInputs = null;
 			}
 
 			this.ChangeCursor(InputSystemCursor.Create(InputSystemCursorShape.Arrow));
@@ -533,6 +602,19 @@ namespace Files.App.Views
 
 				ViewModel.ShouldPreviewPaneBeDisplayed = ((!isHomePage && !isReleaseNotesPage && !isSettingsPage) || isMultiPane) && isBigEnough;
 				ViewModel.ShouldPreviewPaneBeActive = UserSettingsService.InfoPaneSettingsService.IsInfoPaneEnabled && ViewModel.ShouldPreviewPaneBeDisplayed;
+
+				// UpdatePositioning is idempotent, so skip it when none of the values it consumes changed.
+				// InfoPane realization is included because ApplyLayout must run on a newly loaded pane.
+				var paneLayoutInputs = (
+					IsInfoPaneRealized: InfoPane is not null,
+					Layout: UserSettingsService.InfoPaneSettingsService.Layout,
+					VerticalSizePx: EffectiveVerticalSizePx,
+					HorizontalSizePx: EffectiveHorizontalSizePx,
+					ShouldPreviewPaneBeActive: ViewModel.ShouldPreviewPaneBeActive);
+				if (paneLayoutInputs == _appliedPaneLayoutInputs)
+					return;
+
+				_appliedPaneLayoutInputs = paneLayoutInputs;
 
 				UpdatePositioning();
 			}
