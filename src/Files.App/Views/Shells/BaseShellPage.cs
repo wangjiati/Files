@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using Files.App.Utils.Storage;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Foundation.Metadata;
@@ -860,6 +861,15 @@ namespace Files.App.Views.Shells
 
 		protected async Task DisplayFilesystemConsentDialogAsync()
 		{
+			// Test-environment suppression: on hardened machines the portable build fails
+			// the OS primary-drive enumeration on every launch, so the consent dialog would
+			// pop up every start. FILES_TEST_SKIP_CONSENT=1 skips it; default is unchanged.
+			if (Environment.GetEnvironmentVariable("FILES_TEST_SKIP_CONSENT") == "1")
+			{
+				App.Logger?.LogInformation("Filesystem consent dialog suppressed by FILES_TEST_SKIP_CONSENT");
+				return;
+			}
+
 			if (drivesViewModel?.ShowUserConsentOnInit ?? false)
 			{
 				drivesViewModel.ShowUserConsentOnInit = false;
