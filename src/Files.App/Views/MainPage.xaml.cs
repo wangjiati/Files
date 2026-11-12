@@ -109,6 +109,8 @@ namespace Files.App.Views
 
 		private void DetachFromSingletonEvents()
 		{
+			App.Logger.LogInformation("MainPage: detaching from singleton event sources");
+
 			SingletonEventPair.Detach(ViewModel, ViewModel_PropertyChanged);
 			UserSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
 			SingletonEventPair.Detach(ContentPageContext, ContentPageContext_PropertyChanged);
@@ -177,7 +179,15 @@ namespace Files.App.Views
 
 		private void HorizontalMultitaskingControl_Loaded(object sender, RoutedEventArgs e)
 		{
-			// Loaded can fire again (cached page); pairing must not stack handlers
+			AttachToTabBarEvents();
+		}
+
+		// Attached from two points: OnNavigatedTo closes the window where tab restoration raises
+		// CurrentInstanceChanged before the deferred TabBar enters the tree (its Loaded runs at
+		// the layout pass), and the Loaded handler covers repeated loads of a cached page.
+		// Every pairing and the ReferenceEquals takeover guard is idempotent under either order.
+		private void AttachToTabBarEvents()
+		{
 			TabControl.DragArea.SizeChanged -= TabControl_SizeChanged;
 			TabControl.DragArea.SizeChanged += TabControl_SizeChanged;
 			TabControl.SizeChanged -= TabControl_SizeChanged;
@@ -332,6 +342,7 @@ namespace Files.App.Views
 		{
 			// A cached page navigated to again must re-attach before tab restoration raises events
 			AttachToSingletonEvents();
+			AttachToTabBarEvents();
 
 			_ = ViewModel.OnNavigatedToAsync(e);
 		}
