@@ -114,8 +114,9 @@ namespace Files.App.UserControls
 			if (_appliedOrientationState == stateName)
 				return;
 
-			VisualStateManager.GoToState(this, stateName, true);
-			_appliedOrientationState = stateName;
+			// GoToState returns false when the state group is missing (e.g. moved into a template), so don't cache those as applied
+			if (VisualStateManager.GoToState(this, stateName, true))
+				_appliedOrientationState = stateName;
 		}
 
 		private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)

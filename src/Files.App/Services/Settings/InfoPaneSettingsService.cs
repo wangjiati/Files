@@ -5,6 +5,11 @@ namespace Files.App.Services.Settings
 {
 	internal sealed partial class InfoPaneSettingsService : BaseObservableJsonSettings, IInfoPaneSettingsService
 	{
+		// The pane clamps are shared with MainPage so per-tick resize accumulation matches persisted writes
+		public const double MinPaneWidthPx = 300d;
+		public const double MaxPaneWidthPx = 500d;
+		public const double MinPaneHeightPx = 100d;
+
 		public bool IsInfoPaneEnabled
 		{
 			get => Get(false);
@@ -13,14 +18,14 @@ namespace Files.App.Services.Settings
 
 		public double HorizontalSizePx
 		{
-			get => Math.Max(100d, Get(300d));
-			set => Set(Math.Max(100d, value));
+			get => Math.Max(MinPaneHeightPx, Get(300d));
+			set => Set(Math.Max(MinPaneHeightPx, value));
 		}
 
 		public double VerticalSizePx
 		{
-			get => Math.Clamp(Get(300d), 300d, 500d);
-			set => Set(Math.Clamp(value, 300d, 500d));
+			get => Math.Clamp(Get(300d), MinPaneWidthPx, MaxPaneWidthPx);
+			set => Set(Math.Clamp(value, MinPaneWidthPx, MaxPaneWidthPx));
 		}
 
 		public PreviewPaneLayout Layout

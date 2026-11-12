@@ -474,13 +474,13 @@ namespace Files.App.Views
 		// The clamp ranges mirror InfoPaneSettingsService so accumulated values match per-tick writes
 		private void QueueVerticalSizePxWrite(double delta)
 		{
-			_pendingVerticalSizePx = Math.Clamp(EffectiveVerticalSizePx + delta, 300d, 500d);
+			_pendingVerticalSizePx = Math.Clamp(EffectiveVerticalSizePx + delta, InfoPaneSettingsService.MinPaneWidthPx, InfoPaneSettingsService.MaxPaneWidthPx);
 			RestartPaneSizeWriteDebounce();
 		}
 
 		private void QueueHorizontalSizePxWrite(double delta)
 		{
-			_pendingHorizontalSizePx = Math.Max(100d, EffectiveHorizontalSizePx + delta);
+			_pendingHorizontalSizePx = Math.Max(InfoPaneSettingsService.MinPaneHeightPx, EffectiveHorizontalSizePx + delta);
 			RestartPaneSizeWriteDebounce();
 		}
 
@@ -565,8 +565,9 @@ namespace Files.App.Views
 			if (_appliedPanePositionState == stateName)
 				return;
 
-			VisualStateManager.GoToState(this, stateName, true);
-			_appliedPanePositionState = stateName;
+			// GoToState returns false when the state group is missing (e.g. moved into a template), so don't cache those as applied
+			if (VisualStateManager.GoToState(this, stateName, true))
+				_appliedPanePositionState = stateName;
 		}
 
 		private void PaneSplitter_ManipulationCompleted(object sender, ManipulationCompletedRoutedEventArgs e)
@@ -628,9 +629,10 @@ namespace Files.App.Views
 				if (paneLayoutInputs == _appliedPaneLayoutInputs)
 					return;
 
-				_appliedPaneLayoutInputs = paneLayoutInputs;
-
 				UpdatePositioning();
+
+				// Cache only after applying so an exception path doesn't skip the retry
+				_appliedPaneLayoutInputs = paneLayoutInputs;
 			}
 			catch (Exception ex)
 			{
@@ -706,8 +708,8 @@ namespace Files.App.Views
 
 		private void PaneSplitter_ManipulationStarted(object sender, ManipulationStartedRoutedEventArgs e)
 		{
-			this.ChangeCursor(InputSystemCursor.Create(UserSettingsService.InfoPaneSettingsService.Layout is PreviewPaneLayout.Bottom ?
-				InputSystemCursorShape.SizeNorthSouth : InputSystemCursorShape.SizeWestEast));
+			this.ChangeCursor(UserSettingsService.InfoPaneSettingsService.Layout is PreviewPaneLayout.Bottom ?
+				SizeNorthSouthCursor : SizeWestEastCursor);
 		}
 
 		private void SettingsButton_AccessKeyInvoked(UIElement sender, AccessKeyInvokedEventArgs args)

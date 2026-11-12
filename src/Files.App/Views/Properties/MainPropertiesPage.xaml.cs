@@ -71,6 +71,8 @@ namespace Files.App.Views.Properties
 			UpdatePageLayout(this.Width);
 			PropertiesSidebar.SelectedItem = MainPropertiesViewModel.SelectedNavigationItem;
 			Window.RaiseSetTitleBarDragRegion(SetTitleBarDragRegion);
+			// Loaded can re-run on the same page instance, so keep the subscription idempotent
+			Window.AppWindow.Changed -= AppWindow_Changed;
 			Window.AppWindow.Changed += AppWindow_Changed;
 		}
 
