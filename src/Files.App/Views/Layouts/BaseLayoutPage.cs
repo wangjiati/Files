@@ -888,6 +888,11 @@ namespace Files.App.Views.Layouts
 				if (navigationArguments is not null && navigationArguments.IsLayoutSwitch)
 					await Task.Delay(100);
 
+				// The post-load callback can resume after the window was closed; focusing
+				// the pane then reads the torn-down pane collection and crashes during teardown.
+				if (App.AppModel.IsMainWindowClosed)
+					return;
+
 				var itemsToSelect = layoutSwitchSelection ?? navigationArguments?.SelectItems;
 
 				if (navigationArguments is not null &&
