@@ -292,6 +292,10 @@ namespace Files.App
 				else
 					await commands.CloseAllTabs.ExecuteAsync();
 
+				// Later teardown awaits pump messages while a close-window fail-fast (S3) can
+				// still crash the process; persist the session writes before those pump windows.
+				SafetyExtensions.IgnoreExceptions(() => SettingsFlushDebouncer.FlushAll(TimeSpan.FromSeconds(3)), Logger);
+
 				if (OutputPath is not null)
 				{
 					var instance = MainPageViewModel.AppInstances.FirstOrDefault(tab => tab.TabItemContent?.IsCurrentInstance == true);
