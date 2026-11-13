@@ -21,8 +21,11 @@ Versions are four numeric parts: `<upstreamMajor>.<upstreamMinor>.<upstreamBuild
 - The GitHub release title is `Files Internal <version>`.
 - The release body must contain `## 本版变化`; this section is shown in the
   client update dialog.
-- Upload the contents of `msix\` and `portable\`, each with its own `SHA256SUMS.txt`
-  and `RELEASE-INFO.txt`.
+- Upload exactly the two zip archives from `msix\` and `portable\` — nothing
+  else. Each zip is self-contained (package + certificate +
+  `Start-FilesInternal.bat` + install guide + `RELEASE-INFO.txt`); users run
+  `Start-FilesInternal.bat` after extracting. Do not upload loose files; put
+  both zip checksums in the release body.
 - Mark preview builds as `prerelease` so `releases/latest` ignores them.
 
 ## Requirements
