@@ -5,7 +5,11 @@ using CommunityToolkit.WinUI;
 using Files.App.Controls;
 using Files.App.Dialogs;
 using Files.App.Services.DateTimeFormatter;
+using Files.App.UserControls;
 using Files.App.UserControls.Selection;
+using Files.App.UserControls;
+using Files.App.ViewModels.UserControls;
+using Files.App.ViewModels.UserControls;
 using Files.App.ViewModels.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Input;
@@ -66,6 +70,10 @@ namespace Files.App.Views.Layouts
 		private RelayCommand<string>? UpdateSortOptionsCommand { get; set; }
 
 		private RelayCommand<object>? ColumnFilterCommand { get; set; }
+
+		private readonly Flyout columnFilterFlyout = new();
+
+		private DirectoryFilterColumnFlyout? columnFilterContent;
 
 		public ScrollViewer? ContentScroller { get; private set; }
 
@@ -1033,20 +1041,103 @@ namespace Files.App.Views.Layouts
 					return;
 				}
 
-				// The filter bar owns the condition editors; a column header only appends to it.
 				if (ParentShellPageInstance is not ModernShellPage shellPage)
 				{
 					App.Logger.LogWarning("Column filter could not resolve the shell page.");
 					return;
 				}
 
-				shellPage.AppendFilterCondition(column);
+				var shellViewModel = shellPage.ShellViewModel;
+				if (shellViewModel is null)
+				{
+					App.Logger.LogWarning("Column filter could not resolve the shell view model.");
+					return;
+				}
+
+				var spec = shellViewModel.DirectoryFilter;
+				var viewModel = new DirectoryFilterViewModel(column, spec, () => DateTimeOffset.Now);
+				var existing = spec.Columns.FirstOrDefault(filter => filter.Column == column);
+				if (existing is not null)
+					viewModel.LoadFrom(existing);
+
+				if (column is DirectoryColumnKind.Type or DirectoryColumnKind.Extension or DirectoryColumnKind.Tags)
+				{
+					var choices = shellViewModel.GetFilterChoices(column);
+					if (column is DirectoryColumnKind.Extension)
+						viewModel.LoadChoices(extensions: choices);
+					else
+						viewModel.LoadChoices(choices);
+				}
+
+				var content = new DirectoryFilterColumnFlyout();
+				content.Initialize(viewModel);
+				content.ApplyRequested += ColumnFilter_ApplyRequested;
+				content.ClearRequested += ColumnFilter_ClearRequested;
+				content.ClearAllRequested += ColumnFilter_ClearAllRequested;
+
+				columnFilterContent = content;
+				columnFilterFlyout.Content = content;
+
+				if (GetFilterAnchor(column) is not { } anchor)
+				{
+					App.Logger.LogWarning("Column filter anchor was not found for {Column}.", column);
+					return;
+				}
+
+				columnFilterFlyout.ShowAt(anchor);
 			}
 			catch (Exception ex)
 			{
-				App.Logger.LogWarning(ex, "Failed to append the column filter condition.");
+				App.Logger.LogWarning(ex, "Failed to open the column filter.");
 			}
 		}
+
+		private void ColumnFilter_ApplyRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance is not ModernShellPage shellPage
+				|| shellPage.ShellViewModel is not { } shellViewModel
+				|| columnFilterContent?.ViewModel is not { } viewModel)
+				return;
+
+			var filter = viewModel.ToColumnFilter();
+			var bar = shellViewModel.FilterBar;
+			bar.RemoveColumnConditions(filter.Column);
+			bar.Mode = FilterMode.Advanced;
+			var condition = bar.AddCondition(filter.Column, DirectoryConditionJoin.And);
+			condition.LoadFrom(filter);
+			columnFilterFlyout.Hide();
+		}
+
+		private void ColumnFilter_ClearRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance is not ModernShellPage shellPage
+				|| shellPage.ShellViewModel is not { } shellViewModel
+				|| columnFilterContent?.ViewModel is not { } viewModel)
+				return;
+
+			shellViewModel.FilterBar.RemoveColumnConditions(viewModel.Column);
+			columnFilterFlyout.Hide();
+		}
+
+		private void ColumnFilter_ClearAllRequested(object? sender, EventArgs e)
+		{
+			if (ParentShellPageInstance is ModernShellPage { ShellViewModel: { } shellViewModel })
+				shellViewModel.FilterBar.ClearAll();
+
+			columnFilterFlyout.Hide();
+		}
+
+		private DataGridHeader? GetFilterAnchor(DirectoryColumnKind column)
+			=> column switch
+			{
+				DirectoryColumnKind.Name => NameHeader,
+				DirectoryColumnKind.Type => FileTypeHeader,
+				DirectoryColumnKind.Tags => TagHeader,
+				DirectoryColumnKind.Size => ItemSizeHeader,
+				DirectoryColumnKind.ModifiedDate => DateModifiedHeader,
+				DirectoryColumnKind.CreatedDate => DateCreatedHeader,
+				_ => null,
+			};
 
 		private void ShellViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
