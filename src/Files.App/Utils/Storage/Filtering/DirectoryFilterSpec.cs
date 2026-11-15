@@ -42,11 +42,26 @@ namespace Files.App.Utils.Storage
 	}
 
 	/// <summary>
-	/// A single immutable column condition. Conditions on different columns are combined with AND,
-	/// while multiple selected values inside one condition are combined with OR.
+	/// How a column condition joins the conditions before it. AND binds tighter than OR.
+	/// </summary>
+	public enum DirectoryConditionJoin
+	{
+		And,
+		Or,
+	}
+
+	/// <summary>
+	/// A single immutable column condition. Conditions are joined left to right in a chain with
+	/// AND having higher precedence than OR, while multiple selected values inside one condition
+	/// are combined with OR.
 	/// </summary>
 	public sealed record DirectoryColumnFilter
 	{
+		/// <summary>
+		/// Join used to combine this condition with the preceding chain. Ignored on the first condition.
+		/// </summary>
+		public DirectoryConditionJoin Join { get; init; } = DirectoryConditionJoin.And;
+
 		public DirectoryColumnKind Column { get; init; }
 
 		public DirectoryTextOperator Operator { get; init; } = DirectoryTextOperator.Contains;

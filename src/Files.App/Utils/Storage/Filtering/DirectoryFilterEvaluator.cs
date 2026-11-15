@@ -91,13 +91,32 @@ namespace Files.App.Utils.Storage
 				return false;
 			}
 
-			for (var index = 0; index < spec.Columns.Count; index++)
+			if (spec.Columns.Count == 0)
+				return true;
+
+			// AND binds tighter than OR: each run of And-joined conditions forms one group,
+			// and the completed groups are OR-ed together. The first condition starts the first
+			// group, so its Join is not applicable.
+			var total = false;
+			var group = MatchesColumn(item, spec.Columns[0]);
+
+			for (var index = 1; index < spec.Columns.Count; index++)
 			{
-				if (!MatchesColumn(item, spec.Columns[index]))
-					return false;
+				var filter = spec.Columns[index];
+				var matches = MatchesColumn(item, filter);
+
+				if (filter.Join is DirectoryConditionJoin.Or)
+				{
+					total |= group;
+					group = matches;
+				}
+				else
+				{
+					group &= matches;
+				}
 			}
 
-			return true;
+			return total || group;
 		}
 
 		private static bool MatchesColumn(in DirectoryItemFilterSnapshot item, DirectoryColumnFilter filter)

@@ -460,6 +460,153 @@ namespace Files.App.UnitTests.Filtering
 				Assert.IsTrue(DirectoryFilterSpec.FromKeywordText(blank).IsEmpty);
 		}
 
+		[TestMethod]
+		public void Chain_UsesAndOverOrPrecedence()
+		{
+			// (A ∧ B) ∨ C
+			var items = new[]
+			{
+				CreateItem(1, "报告.png", extension: ".png"),
+				CreateItem(2, "报告.txt", extension: ".txt"),
+				CreateItem(3, "计划.txt", extension: ".txt"),
+			};
+			var spec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "报告",
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Extension,
+						Values = [".png"],
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "计划",
+						Join = DirectoryConditionJoin.Or,
+					},
+				],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			CollectionAssert.AreEqual(new long[] { 1, 3 }, result.ToArray());
+		}
+
+		[TestMethod]
+		public void Chain_AndBindsTighterThanOr_WhenAndFollowsOr()
+		{
+			// A ∨ (B ∧ C), which differs from left-to-right (A ∨ B) ∧ C
+			var items = new[]
+			{
+				CreateItem(1, "报告.txt", extension: ".txt"),
+				CreateItem(2, "计划.png", extension: ".png"),
+				CreateItem(3, "计划.txt", extension: ".txt"),
+				CreateItem(4, "其他.png", extension: ".png"),
+			};
+			var spec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "报告",
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Extension,
+						Values = [".png"],
+						Join = DirectoryConditionJoin.Or,
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "计划",
+					},
+				],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			CollectionAssert.AreEqual(new long[] { 1, 2 }, result.ToArray());
+		}
+
+		[TestMethod]
+		public void Chain_FirstConditionJoinIsIgnored()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "报告.txt", extension: ".txt"),
+				CreateItem(2, "其他.png", extension: ".png"),
+				CreateItem(3, "报告.png", extension: ".png"),
+			};
+			var spec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "报告",
+						Join = DirectoryConditionJoin.Or,
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Extension,
+						Values = [".png"],
+					},
+				],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			CollectionAssert.AreEqual(new long[] { 3 }, result.ToArray());
+		}
+
+		[TestMethod]
+		public void Chain_DefaultsToAnd_WhenJoinNotSet()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "报告.png", extension: ".png"),
+				CreateItem(2, "报告.txt", extension: ".txt"),
+				CreateItem(3, "其他.png", extension: ".png"),
+			};
+			var spec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.Contains,
+						Text = "报告",
+					},
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Extension,
+						Values = [".png"],
+					},
+				],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			Assert.AreEqual(DirectoryConditionJoin.And, new DirectoryColumnFilter().Join);
+			CollectionAssert.AreEqual(new long[] { 1 }, result.ToArray());
+		}
+
 		private static DirectoryItemFilterSnapshot CreateItem(
 			long id,
 			string rawName,
