@@ -429,3 +429,18 @@ pwsh .github/scripts/Build-Internal.ps1 -PortableOnly
 - **类型一致性**：`DirectoryFilterSpec.FromKeywordText`、`DirectoryColumnFilter.Join/Length`、`DirectoryFilterViewModel.ToColumnFilter/LoadFrom`、`DirectoryFilterBarViewModel.BuildSpec/AddCondition`、`DirectoryRecursion.Flatten` 在任务间一致。
 - **审查重点**：五类风险分别落在 T1（正则/通配/长度）、T3（日期/模式）、T7（深度/环）。
 - **比例**：任务为签名清单与验证步骤，不复制实现；UI 以构建+手动清单验收（项目无 UI 单测基建）。
+
+## 实现期裁决与偏差（执行记录）
+
+| # | 裁决/偏差 | 原因 |
+| --- | --- | --- |
+| R6 | 地址栏不承载 Join/Length/Scope/条件级 Regex 与通配/负向运算符（P2 跟进） | `DirectoryFilterAddress` 未在原任务清单；应用内导航经 `NavigationArguments` 不受影响 |
+| R8 | 允许扩展 `DirectoryNameScope`（完整文件名/显示名）并进入求值 | `.ext` 是 D6 真实能力，纯 VM 状态会成为装饰 |
+| R9 | 允许条件级 `DirectoryColumnFilter.Regex` | 每条件正则不可装进 spec 单 Regex；否则 `.*` 从 T4 起失效 |
+| R13 | spec 变化不使递归缓存失效（缓存=未筛选根投影） | 失效会导致每次按键重枚举整棵子树；正确性不受影响 |
+| 列头显隐 | 列头点击显式展开筛选栏（写 `ShowFilterHeader`） | 显式筛选意图，条件不可见=更差体验；用户可再用漏斗收起 |
+| 缩略图 | 删除原 FilterHeader 的文件夹缩略图与“Filtering for” | 简报 T5 要求；装饰性跨页状态，骨架/Padding 保留 |
+| 空态 | 复用 `NoMatchingItems` | 语义比 `NoSearchResultsFound` 更贴切 |
+| 递归范围 | 仅 Win32 可枚举目录；库/回收站/压缩包/MTP/FTP 跳过 | 复用根目录同一枚举助手（隐藏/点文件规则一致） |
+| 递归进度 | 进度反馈与状态栏“（含 N 层子文件夹）”未做 | 无现成承载位，延后 |
+| 位置列 | 固定 160px、不可排序/筛选/持久化；仅详细视图列 | 原型一致；其余视图 tooltip |
