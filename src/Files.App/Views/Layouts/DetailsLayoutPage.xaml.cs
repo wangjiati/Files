@@ -66,9 +66,6 @@ namespace Files.App.Views.Layouts
 
 		private RelayCommand<object>? ColumnFilterCommand { get; set; }
 
-		private readonly Flyout columnFilterFlyout = new() { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft };
-		private DirectoryFilterFlyout? columnFilterContent;
-
 		public ScrollViewer? ContentScroller { get; private set; }
 
 		private double maxWidthForRenameTextbox;
@@ -250,6 +247,7 @@ namespace Files.App.Views.Layouts
 			shellViewModel.PageTypeUpdated += FilesystemViewModel_PageTypeUpdated;
 			shellViewModel.ItemLoadStatusChanged += ShellViewModel_ItemLoadStatusChanged;
 			shellViewModel.DirectoryFilterFailed += ShellViewModel_DirectoryFilterFailed;
+			shellViewModel.PropertyChanged += ShellViewModel_PropertyChanged;
 			UserSettingsService.LayoutSettingsService.PropertyChanged += LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged += FileListItems_VectorChanged;
 
@@ -282,6 +280,7 @@ namespace Files.App.Views.Layouts
 			shellViewModel.PageTypeUpdated -= FilesystemViewModel_PageTypeUpdated;
 			shellViewModel.ItemLoadStatusChanged -= ShellViewModel_ItemLoadStatusChanged;
 			shellViewModel.DirectoryFilterFailed -= ShellViewModel_DirectoryFilterFailed;
+			shellViewModel.PropertyChanged -= ShellViewModel_PropertyChanged;
 			UserSettingsService.LayoutSettingsService.PropertyChanged -= LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged -= FileListItems_VectorChanged;
 			_autoFitColumnsTimer?.Stop();
@@ -300,6 +299,8 @@ namespace Files.App.Views.Layouts
 			{
 				shellViewModel.PageTypeUpdated -= FilesystemViewModel_PageTypeUpdated;
 				shellViewModel.ItemLoadStatusChanged -= ShellViewModel_ItemLoadStatusChanged;
+				shellViewModel.DirectoryFilterFailed -= ShellViewModel_DirectoryFilterFailed;
+				shellViewModel.PropertyChanged -= ShellViewModel_PropertyChanged;
 			}
 			UserSettingsService.LayoutSettingsService.PropertyChanged -= LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged -= FileListItems_VectorChanged;
@@ -1004,90 +1005,25 @@ namespace Files.App.Views.Layouts
 					return;
 				}
 
-				if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
+				// The filter bar owns the condition editors; a column header only appends to it.
+				if (ParentShellPageInstance is not ModernShellPage shellPage)
 				{
-					App.Logger.LogWarning("Column filter could not resolve the shell view model.");
+					App.Logger.LogWarning("Column filter could not resolve the shell page.");
 					return;
 				}
 
-				var viewModel = new DirectoryFilterViewModel(column, shellViewModel.DirectoryFilter);
-
-				switch (column)
-				{
-					case DirectoryColumnKind.Type:
-						viewModel.LoadChoices(
-							shellViewModel.GetFilterChoices(DirectoryColumnKind.Type),
-							shellViewModel.GetFilterChoices(DirectoryColumnKind.Extension));
-						break;
-
-					case DirectoryColumnKind.Tags:
-						viewModel.LoadChoices(shellViewModel.GetFilterChoices(DirectoryColumnKind.Tags));
-						break;
-				}
-
-				columnFilterContent = new DirectoryFilterFlyout();
-				columnFilterContent.ApplyRequested += ColumnFilter_ApplyRequested;
-				columnFilterContent.ClearRequested += ColumnFilter_ClearRequested;
-				columnFilterContent.ClearAllRequested += ColumnFilter_ClearAllRequested;
-				columnFilterContent.Initialize(viewModel);
-
-				if (GetFilterAnchor(column) is not { } anchor)
-				{
-					App.Logger.LogWarning("Column filter anchor was not found for {Column}.", column);
-					return;
-				}
-
-				columnFilterFlyout.Content = columnFilterContent;
-				columnFilterFlyout.ShowAt(anchor);
-				App.Logger.LogInformation("Column filter opened for {Column}.", column);
+				shellPage.AppendFilterCondition(column);
 			}
 			catch (Exception ex)
 			{
-				App.Logger.LogWarning(ex, "Failed to open the column filter.");
+				App.Logger.LogWarning(ex, "Failed to append the column filter condition.");
 			}
 		}
 
-		private DataGridHeader? GetFilterAnchor(DirectoryColumnKind column)
-			=> column switch
-			{
-				DirectoryColumnKind.Name => NameHeader,
-				DirectoryColumnKind.Type => FileTypeHeader,
-				DirectoryColumnKind.Tags => TagHeader,
-				DirectoryColumnKind.Size => ItemSizeHeader,
-				DirectoryColumnKind.ModifiedDate => DateModifiedHeader,
-				DirectoryColumnKind.CreatedDate => DateCreatedHeader,
-				_ => null,
-			};
-
-		private void ColumnFilter_ApplyRequested(object? sender, EventArgs e)
+		private void ShellViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
-			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel || columnFilterContent is not { } content)
-				return;
-
-			shellViewModel.DirectoryFilter = content.ViewModel.ApplyTo(shellViewModel.DirectoryFilter);
-			columnFilterFlyout.Hide();
-			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
-		}
-
-		private void ColumnFilter_ClearRequested(object? sender, EventArgs e)
-		{
-			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel || columnFilterContent is not { } content)
-				return;
-
-			shellViewModel.DirectoryFilter = content.ViewModel.ClearFrom(shellViewModel.DirectoryFilter);
-			columnFilterFlyout.Hide();
-			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
-		}
-
-		private void ColumnFilter_ClearAllRequested(object? sender, EventArgs e)
-		{
-			if (ParentShellPageInstance?.ShellViewModel is not { } shellViewModel)
-				return;
-
-			shellViewModel.FilesAndFoldersFilter = null;
-			shellViewModel.DirectoryFilter = DirectoryFilterSpec.Empty;
-			columnFilterFlyout.Hide();
-			UpdateFilterIndicators(shellViewModel.DirectoryFilter);
+			if (e.PropertyName is nameof(ShellViewModel.DirectoryFilter))
+				UpdateFilterIndicators();
 		}
 
 		private async void ShellViewModel_DirectoryFilterFailed(object? sender, string message)
@@ -1115,11 +1051,9 @@ namespace Files.App.Views.Layouts
 			}
 		}
 
-		private void UpdateFilterIndicators(DirectoryFilterSpec? spec = null)
+		private void UpdateFilterIndicators()
 		{
-			spec ??= ParentShellPageInstance?.ShellViewModel?.DirectoryFilter;
-
-			if (spec is null)
+			if (ParentShellPageInstance?.ShellViewModel?.DirectoryFilter is not { } spec)
 				return;
 
 			NameHeader.IsFilterActive = DirectoryFilterViewModel.IsColumnActive(spec, DirectoryColumnKind.Name);

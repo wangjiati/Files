@@ -36,9 +36,8 @@
 						Content="{helpers:ResourceString Name=FilterJoinAndContent}"
 						Loaded="JoinButton_Loaded"
 						VerticalAlignment="Top" />
-					<local:DirectoryFilterFlyout
-						IsInline="True"
-						ShowFooter="False"
+					<local:DirectoryFilterEditor
+						Loaded="ConditionEditor_Loaded"
 						VerticalAlignment="Top"
 						ViewModel="{x:Bind}" />
 					<Button
@@ -75,10 +74,8 @@
 					VerticalAlignment="Center"
 					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
 
-				<local:DirectoryFilterFlyout
+				<local:DirectoryFilterEditor
 					x:Name="NameEditor"
-					IsInline="True"
-					ShowFooter="False"
 					VerticalAlignment="Top"
 					ViewModel="{x:Bind ViewModel.NameCondition, Mode=OneWay}"
 					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}"

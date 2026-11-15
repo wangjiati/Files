@@ -31,6 +31,7 @@ namespace Files.App.UserControls
 		private DirectoryFilterBarViewModel viewModel = new();
 		private bool isSyncingDepth;
 		private bool isSyncingMode;
+		private bool focusLastAddedCondition;
 		private Func<DirectoryColumnKind, IReadOnlyList<DirectoryFilterChoice>>? choiceProvider;
 
 		public DirectoryFilterBar()
@@ -88,6 +89,20 @@ namespace Files.App.UserControls
 				KeywordBox.Focus(FocusState.Programmatic);
 			else
 				NameEditor.FocusFirstInput();
+		}
+
+		/// <summary>
+		/// Switches to advanced mode and appends an empty condition for <paramref name="column"/>. The
+		/// appended editor takes focus once it is loaded.
+		/// </summary>
+		public void AppendCondition(DirectoryColumnKind column)
+		{
+			if (viewModel.Mode is FilterMode.Basic)
+				viewModel.Mode = FilterMode.Advanced;
+
+			// The item container can load while the condition is being added, so arm the focus first.
+			focusLastAddedCondition = true;
+			viewModel.AddCondition(column, DirectoryConditionJoin.And);
 		}
 
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -238,6 +253,19 @@ namespace Files.App.UserControls
 				return;
 
 			viewModel.AddCondition(column, DirectoryConditionJoin.And);
+		}
+
+		private void ConditionEditor_Loaded(object sender, RoutedEventArgs e)
+		{
+			if (sender is not DirectoryFilterEditor { DataContext: DirectoryFilterViewModel condition } editor
+				|| !focusLastAddedCondition
+				|| !ReferenceEquals(condition, viewModel.Conditions.LastOrDefault()))
+			{
+				return;
+			}
+
+			focusLastAddedCondition = false;
+			editor.FocusFirstInput();
 		}
 
 		private void JoinButton_Loaded(object sender, RoutedEventArgs e)

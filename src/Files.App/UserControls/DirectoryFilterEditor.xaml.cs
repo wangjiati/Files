@@ -5,38 +5,27 @@ using Files.App.Utils.Storage;
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Windows.System;
 
 namespace Files.App.UserControls
 {
 	/// <summary>
-	/// Column filter editor shared by the details header flyout and the inline filter bar.
-	/// Values are written to the view model immediately; the footer only exists for the flyout path.
+	/// Inline editor for a single filter condition. Values are written to the view model immediately.
 	/// </summary>
-	public sealed partial class DirectoryFilterFlyout : UserControl, INotifyPropertyChanged
+	public sealed partial class DirectoryFilterEditor : UserControl, INotifyPropertyChanged
 	{
-		private bool isInline;
 		private bool isSyncingMode;
 		private bool isSyncingUi;
-		private bool showFooter = true;
 		private DirectoryFilterViewModel viewModel = new(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 
-		public DirectoryFilterFlyout()
+		public DirectoryFilterEditor()
 		{
 			InitializeComponent();
 		}
-
-		public event EventHandler? ApplyRequested;
-
-		public event EventHandler? ClearRequested;
-
-		public event EventHandler? ClearAllRequested;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -72,40 +61,6 @@ namespace Files.App.UserControls
 			}
 		}
 
-		/// <summary>
-		/// Inline editors stretch with their host, while the flyout keeps a fixed width.
-		/// </summary>
-		public bool IsInline
-		{
-			get => isInline;
-			set
-			{
-				if (isInline == value)
-					return;
-
-				isInline = value;
-				OnPropertyChanged();
-				OnPropertyChanged(nameof(EditorWidth));
-				OnPropertyChanged(nameof(IsExtensionSectionVisible));
-				OnPropertyChanged(nameof(IsIncludeEmptyVisible));
-			}
-		}
-
-		public bool ShowFooter
-		{
-			get => showFooter;
-			set
-			{
-				if (showFooter == value)
-					return;
-
-				showFooter = value;
-				OnPropertyChanged();
-			}
-		}
-
-		public double EditorWidth => IsInline ? double.NaN : 300;
-
 		public double LengthValue
 		{
 			get => ViewModel.Length ?? double.NaN;
@@ -113,11 +68,10 @@ namespace Files.App.UserControls
 		}
 
 		/// <summary>
-		/// The Type editor hides extension choices inline because extensions are a separate condition there.
+		/// Extension choices are a separate condition in the bar, so only the extension editor shows them.
 		/// </summary>
 		public bool IsExtensionSectionVisible
-			=> ViewModel.ShowsExtensionChoices
-				&& (!IsInline || ViewModel.Column is DirectoryColumnKind.Extension);
+			=> ViewModel.ShowsExtensionChoices && ViewModel.Column is DirectoryColumnKind.Extension;
 
 		/// <summary>
 		/// Extensions are edited by their own condition, so only the shared "empty" option belongs to the list panel.
@@ -127,11 +81,7 @@ namespace Files.App.UserControls
 		/// <summary>
 		/// The inline Type condition cannot carry "include empty" because its extension part is hidden.
 		/// </summary>
-		public bool IsIncludeEmptyVisible
-			=> !IsInline || ViewModel.Column is not DirectoryColumnKind.Type;
-
-		public void Initialize(DirectoryFilterViewModel viewModel)
-			=> ViewModel = viewModel;
+		public bool IsIncludeEmptyVisible => ViewModel.Column is not DirectoryColumnKind.Type;
 
 		public void FocusFirstInput()
 		{
@@ -282,37 +232,6 @@ namespace Files.App.UserControls
 				ViewModel.ApplyDatePreset(preset);
 			}
 		}
-
-		private void Apply_Click(object sender, RoutedEventArgs e)
-			=> ApplyFilter();
-
-		private void TextInput_KeyDown(object sender, KeyRoutedEventArgs e)
-		{
-			if (e.Key is not VirtualKey.Enter)
-				return;
-
-			e.Handled = true;
-			ApplyFilter();
-		}
-
-		private void ApplyFilter()
-		{
-			if (!ViewModel.ValidateRegex())
-			{
-				RegexErrorText.Text = ViewModel.RegexError;
-				RegexErrorText.Visibility = Visibility.Visible;
-				return;
-			}
-
-			RegexErrorText.Visibility = Visibility.Collapsed;
-			ApplyRequested?.Invoke(this, EventArgs.Empty);
-		}
-
-		private void Clear_Click(object sender, RoutedEventArgs e)
-			=> ClearRequested?.Invoke(this, EventArgs.Empty);
-
-		private void ClearAll_Click(object sender, RoutedEventArgs e)
-			=> ClearAllRequested?.Invoke(this, EventArgs.Empty);
 
 		private static void SetItemSource(ItemsControl control, IReadOnlyList<string> items)
 		{

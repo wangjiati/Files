@@ -64,6 +64,19 @@ namespace Files.App.Views.Shells
 				DirectoryFilterBar.FocusActiveEditor();
 		}
 
+		/// <summary>
+		/// Reveals the filter bar if the user hid it, then appends a condition for <paramref name="column"/>
+		/// and focuses its editor. A column header funnel is an explicit filter action, so its condition
+		/// must not stay hidden behind a collapsed bar.
+		/// </summary>
+		public void AppendFilterCondition(DirectoryColumnKind column)
+		{
+			if (ShellViewModel?.ShowFilterHeader is not true)
+				userSettingsService.GeneralSettingsService.ShowFilterHeader = true;
+
+			DirectoryFilterBar.AppendCondition(column);
+		}
+
 		private void ModernShellPage_RefreshWidgetsRequested(object? sender, EventArgs e)
 		{
 			if (ItemDisplayFrame?.Content is HomePage currentPage)
