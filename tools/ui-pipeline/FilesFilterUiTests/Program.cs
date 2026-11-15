@@ -66,6 +66,26 @@ internal static class Program
             WaitForBar(25);
             EnsureFolder(25);
 
+            if (args.Contains("--visual"))
+            {
+                var mode = Arg(args, "--mode") ?? "advanced";
+                if (mode == "advanced")
+                {
+                    SelectMode("高级", "Advanced");
+                }
+                else
+                {
+                    SelectMode("常规", "Basic");
+                }
+
+                Thread.Sleep(2500);
+                File.WriteAllText(Path.Combine(outDir, "visual-ready.txt"), DateTime.Now.ToString("o"));
+                Log("visual mode ready");
+                Thread.Sleep(240000);
+                TryClose(app, root);
+                return WriteAndExit(0);
+            }
+
             Test("launch", () => Assert(!string.IsNullOrWhiteSpace(root.Current.Name), $"title '{root.Current.Name}'"));
             Test("filter-bar", () =>
             {
