@@ -173,8 +173,10 @@ git commit -m "feat: support and/or joins with and-precedence"
 
 **文件：**
 - 修改：`src/Files.App/ViewModels/UserControls/DirectoryFilterViewModel.cs`
+- 修改：`src/Files.App/Utils/Storage/Filtering/DirectoryFilterSpec.cs`（R8：`DirectoryNameScope` + `DirectoryColumnFilter.Scope`；R9：`DirectoryColumnFilter.Regex`）
+- 修改：`src/Files.App/Utils/Storage/Filtering/DirectoryFilterEvaluator.cs`（R8：按 Scope 取名；R9：条件级正则预编译与错误通道）
 - 创建：`src/Files.App/ViewModels/UserControls/DirectoryFilterBarViewModel.cs`
-- 测试：`tests/Files.App.UnitTests/Filtering/DirectoryFilterViewModelTests.cs`（扩展）、`tests/Files.App.UnitTests/Filtering/DirectoryFilterBarViewModelTests.cs`（新建）
+- 测试：`tests/Files.App.UnitTests/Filtering/DirectoryFilterViewModelTests.cs`（扩展）、`DirectoryFilterBarViewModelTests.cs`（新建）、`DirectoryFilterEvaluatorTests.cs`（R8/R9）
 
 - [ ] **步骤 1：编写失败的测试**
 
@@ -216,7 +218,7 @@ public void SpecChanged_IsRaisedOnAnyMutation()
 
 - [ ] **步骤 3：实现**
 
-`DirectoryFilterViewModel` **原位扩展**（不新建条件 VM 类）：增加 `Join`、`Scope`（`RawName`/`DisplayName`）、`Length`、`DirectoryDatePreset` 枚举与 `ApplyDatePreset(preset)`（用注入了 `clock` 计算 `MinDate`/`MaxDate`：LastHour=`clock(-1h)` 起；Yesterday=昨日 00:00–23:59:59.999；ThisMonth=当月 1 日 00:00），新增 `DirectoryColumnFilter ToColumnFilter()` 与 `LoadFrom(DirectoryColumnFilter)`。`DirectoryFilterBarViewModel : ObservableObject`：`FilterMode Mode`（Basic/Advanced）、`string? KeywordText`、`ObservableCollection<DirectoryFilterViewModel> Conditions`、`bool RecursiveEnabled`、`int RecursiveDepth`（默认 2，钳制 1..64，64≈不限）、`event EventHandler? SpecChanged`；`BuildSpec()`——Basic 用 `DirectoryFilterSpec.FromKeywordText(KeywordText)`，Advanced 用 `Conditions.Select(c => c.ToColumnFilter())`；`AddCondition(DirectoryColumnKind, DirectoryConditionJoin)`、`RemoveCondition(...)`、`ClearAll()`。
+`DirectoryFilterViewModel` **原位扩展**（不新建条件 VM 类）：增加 `Join`、`Scope`（`RawName`/`DisplayName`）、`Length`、`DirectoryDatePreset` 枚举与 `ApplyDatePreset(preset)`（用注入了 `clock` 计算 `MinDate`/`MaxDate`：LastHour=`clock(-1h)` 起；Yesterday=昨日 00:00–23:59:59.999；ThisMonth=当月 1 日 00:00），新增 `DirectoryColumnFilter ToColumnFilter()` 与 `LoadFrom(DirectoryColumnFilter)`。`DirectoryFilterBarViewModel : ObservableObject`：`FilterMode Mode`（Basic/Advanced）、`string? KeywordText`、`ObservableCollection<DirectoryFilterViewModel> Conditions`、`bool RecursiveEnabled`、`int RecursiveDepth`（默认 2，钳制 1..64，64≈不限）、`event EventHandler? SpecChanged`；`BuildSpec()`——Basic 用 `DirectoryFilterSpec.FromKeywordText(KeywordText)`，Advanced 只投影 `Conditions.Where(c => c.IsActive)`（空白草稿不生效）；`AddCondition(DirectoryColumnKind, DirectoryConditionJoin)`、`RemoveCondition(...)`、`ClearAll()`。`DirectoryFilterViewModel` 增加 `IsActive` 谓词；日期预设按 R2 计算；`ToColumnFilter()/LoadFrom()` 承载 Join/Scope/Length/日期/条件级 Regex（R9）。
 
 - [ ] **步骤 4：运行测试验证通过**
 

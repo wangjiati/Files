@@ -82,7 +82,7 @@
 | 筛选栏 | `ModernShellPage.FilterHeader` 行 → 新建 `DirectoryFilterBar`（替换原 AutoSuggestBox 行，Padding 不变） |
 | 常规/高级切换 | bar VM 内的 UI 状态（`KeywordText` / 条件集合），任一时刻只把当前模式投影到 `DirectoryFilterSpec`；`Ctrl+Shift+F` 聚焦名称框 |
 | 关键字解析 | `DirectoryFilterSpec.FromKeywordText(string)` 静态工厂（空格/逗号分词 + 通配标记），复用 Evaluator 的通配匹配；不新建解析类 |
-| 名称/条件模型 | **复用 `DirectoryFilterViewModel`** 作为单条件编辑器（补 Join、Scope、Length、日期预设枚举）；条件列表项即该 VM，不新建条件 VM 类 |
+| 名称/条件模型 | **复用 `DirectoryFilterViewModel`** 作为单条件编辑器（补 Join、Scope、Length、日期预设枚举、条件级 Regex）；条件列表项即该 VM，不新建条件 VM 类；`IsActive` 决定草稿是否进入 spec |
 | 内联编辑器 | **复用 `DirectoryFilterFlyout` 内的面板**：改造为 `DirectoryFilterEditor`（保留 XAML，页脚改可选、输入即时写回），仅弹层壳退役 |
 | 通配符匹配 | `DirectoryFilterEvaluator` 内部私有实现（小型正则缓存），不进入 spec |
 | 值选择器 | 复用 `ShellViewModel.GetFilterChoices` |
