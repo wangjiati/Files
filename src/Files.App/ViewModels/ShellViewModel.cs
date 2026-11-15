@@ -223,6 +223,15 @@ namespace Files.App.ViewModels
 		private CancellationTokenSource? networkAvailabilityCTS;
 		private bool isDisposed;
 
+		// Matches the root enumeration's open timeout: an unreachable share must not hold a projection.
+		private static readonly TimeSpan RecursiveFolderOpenTimeout = TimeSpan.FromSeconds(5);
+
+		// Per-folder enumeration budget; a larger folder is skipped instead of stalling the projection.
+		private static readonly TimeSpan RecursiveFolderEnumerationTimeout = TimeSpan.FromSeconds(30);
+
+		// The cache holds the unfiltered subfolder projection of the current root list. The filter source
+		// revision only changes when the root content can change, not when the spec changes: a filter edit
+		// reuses the collected items and only re-evaluates them (R13).
 		private readonly object recursiveItemsCacheLock = new();
 		private IReadOnlyList<ListedItem>? recursiveItemsCache;
 		private string? recursiveItemsCacheDirectory;
@@ -1235,8 +1244,9 @@ namespace Files.App.ViewModels
 			InvalidateRecursiveItemsCache();
 			OnPropertyChanged(nameof(IsRecursiveFilterActive));
 
-			// Recursion is a scope, not spec content: the DirectoryFilter setter sees no change and would
-			// not schedule the projection that adds or removes the subfolder items.
+			// Recursion is a scope, not spec content: BuildSpec produces an equal spec, so the
+			// DirectoryFilter setter (which compares by value) returns early and would not schedule the
+			// projection that adds or removes the subfolder items.
 			if (!directoryFilterSpec.IsEmpty)
 			{
 				InvalidateIncrementalApplyBaseline();
@@ -1528,26 +1538,57 @@ namespace Files.App.ViewModels
 
 		private async Task<List<ListedItem>> ListFolderItemsAsync(string path, CancellationToken token)
 		{
-			var hFile = FindFirstFileExFromAppSafe(
-				path + "\\*.*",
-				FINDEX_INFO_LEVELS.FindExInfoBasic,
-				out var findData,
-				FINDEX_SEARCH_OPS.FindExSearchNameMatch,
-				IntPtr.Zero,
-				FIND_FIRST_EX_LARGE_FETCH);
-
-			if (hFile.IsInvalid)
-			{
-				hFile.Dispose();
-
-				return [];
-			}
+			SafeFindHandle? hFile = null;
 
 			try
 			{
+				// Opening a handle blocks until the SMB timeout on an unreachable share; bound it the same
+				// way as the root enumeration.
+				var openTask = Task.Run(() => OpenFolderFindHandle(path), token);
+				var (handle, findData) = await openTask.WithTimeoutAsync(RecursiveFolderOpenTimeout);
+
+				if (handle is null)
+				{
+					// A timed-out open can still complete later; dispose the late handle instead of leaking it.
+					_ = openTask.ContinueWith(
+						task => task.Result.Handle?.Dispose(),
+						CancellationToken.None,
+						TaskContinuationOptions.OnlyOnRanToCompletion,
+						TaskScheduler.Default);
+
+					App.Logger.LogDebug("Timed out opening a recursive filter folder.");
+
+					return [];
+				}
+
+				hFile = handle;
+
+				if (hFile.IsInvalid)
+					return [];
+
+				using var enumerationCTS = CancellationTokenSource.CreateLinkedTokenSource(token);
+				enumerationCTS.CancelAfter(RecursiveFolderEnumerationTimeout);
+
 				// No intermediate action: a flush would clear items from the returned list, and the
 				// projection needs the complete set.
-				return await Win32StorageEnumerator.ListEntries(path, hFile, findData, token, -1, GetPreloadIconSize(), intermediateAction: null!);
+				var items = await Win32StorageEnumerator.ListEntries(path, hFile, findData, enumerationCTS.Token, -1, GetPreloadIconSize(), intermediateAction: null!);
+
+				token.ThrowIfCancellationRequested();
+
+				if (enumerationCTS.IsCancellationRequested)
+				{
+					App.Logger.LogDebug("Timed out enumerating a recursive filter folder.");
+
+					return [];
+				}
+
+				return items;
+			}
+			catch (OperationCanceledException) when (!token.IsCancellationRequested)
+			{
+				App.Logger.LogDebug("Timed out enumerating a recursive filter folder.");
+
+				return [];
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
@@ -1556,7 +1597,22 @@ namespace Files.App.ViewModels
 
 				return [];
 			}
+			finally
+			{
+				// ListEntries disposes the handle itself; SafeHandle makes this second disposal harmless.
+				hFile?.Dispose();
+			}
 		}
+
+		private static (SafeFindHandle? Handle, WIN32_FIND_DATA FindData) OpenFolderFindHandle(string path)
+			=> (FindFirstFileExFromAppSafe(
+					path + "\\*.*",
+					FINDEX_INFO_LEVELS.FindExInfoBasic,
+					out var findData,
+					FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+					IntPtr.Zero,
+					FIND_FIRST_EX_LARGE_FETCH),
+				findData);
 
 		private static bool IsReparsePoint(ListedItem item)
 			=> item.ItemFileAttributes is { } attributes && attributes.HasFlag(FileAttributes.ReparsePoint);
@@ -1588,6 +1644,10 @@ namespace Files.App.ViewModels
 			DirectoryFilterExecutionContext? projectionContext = null;
 			try
 			{
+				// Cancel before waiting: the previous projection may be walking a subtree while it holds
+				// the semaphore, and this newer projection would otherwise wait for that whole walk.
+				Interlocked.Exchange(ref activeFilterContext, null)?.Cancel();
+
 				// CollectionChanged will cause UI update, which may cause significant performance degradation,
 				// so suppress CollectionChanged event here while loading items heavily.
 
@@ -1628,7 +1688,11 @@ namespace Files.App.ViewModels
 					{
 						if (recursiveEnabled && !IsSearchResults)
 						{
-							var recursiveItems = await CollectRecursiveItemsAsync(filesAndFoldersLocal, directoryKey, recursiveDepth, context.Token);
+							// Win32 enumeration blocks on slow shares; keep the whole walk off the caller
+							// (which may be the UI thread) exactly like the root enumeration.
+							var recursiveItems = await Task.Run(
+								() => CollectRecursiveItemsAsync(filesAndFoldersLocal, directoryKey, recursiveDepth, context.Token),
+								context.Token);
 
 							if (recursiveItems.Count > 0)
 							{

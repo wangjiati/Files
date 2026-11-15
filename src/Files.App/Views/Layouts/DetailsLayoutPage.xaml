@@ -1084,7 +1084,7 @@
 									<!--  Item Location (recursive filter)  -->
 									<TextBlock
 										x:Name="ItemFilterLocationTextBlock"
-										Width="160"
+										Width="{Binding Path=FilterLocationColumnPixels, ElementName=PageRoot, Mode=OneWay}"
 										Padding="10,0,0,0"
 										HorizontalAlignment="Stretch"
 										VerticalAlignment="Center"

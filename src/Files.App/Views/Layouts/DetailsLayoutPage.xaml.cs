@@ -31,7 +31,7 @@ namespace Files.App.Views.Layouts
 	/// <summary>
 	/// Represents the browser page of Details View
 	/// </summary>
-	[WinRT.GeneratedBindableCustomProperty([nameof(RowHeight), nameof(ColumnsViewModel), nameof(MaxWidthForRenameTextbox), nameof(IsRecursiveFilterActive), nameof(FilterLocationColumnWidth)], [])]
+	[WinRT.GeneratedBindableCustomProperty([nameof(RowHeight), nameof(ColumnsViewModel), nameof(MaxWidthForRenameTextbox), nameof(IsRecursiveFilterActive), nameof(FilterLocationColumnWidth), nameof(FilterLocationColumnPixels)], [])]
 	public sealed partial class DetailsLayoutPage : BaseGroupableLayoutPage
 	{
 		// Constants
@@ -102,9 +102,13 @@ namespace Files.App.Views.Layouts
 		/// keep their alignment.
 		/// </summary>
 		public GridLength FilterLocationColumnWidth
-			=> IsRecursiveFilterActive
-				? new GridLength(FilterLocationColumnWidthPixels)
-				: new GridLength(0);
+			=> new(FilterLocationColumnPixels);
+
+		/// <summary>
+		/// Pixel width shared by the header column definition and the row cell.
+		/// </summary>
+		public double FilterLocationColumnPixels
+			=> IsRecursiveFilterActive ? FilterLocationColumnWidthPixels : 0;
 
 
 		// Constructor
@@ -270,6 +274,7 @@ namespace Files.App.Views.Layouts
 			// The header binds before the shell page is attached, so re-evaluate the recursive column state.
 			NotifyPropertyChanged(nameof(IsRecursiveFilterActive));
 			NotifyPropertyChanged(nameof(FilterLocationColumnWidth));
+			NotifyPropertyChanged(nameof(FilterLocationColumnPixels));
 
 			var parameters = (NavigationArguments)eventArgs.Parameter;
 			if (parameters.IsLayoutSwitch)
@@ -1051,6 +1056,7 @@ namespace Files.App.Views.Layouts
 			UpdateFilterIndicators();
 			NotifyPropertyChanged(nameof(IsRecursiveFilterActive));
 			NotifyPropertyChanged(nameof(FilterLocationColumnWidth));
+			NotifyPropertyChanged(nameof(FilterLocationColumnPixels));
 		}
 
 		private async void ShellViewModel_DirectoryFilterFailed(object? sender, string message)
