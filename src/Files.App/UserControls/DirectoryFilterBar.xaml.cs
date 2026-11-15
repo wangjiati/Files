@@ -91,20 +91,6 @@ namespace Files.App.UserControls
 				NameEditor.FocusFirstInput();
 		}
 
-		/// <summary>
-		/// Switches to advanced mode and appends an empty condition for <paramref name="column"/>. The
-		/// appended editor takes focus once it is loaded.
-		/// </summary>
-		public void AppendCondition(DirectoryColumnKind column)
-		{
-			if (viewModel.Mode is FilterMode.Basic)
-				viewModel.Mode = FilterMode.Advanced;
-
-			// The item container can load while the condition is being added, so arm the focus first.
-			focusLastAddedCondition = true;
-			viewModel.AddCondition(column, DirectoryConditionJoin.And);
-		}
-
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 			=> ((DirectoryFilterBar)d).UpdateCount();
 

@@ -304,7 +304,7 @@ git commit -m "feat: host filter bar in shell and project spec changes"
 
 ---
 
-## 任务 6：列头 = 追加条件（同一套控件）
+## 任务 6：列头 = 弹窗（复用同一编辑器）
 
 **文件：**
 - 修改：`src/Files.App/Views/Layouts/DetailsLayoutPage.xaml.cs:997-1091`
@@ -312,7 +312,7 @@ git commit -m "feat: host filter bar in shell and project spec changes"
 
 - [ ] **步骤 1：列头改为追加条件**
 
-`OpenColumnFilter(string name)`：解析 `DirectoryColumnKind`；常规模式先切高级；`FilterBar.AddCondition(column, DirectoryConditionJoin.And)` 并聚焦该条件首个可编辑控件。**名称列头追加名称条件**（与筛选栏同一编辑器/算法），不再只聚焦名称框。删除 `columnFilterContent`/`columnFilterFlyout` 字段与三个 `ColumnFilter_*` 事件处理。
+`OpenColumnFilter(string name)`：解析 `DirectoryColumnKind`；在列头下方弹出 `DirectoryFilterColumnFlyout`，内部复用 `DirectoryFilterEditor` 与同一套查询语言；“应用”时移除该列旧条件、把编辑器条件加入 `FilterBar.Conditions` 并切到高级，“清除”移除该列条件，“清除所有筛选”调用 `FilterBar.ClearAll()`。名称列头同样弹窗（沿用筛选栏名称算法）。
 
 - [ ] **步骤 2：列头激活指示改为读条件集合**
 
@@ -321,7 +321,7 @@ git commit -m "feat: host filter bar in shell and project spec changes"
 - [ ] **步骤 3：构建并手动验证**
 
 运行构建命令。
-检查：任一列头漏斗 → 出现草稿条件并聚焦；名称列头 → 名称条件含 Aa/.*/.ext 与 12 运算符；常规下点列头自动切高级；圆点同步；空态正常。
+检查：任一列头漏斗 → 弹出该列筛选弹窗（含应用/清除/清除所有筛选）；“应用”后条件进入筛选栏条件列表并切高级；圆点同步；空态正常。
 
 - [ ] **步骤 4：Commit**
 
@@ -439,6 +439,7 @@ pwsh .github/scripts/Build-Internal.ps1 -PortableOnly
 | R9 | 允许条件级 `DirectoryColumnFilter.Regex` | 每条件正则不可装进 spec 单 Regex；否则 `.*` 从 T4 起失效 |
 | R13 | spec 变化不使递归缓存失效（缓存=未筛选根投影） | 失效会导致每次按键重枚举整棵子树；正确性不受影响 |
 | 列头显隐 | 列头点击显式展开筛选栏（写 `ShowFilterHeader`） | 显式筛选意图，条件不可见=更差体验；用户可再用漏斗收起 |
+| 列头交互 | 列头打开弹窗，“应用”把条件加入筛选栏条件列表（自动切高级） | 保持用户熟悉的列头弹窗；查询语言与筛选栏一致，筛选状态仍只有一份 |
 | 缩略图 | 删除原 FilterHeader 的文件夹缩略图与“Filtering for” | 简报 T5 要求；装饰性跨页状态，骨架/Padding 保留 |
 | 空态 | 复用 `NoMatchingItems` | 语义比 `NoSearchResultsFound` 更贴切 |
 | 递归范围 | 仅 Win32 可枚举目录；库/回收站/压缩包/MTP/FTP 跳过 | 复用根目录同一枚举助手（隐藏/点文件规则一致） |

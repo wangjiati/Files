@@ -120,7 +120,7 @@ namespace Files.App.ViewModels.UserControls
 				: new DirectoryFilterSpec { Columns = columns };
 		}
 
-		public void AddCondition(DirectoryColumnKind column, DirectoryConditionJoin join)
+		public DirectoryFilterViewModel AddCondition(DirectoryColumnKind column, DirectoryConditionJoin join)
 		{
 			var condition = new DirectoryFilterViewModel(column, DirectoryFilterSpec.Empty)
 			{
@@ -139,6 +139,16 @@ namespace Files.App.ViewModels.UserControls
 			}
 
 			Conditions.Add(condition);
+			return condition;
+		}
+
+		/// <summary>
+		/// Removes every condition for one column. Used by the column filter popup's clear action.
+		/// </summary>
+		public void RemoveColumnConditions(DirectoryColumnKind column)
+		{
+			foreach (var condition in Conditions.Where(item => item.Column == column).ToList())
+				Conditions.Remove(condition);
 		}
 
 		public bool RemoveCondition(DirectoryFilterViewModel condition)

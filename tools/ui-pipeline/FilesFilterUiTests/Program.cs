@@ -157,28 +157,26 @@ internal static class Program
                 Assert(count is null || count == total, $"after clear count={count}, entries={total}");
             });
 
-            Test("column-header-append", () =>
+            Test("column-header-flyout", () =>
             {
                 var headerFilters = All().Where(e => e.Current.ControlType == ControlType.Button)
                     .Where(e => (e.Current.Name ?? "").Contains("筛选") || (e.Current.Name ?? "").Contains("Filter")
                              || (e.Current.AutomationId ?? "").Contains("Filter"))
                     .ToList();
                 Log($"header filter buttons: {headerFilters.Count}");
-                foreach (var candidate in headerFilters)
-                {
-                    var rect = candidate.Current.BoundingRectangle;
-                    Log($"  header button name=[{candidate.Current.Name}] id=[{candidate.Current.AutomationId}] x={rect.X} y={rect.Y}");
-                }
                 if (headerFilters.Count < 2)
                 {
                     throw new InvalidOperationException($"header filter buttons found: {headerFilters.Count}");
                 }
                 var headerButton = headerFilters.OrderBy(e => e.Current.BoundingRectangle.Y).Last();
                 Invoke(headerButton);
+                var apply = WaitFor(() => FindByName(["应用", "Apply"], ControlType.Button), 6);
+                Assert(apply is not null, "column filter popup with Apply");
+                Invoke(apply!);
                 Thread.Sleep(1500);
                 var advanced = FindByName(["高级", "Advanced"], ControlType.ListItem);
                 var editor = WaitFor(() => FindById("FilterTextBox"), 5);
-                Assert(advanced is not null && editor is not null, "advanced name editor after header click");
+                Assert(advanced is not null && editor is not null, "condition added to the bar after Apply");
             });
         }
         catch (Exception ex)

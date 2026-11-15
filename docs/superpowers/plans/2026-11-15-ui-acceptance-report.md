@@ -15,18 +15,18 @@ SHA-256：`7A2562917E8D7DF674D53A8F982BEC6F42B30EBE713CEE8EEB2CA688EF69FE67`
 
 ## 自动化流水线
 
-`tools/ui-pipeline/`：
+流水线已独立为单独项目 `D:\projects\vm-ui-pipeline`（本仓库不再包含），本次验收使用的版本仍保留在其示例套件中。
 
 - `FilesFilterUiTests`：C# 控制台测试器（UI Automation，无 PowerShell、无截屏）。
 - `run-pipeline.ps1`：宿主机编排器——本机解压打包件、`robocopy /MT` 推送、WinSimpleSSH 服务模式在 VM 桌面会话启动测试器、回传结果。
 - 测试夹具 `C:\FilterTest`：2 个根级 zip、2 个文本、`sub\c.zip`、`sub\deep\d.zip`，用于确定性断言。
 
-复现：
+复现（在独立项目中）：
 
 ```powershell
 $env:FILES_VM_PASSWORD = '<vm password>'
-powershell -File tools/ui-pipeline/run-pipeline.ps1 `
-  -ArtifactZip artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip
+powershell -File run-pipeline.ps1 `
+  -ArtifactZip <path>\Files.Internal_4.3.3.3_x64-portable.zip
 ```
 
 ## 结果：两台 VM 均 8/8 通过
