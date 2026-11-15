@@ -51,7 +51,6 @@ namespace Files.App.ViewModels.UserControls
 
 	/// <summary>
 	/// Edits one column condition of the shared <see cref="DirectoryFilterSpec"/> without touching other columns.
-	/// The name column writes the Contains operator into the shared name box instead of adding a duplicate condition.
 	/// </summary>
 	public sealed partial class DirectoryFilterViewModel : ObservableObject
 	{
@@ -376,108 +375,6 @@ namespace Files.App.ViewModels.UserControls
 			};
 		}
 
-		public DirectoryFilterSpec ApplyTo(DirectoryFilterSpec spec)
-		{
-			var columns = spec.Columns.ToList();
-
-			switch (column)
-			{
-				case DirectoryColumnKind.Name:
-					{
-						columns.RemoveAll(filter => filter.Column == DirectoryColumnKind.Name);
-
-						// Text and regex are alternative modes; the hidden mode must never leak into the spec.
-						if (UseRegex)
-						{
-							var regex = !string.IsNullOrWhiteSpace(RegexPattern) ? BuildRegexOptions() : null;
-
-							return spec with { NameContains = null, Columns = columns, Regex = regex };
-						}
-
-						var condition = BuildNameCondition();
-
-						if (condition is null)
-							return spec with { NameContains = null, Columns = columns, Regex = null };
-
-						// Keep a single source of truth: a plain Contains lives in the shared name box.
-						if (condition.Operator is DirectoryTextOperator.Contains && condition.Scope is DirectoryNameScope.DisplayName)
-							return spec with { NameContains = condition.Text, Columns = columns, Regex = null };
-
-						columns.Add(condition);
-						return spec with { NameContains = null, Columns = columns, Regex = null };
-					}
-
-				case DirectoryColumnKind.Type:
-					{
-						columns.RemoveAll(filter => filter.Column is DirectoryColumnKind.Type or DirectoryColumnKind.Extension);
-
-						if (BuildChoiceCondition(DirectoryColumnKind.Type, Choices, includeEmpty: false) is { } typeCondition)
-							columns.Add(typeCondition);
-
-						if (BuildChoiceCondition(DirectoryColumnKind.Extension, ExtensionChoices, IncludeEmpty) is { } extensionCondition)
-							columns.Add(extensionCondition);
-
-						return spec with { Columns = columns };
-					}
-
-				case DirectoryColumnKind.Tags:
-					{
-						columns.RemoveAll(filter => filter.Column == DirectoryColumnKind.Tags);
-
-						if (BuildChoiceCondition(DirectoryColumnKind.Tags, Choices, IncludeEmpty) is { } tagCondition)
-							columns.Add(tagCondition);
-
-						return spec with { Columns = columns };
-					}
-
-				case DirectoryColumnKind.Size:
-					columns.RemoveAll(filter => filter.Column == DirectoryColumnKind.Size);
-
-					if (BuildSizeCondition() is { } sizeCondition)
-						columns.Add(sizeCondition);
-
-					return spec with { Columns = columns };
-
-				case DirectoryColumnKind.ModifiedDate:
-				case DirectoryColumnKind.CreatedDate:
-					columns.RemoveAll(filter => filter.Column == column);
-
-					if (MinDate is not null || MaxDate is not null)
-					{
-						columns.Add(new DirectoryColumnFilter
-						{
-							Column = column,
-							MinDate = MinDate,
-							MaxDate = MaxDate,
-						});
-					}
-
-					return spec with { Columns = columns };
-
-				default:
-					return spec;
-			}
-		}
-
-		public DirectoryFilterSpec ClearFrom(DirectoryFilterSpec spec)
-		{
-			var columns = spec.Columns
-				.Where(filter => column switch
-				{
-					DirectoryColumnKind.Name => filter.Column != DirectoryColumnKind.Name,
-					DirectoryColumnKind.Type => filter.Column is not (DirectoryColumnKind.Type or DirectoryColumnKind.Extension),
-					_ => filter.Column != column,
-				})
-				.ToList();
-
-			return spec with
-			{
-				NameContains = column is DirectoryColumnKind.Name ? null : spec.NameContains,
-				Columns = columns,
-				Regex = column is DirectoryColumnKind.Name ? null : spec.Regex,
-			};
-		}
-
 		/// <summary>
 		/// Materializes the editor as one condition in the filter bar's condition chain.
 		/// The regex mode lives on the spec, not on a column condition.
@@ -617,55 +514,6 @@ namespace Files.App.ViewModels.UserControls
 				RegexPattern?.Trim() ?? string.Empty,
 				(DirectoryRegexTarget)Math.Clamp(RegexTargetIndex, 0, 2),
 				RegexIgnoreCase);
-
-		private DirectoryColumnFilter? BuildNameCondition()
-		{
-			var length = IsLengthOperator ? Length : null;
-			var value = IsLengthOperator ? null : Text?.Trim();
-
-			if (string.IsNullOrEmpty(value) && length is null)
-				return null;
-
-			return new DirectoryColumnFilter
-			{
-				Column = DirectoryColumnKind.Name,
-				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard),
-				Text = value,
-				Scope = Scope,
-				Length = length,
-			};
-		}
-
-		private DirectoryColumnFilter? BuildChoiceCondition(DirectoryColumnKind kind, IReadOnlyList<DirectoryFilterValueOption> options, bool includeEmpty)
-		{
-			var values = options.Where(option => option.IsSelected).Select(option => option.Value).ToList();
-
-			if (values.Count == 0 && !includeEmpty)
-				return null;
-
-			return new DirectoryColumnFilter
-			{
-				Column = kind,
-				Values = values,
-				IncludeEmpty = includeEmpty,
-			};
-		}
-
-		private DirectoryColumnFilter? BuildSizeCondition()
-		{
-			var min = ToBytes(MinSizeText);
-			var max = ToBytes(MaxSizeText);
-
-			if (min is null && max is null)
-				return null;
-
-			return new DirectoryColumnFilter
-			{
-				Column = DirectoryColumnKind.Size,
-				MinSize = min,
-				MaxSize = max,
-			};
-		}
 
 		private static List<string> GetSelectedValues(IReadOnlyList<DirectoryFilterValueOption> options)
 			=> options.Where(option => option.IsSelected).Select(option => option.Value).ToList();

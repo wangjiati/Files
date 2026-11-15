@@ -331,7 +331,6 @@ namespace Files.App.Views.Shells
 		public override void NavigateToPath(string? navigationPath, Type? sourcePageType, NavigationArguments? navArgs = null)
 		{
 			var shellViewModel = ShellViewModel!;
-			shellViewModel.FilesAndFoldersFilter = null;
 
 			if (sourcePageType is null && !string.IsNullOrEmpty(navigationPath))
 				sourcePageType = InstanceViewModel.FolderSettings.GetLayoutType(navigationPath);

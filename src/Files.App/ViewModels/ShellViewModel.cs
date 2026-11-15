@@ -144,13 +144,6 @@ namespace Files.App.ViewModels
 			private set => SetProperty(ref _FolderBackgroundImageHorizontalAlignment, value);
 		}
 
-		private ImageSource? _FolderThumbnailImageSource;
-		public ImageSource? FolderThumbnailImageSource
-		{
-			get => _FolderThumbnailImageSource;
-			private set => SetProperty(ref _FolderThumbnailImageSource, value);
-		}
-
 		private BitmapImage? _SearchIconBitmapImage;
 		public BitmapImage? SearchIconBitmapImage
 		{
@@ -338,8 +331,6 @@ namespace Files.App.ViewModels
 				return;
 
 			IsValidGitDirectory = !string.IsNullOrEmpty(headName);
-
-			_ = UpdateFolderThumbnailImageSource();
 
 			OnPropertyChanged(nameof(WorkingDirectory));
 			OnPropertyChanged(nameof(ShowFilterHeader));
@@ -555,11 +546,6 @@ namespace Files.App.ViewModels
 					_ => string.Empty,
 				};
 			}
-		}
-
-		public async Task UpdateFolderThumbnailImageSource()
-		{
-			FolderThumbnailImageSource = await NavigationHelpers.GetIconForPathAsync(WorkingDirectory);
 		}
 
 		public async Task UpdateSortOptionStatusAsync()
@@ -1171,20 +1157,6 @@ namespace Files.App.ViewModels
 		}
 
 		/// <summary>
-		/// Legacy filter box text. The bar owns the filter configuration, so this forwards to its keyword
-		/// box instead of keeping a second copy of the filter text.
-		/// </summary>
-		public string? FilesAndFoldersFilter
-		{
-			get => FilterBar.KeywordText;
-			set
-			{
-				if (!string.Equals(FilterBar.KeywordText, value, StringComparison.Ordinal))
-					FilterBar.KeywordText = value;
-			}
-		}
-
-		/// <summary>
 		/// Filter bar state edited by the user; every change is projected into <see cref="DirectoryFilter"/>.
 		/// </summary>
 		public DirectoryFilterBarViewModel FilterBar { get; }
@@ -1244,9 +1216,8 @@ namespace Files.App.ViewModels
 			InvalidateRecursiveItemsCache();
 			OnPropertyChanged(nameof(IsRecursiveFilterActive));
 
-			// Recursion is a scope, not spec content: BuildSpec produces an equal spec, so the
-			// DirectoryFilter setter (which compares by value) returns early and would not schedule the
-			// projection that adds or removes the subfolder items.
+			// Recursion is a scope, not spec content: BuildSpec keeps the same conditions, so the
+			// projection is rescheduled here to add or remove the subfolder items.
 			if (!directoryFilterSpec.IsEmpty)
 			{
 				InvalidateIncrementalApplyBaseline();

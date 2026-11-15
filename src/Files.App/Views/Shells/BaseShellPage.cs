@@ -97,7 +97,7 @@ namespace Files.App.Views.Shells
 
 		private void ShellViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName is "DirectoryFilter" or "FilesAndFoldersFilter")
+			if (e.PropertyName is "DirectoryFilter")
 				ToolbarViewModel?.RefreshAddressSuffix();
 		}
 
