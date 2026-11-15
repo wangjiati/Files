@@ -87,6 +87,8 @@ namespace Files.App.Utils
 					tooltipBuilder.Append($"{Environment.NewLine}{Strings.StatusWithColon.GetLocalizedResource()} {SyncStatusUI.SyncStatusString}");
 				if (!string.IsNullOrWhiteSpace(LinkTargetPath))
 					tooltipBuilder.Append($"{Environment.NewLine}{Strings.LinkTarget.GetLocalizedResource()} {LinkTargetPath}");
+				if (!string.IsNullOrEmpty(FilterRelativePath))
+					tooltipBuilder.Append($"{Environment.NewLine}{Strings.Location.GetLocalizedResource()} {FilterRelativePath}");
 
 				return tooltipBuilder.ToString();
 			}
@@ -250,6 +252,21 @@ namespace Files.App.Utils
 		{
 			get => itemPath;
 			set => SetProperty(ref itemPath, value);
+		}
+
+		private string? filterRelativePath;
+		/// <summary>
+		/// Path relative to the current folder when the recursive filter collected this item; null for
+		/// items that belong to the current folder itself.
+		/// </summary>
+		public string? FilterRelativePath
+		{
+			get => filterRelativePath;
+			set
+			{
+				if (SetProperty(ref filterRelativePath, value))
+					OnPropertyChanged(nameof(ItemTooltipText));
+			}
 		}
 
 		private string? itemNameRaw;

@@ -31,12 +31,13 @@ namespace Files.App.Views.Layouts
 	/// <summary>
 	/// Represents the browser page of Details View
 	/// </summary>
-	[WinRT.GeneratedBindableCustomProperty([nameof(RowHeight), nameof(ColumnsViewModel), nameof(MaxWidthForRenameTextbox)], [])]
+	[WinRT.GeneratedBindableCustomProperty([nameof(RowHeight), nameof(ColumnsViewModel), nameof(MaxWidthForRenameTextbox), nameof(IsRecursiveFilterActive), nameof(FilterLocationColumnWidth)], [])]
 	public sealed partial class DetailsLayoutPage : BaseGroupableLayoutPage
 	{
 		// Constants
 
 		private const int TAG_TEXT_BLOCK = 1;
+		private const double FilterLocationColumnWidthPixels = 160;
 
 		// Fields
 
@@ -89,6 +90,21 @@ namespace Files.App.Views.Layouts
 		{
 			get => LayoutSizeKindHelper.GetDetailsViewRowHeight((DetailsViewSizeKind)UserSettingsService.LayoutSettingsService.DetailsViewSize);
 		}
+
+		/// <summary>
+		/// Whether the recursive filter currently projects subfolder items; it controls the location column.
+		/// </summary>
+		public bool IsRecursiveFilterActive
+			=> ParentShellPageInstance?.ShellViewModel?.IsRecursiveFilterActive ?? false;
+
+		/// <summary>
+		/// The location column collapses to zero width when recursion is inactive so the remaining columns
+		/// keep their alignment.
+		/// </summary>
+		public GridLength FilterLocationColumnWidth
+			=> IsRecursiveFilterActive
+				? new GridLength(FilterLocationColumnWidthPixels)
+				: new GridLength(0);
 
 
 		// Constructor
@@ -250,6 +266,10 @@ namespace Files.App.Views.Layouts
 			shellViewModel.PropertyChanged += ShellViewModel_PropertyChanged;
 			UserSettingsService.LayoutSettingsService.PropertyChanged += LayoutSettingsService_PropertyChanged;
 			FileList.Items.VectorChanged += FileListItems_VectorChanged;
+
+			// The header binds before the shell page is attached, so re-evaluate the recursive column state.
+			NotifyPropertyChanged(nameof(IsRecursiveFilterActive));
+			NotifyPropertyChanged(nameof(FilterLocationColumnWidth));
 
 			var parameters = (NavigationArguments)eventArgs.Parameter;
 			if (parameters.IsLayoutSwitch)
@@ -952,7 +972,10 @@ namespace Files.App.Views.Layouts
 
 		private void GridSplitter_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
 		{
-			var columnToResize = Grid.GetColumn(sender as Files.App.Controls.GridSplitter) / 2 + 1;
+			// The fixed location column after Name shifts every later header column by one, so only the
+			// name splitter keeps the original grid-to-column mapping.
+			var gridColumn = Grid.GetColumn(sender as Files.App.Controls.GridSplitter);
+			var columnToResize = gridColumn <= 3 ? (gridColumn / 2) + 1 : gridColumn / 2;
 			ResizeColumnToFit(columnToResize);
 
 			e.Handled = true;
@@ -1022,8 +1045,12 @@ namespace Files.App.Views.Layouts
 
 		private void ShellViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName is nameof(ShellViewModel.DirectoryFilter))
-				UpdateFilterIndicators();
+			if (e.PropertyName is not (nameof(ShellViewModel.DirectoryFilter) or nameof(ShellViewModel.IsRecursiveFilterActive)))
+				return;
+
+			UpdateFilterIndicators();
+			NotifyPropertyChanged(nameof(IsRecursiveFilterActive));
+			NotifyPropertyChanged(nameof(FilterLocationColumnWidth));
 		}
 
 		private async void ShellViewModel_DirectoryFilterFailed(object? sender, string message)

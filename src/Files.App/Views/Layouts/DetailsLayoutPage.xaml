@@ -453,6 +453,9 @@
 								<!--  (Divider)  -->
 								<ColumnDefinition Width="Auto" />
 
+								<!--  Recursive Filter Location  -->
+								<ColumnDefinition Width="{x:Bind FilterLocationColumnWidth, Mode=OneWay}" />
+
 								<!--  Item Git Status  -->
 								<ColumnDefinition
 									x:Name="GitStatusColumnDefinition"
@@ -624,10 +627,18 @@
 								PreviewKeyUp="GridSplitter_PreviewKeyUp"
 								Style="{StaticResource HeaderGridSplitterStyle}" />
 
+							<!--  Item Location (recursive filter)  -->
+							<uc:DataGridHeader
+								x:Name="FilterLocationHeader"
+								Grid.Column="4"
+								CanBeSorted="False"
+								Header="{helpers:ResourceString Name=FilterLocationColumn}"
+								Visibility="{x:Bind IsRecursiveFilterActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
 							<!--  Item Unmerged File Change Kind  -->
 							<uc:DataGridHeader
 								x:Name="GitStatusHeader"
-								Grid.Column="4"
+								Grid.Column="5"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="GitStatus"
 								Header="{helpers:ResourceString Name=GitStatus}"
@@ -635,7 +646,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="5"
+								Grid.Column="6"
 								AutomationProperties.Name="GitStatusColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -649,7 +660,7 @@
 							<!--  Item Last Commit Date  -->
 							<uc:DataGridHeader
 								x:Name="GitLastCommitDateHeader"
-								Grid.Column="6"
+								Grid.Column="7"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="ItemLastCommitDate"
 								Header="{helpers:ResourceString Name=DateCommitted}"
@@ -657,7 +668,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="7"
+								Grid.Column="8"
 								AutomationProperties.Name="GitLastCommitDateHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -671,7 +682,7 @@
 							<!--  Item Last Commit Message  -->
 							<uc:DataGridHeader
 								x:Name="GitLastCommitMessageHeader"
-								Grid.Column="8"
+								Grid.Column="9"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="ItemLastCommitMessage"
 								Header="{helpers:ResourceString Name=CommitMessage}"
@@ -679,7 +690,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="9"
+								Grid.Column="10"
 								AutomationProperties.Name="GitLastCommitMessageHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -693,7 +704,7 @@
 							<!--  Item Last Commit Author  -->
 							<uc:DataGridHeader
 								x:Name="GitCommitAuthorHeader"
-								Grid.Column="10"
+								Grid.Column="11"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="ItemLastCommitAuthor"
 								Header="{helpers:ResourceString Name=Author}"
@@ -701,7 +712,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="11"
+								Grid.Column="12"
 								AutomationProperties.Name="GitCommitAuthorHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -715,7 +726,7 @@
 							<!--  Item Last Commit SHA  -->
 							<uc:DataGridHeader
 								x:Name="GitLastCommitShaHeader"
-								Grid.Column="12"
+								Grid.Column="13"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="ItemLastCommitSha"
 								Header="{helpers:ResourceString Name=CommitSha}"
@@ -723,7 +734,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="13"
+								Grid.Column="14"
 								AutomationProperties.Name="GitLastCommitShaHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -737,7 +748,7 @@
 							<!--  Item Tags  -->
 							<uc:DataGridHeader
 								x:Name="TagHeader"
-								Grid.Column="14"
+								Grid.Column="15"
 								CanBeFiltered="True"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="FileTag"
@@ -748,7 +759,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="15"
+								Grid.Column="16"
 								AutomationProperties.Name="TagColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -762,7 +773,7 @@
 							<!--  Item Path  -->
 							<uc:DataGridHeader
 								x:Name="PathHeader"
-								Grid.Column="16"
+								Grid.Column="17"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="Path"
 								Header="{helpers:ResourceString Name=Path}"
@@ -770,7 +781,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="17"
+								Grid.Column="18"
 								AutomationProperties.Name="PathColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -784,7 +795,7 @@
 							<!--  Item Original Path  -->
 							<uc:DataGridHeader
 								x:Name="OriginalPathHeader"
-								Grid.Column="18"
+								Grid.Column="19"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="OriginalFolder"
 								Header="{helpers:ResourceString Name=OriginalPath}"
@@ -792,7 +803,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="19"
+								Grid.Column="20"
 								AutomationProperties.Name="OriginalPathColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -806,7 +817,7 @@
 							<!--  Item Deleted Date  -->
 							<uc:DataGridHeader
 								x:Name="DateDeletedHeader"
-								Grid.Column="20"
+								Grid.Column="21"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateDeleted"
 								Header="{helpers:ResourceString Name=DateDeleted}"
@@ -814,7 +825,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="21"
+								Grid.Column="22"
 								AutomationProperties.Name="DateDeletedColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -828,7 +839,7 @@
 							<!--  Item Modified Date  -->
 							<uc:DataGridHeader
 								x:Name="DateModifiedHeader"
-								Grid.Column="22"
+								Grid.Column="23"
 								CanBeFiltered="True"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateModified"
@@ -839,7 +850,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="23"
+								Grid.Column="24"
 								AutomationProperties.Name="DateModifiedColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -853,7 +864,7 @@
 							<!--  Item Created Date  -->
 							<uc:DataGridHeader
 								x:Name="DateCreatedHeader"
-								Grid.Column="24"
+								Grid.Column="25"
 								CanBeFiltered="True"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="DateCreated"
@@ -864,7 +875,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="25"
+								Grid.Column="26"
 								AutomationProperties.Name="DateCreatedColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -878,7 +889,7 @@
 							<!--  Item Type  -->
 							<uc:DataGridHeader
 								x:Name="FileTypeHeader"
-								Grid.Column="26"
+								Grid.Column="27"
 								CanBeFiltered="True"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="FileType"
@@ -889,7 +900,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="27"
+								Grid.Column="28"
 								AutomationProperties.Name="ItemTypeColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -903,7 +914,7 @@
 							<!--  Item Size  -->
 							<uc:DataGridHeader
 								x:Name="ItemSizeHeader"
-								Grid.Column="28"
+								Grid.Column="29"
 								CanBeFiltered="True"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
 								CommandParameter="Size"
@@ -914,7 +925,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="29"
+								Grid.Column="30"
 								AutomationProperties.Name="SizeColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -928,7 +939,7 @@
 							<!--  Item Sync Status Badge  -->
 							<uc:DataGridHeader
 								x:Name="SyncStatusHeader"
-								Grid.Column="30"
+								Grid.Column="31"
 								HorizontalAlignment="Stretch"
 								HorizontalContentAlignment="Left"
 								Command="{x:Bind UpdateSortOptionsCommand, Mode=OneWay}"
@@ -938,7 +949,7 @@
 
 							<!--  (Divider)  -->
 							<controls:GridSplitter
-								Grid.Column="31"
+								Grid.Column="32"
 								AutomationProperties.Name="StatusColumnHeaderGridSplitter"
 								DoubleTapped="GridSplitter_DoubleTapped"
 								Loaded="GridSplitter_Loaded"
@@ -1069,6 +1080,19 @@
 										</TextBox>
 
 									</Grid>
+
+									<!--  Item Location (recursive filter)  -->
+									<TextBlock
+										x:Name="ItemFilterLocationTextBlock"
+										Width="160"
+										Padding="10,0,0,0"
+										HorizontalAlignment="Stretch"
+										VerticalAlignment="Center"
+										DataContextChanged="TextBlock_DataContextChanged"
+										IsTextTrimmedChanged="TextBlock_IsTextTrimmedChanged"
+										Style="{StaticResource ColumnContentTextBlock}"
+										Text="{x:Bind FilterRelativePath, Mode=OneWay}"
+										Visibility="{Binding Path=IsRecursiveFilterActive, ElementName=PageRoot, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
 									<!--  Item Git Status  -->
 									<Border

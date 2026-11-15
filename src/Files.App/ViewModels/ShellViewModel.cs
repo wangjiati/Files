@@ -223,6 +223,13 @@ namespace Files.App.ViewModels
 		private CancellationTokenSource? networkAvailabilityCTS;
 		private bool isDisposed;
 
+		private readonly object recursiveItemsCacheLock = new();
+		private IReadOnlyList<ListedItem>? recursiveItemsCache;
+		private string? recursiveItemsCacheDirectory;
+		private int recursiveItemsCacheDepth;
+		private int recursiveItemsCacheRootFolderCount;
+		private long recursiveItemsCacheRevision = -1;
+
 		public event EventHandler? FocusFilterHeader;
 
 		public event EventHandler? DirectoryInfoUpdated;
@@ -279,6 +286,7 @@ namespace Files.App.ViewModels
 				DirectoryFilter = DirectoryFilterSpec.Empty;
 				FilterResultCount = -1;
 				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
+				InvalidateRecursiveItemsCache();
 				ResetQueryView();
 				InvalidateIncrementalApplyBaseline();
 			}
@@ -823,6 +831,7 @@ namespace Files.App.ViewModels
 
 			FilterBar = new DirectoryFilterBarViewModel();
 			FilterBar.SpecChanged += FilterBar_SpecChanged;
+			FilterBar.PropertyChanged += FilterBar_PropertyChanged;
 			FilterBar.ChoiceProvider = GetFilterChoices;
 		}
 
@@ -1063,6 +1072,8 @@ namespace Files.App.ViewModels
 			{
 				if (SetProperty(ref _isSearchResults, value))
 				{
+					OnPropertyChanged(nameof(IsRecursiveFilterActive));
+
 					if (!value)
 						SearchHeaderTitle = string.Empty;
 				}
@@ -1182,6 +1193,13 @@ namespace Files.App.ViewModels
 		}
 
 		/// <summary>
+		/// Whether the active projection includes subfolder items. Recursion is a matching scope, so it
+		/// stays inactive until a filter is applied.
+		/// </summary>
+		public bool IsRecursiveFilterActive
+			=> FilterBar.RecursiveEnabled && !IsSearchResults && !directoryFilterSpec.IsEmpty;
+
+		/// <summary>
 		/// Temporary column and regex conditions. Combined with the name box into one immutable spec.
 		/// </summary>
 		public DirectoryFilterSpec DirectoryFilter
@@ -1202,8 +1220,26 @@ namespace Files.App.ViewModels
 					FilterBar.LoadFrom(spec);
 
 				OnPropertyChanged(nameof(DirectoryFilter));
+				OnPropertyChanged(nameof(IsRecursiveFilterActive));
 
 				ResetQueryView();
+				ScheduleFilterProjection(0);
+			}
+		}
+
+		private void FilterBar_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName is not (nameof(DirectoryFilterBarViewModel.RecursiveEnabled) or nameof(DirectoryFilterBarViewModel.RecursiveDepth)))
+				return;
+
+			InvalidateRecursiveItemsCache();
+			OnPropertyChanged(nameof(IsRecursiveFilterActive));
+
+			// Recursion is a scope, not spec content: the DirectoryFilter setter sees no change and would
+			// not schedule the projection that adds or removes the subfolder items.
+			if (!directoryFilterSpec.IsEmpty)
+			{
+				InvalidateIncrementalApplyBaseline();
 				ScheduleFilterProjection(0);
 			}
 		}
@@ -1405,6 +1441,147 @@ namespace Files.App.ViewModels
 		private static DateTimeOffset? ToKnownDate(DateTimeOffset value)
 			=> value == default ? null : value;
 
+		/// <summary>
+		/// Enumerates the subfolders of the current view up to <paramref name="depth"/> levels and returns
+		/// their items with the path relative to the current folder. Only Win32 enumerable folders are
+		/// covered; virtual locations (libraries, archives, MTP, FTP) fail to open and are skipped.
+		/// </summary>
+		private async Task<IReadOnlyList<ListedItem>> CollectRecursiveItemsAsync(List<ListedItem> rootItems, string directoryKey, int depth, CancellationToken token)
+		{
+			var clampedDepth = Math.Clamp(depth, 1, DirectoryRecursion.MaxDepth);
+			var roots = new List<RecursiveFolderNode>();
+
+			foreach (var item in rootItems)
+			{
+				if (!item.IsFolder || item.ItemPath is not { Length: > 0 } path || IsReparsePoint(item))
+					continue;
+
+				roots.Add(new RecursiveFolderNode(path));
+			}
+
+			var revision = Interlocked.Read(ref filterSourceRevision);
+
+			lock (recursiveItemsCacheLock)
+			{
+				if (recursiveItemsCache is { } cached
+					&& recursiveItemsCacheRevision == revision
+					&& recursiveItemsCacheDepth == clampedDepth
+					&& recursiveItemsCacheRootFolderCount == roots.Count
+					&& string.Equals(recursiveItemsCacheDirectory, directoryKey, StringComparison.OrdinalIgnoreCase))
+				{
+					return cached;
+				}
+			}
+
+			if (roots.Count is 0)
+				return [];
+
+			foreach (var root in roots)
+				await FillRecursiveFolderAsync(root, clampedDepth, token);
+
+			var entries = DirectoryRecursion.Flatten(roots, node => node.Children, node => node.Path, clampedDepth);
+			var results = new List<ListedItem>();
+
+			foreach (var entry in entries)
+			{
+				foreach (var item in entry.Item.Items)
+				{
+					item.FilterRelativePath = entry.RelativePath;
+					results.Add(item);
+				}
+			}
+
+			lock (recursiveItemsCacheLock)
+			{
+				recursiveItemsCache = results;
+				recursiveItemsCacheDirectory = directoryKey;
+				recursiveItemsCacheDepth = clampedDepth;
+				recursiveItemsCacheRootFolderCount = roots.Count;
+				recursiveItemsCacheRevision = revision;
+			}
+
+			return results;
+		}
+
+		private async Task FillRecursiveFolderAsync(RecursiveFolderNode node, int remainingDepth, CancellationToken token)
+		{
+			if (remainingDepth <= 0)
+				return;
+
+			token.ThrowIfCancellationRequested();
+			node.Items.AddRange(await ListFolderItemsAsync(node.Path, token));
+
+			if (remainingDepth is 1)
+				return;
+
+			foreach (var item in node.Items)
+			{
+				if (!item.IsFolder || item.ItemPath is not { Length: > 0 } path || IsReparsePoint(item))
+					continue;
+
+				var child = new RecursiveFolderNode(path);
+				node.Children.Add(child);
+
+				await FillRecursiveFolderAsync(child, remainingDepth - 1, token);
+			}
+		}
+
+		private async Task<List<ListedItem>> ListFolderItemsAsync(string path, CancellationToken token)
+		{
+			var hFile = FindFirstFileExFromAppSafe(
+				path + "\\*.*",
+				FINDEX_INFO_LEVELS.FindExInfoBasic,
+				out var findData,
+				FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+				IntPtr.Zero,
+				FIND_FIRST_EX_LARGE_FETCH);
+
+			if (hFile.IsInvalid)
+			{
+				hFile.Dispose();
+
+				return [];
+			}
+
+			try
+			{
+				// No intermediate action: a flush would clear items from the returned list, and the
+				// projection needs the complete set.
+				return await Win32StorageEnumerator.ListEntries(path, hFile, findData, token, -1, GetPreloadIconSize(), intermediateAction: null!);
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				// A subfolder can be deleted or locked between the parent listing and its own enumeration.
+				App.Logger.LogDebug(ex, "Skipped an unreadable recursive filter folder.");
+
+				return [];
+			}
+		}
+
+		private static bool IsReparsePoint(ListedItem item)
+			=> item.ItemFileAttributes is { } attributes && attributes.HasFlag(FileAttributes.ReparsePoint);
+
+		private void InvalidateRecursiveItemsCache()
+		{
+			lock (recursiveItemsCacheLock)
+			{
+				recursiveItemsCache = null;
+				recursiveItemsCacheDirectory = null;
+				recursiveItemsCacheDepth = 0;
+				recursiveItemsCacheRootFolderCount = 0;
+				recursiveItemsCacheRevision = -1;
+			}
+		}
+
+		private sealed class RecursiveFolderNode(string path)
+		{
+			public string Path { get; } = path;
+
+			public List<RecursiveFolderNode> Children { get; } = [];
+
+			public List<ListedItem> Items { get; } = [];
+		}
+
 		// Apply changes immediately after manipulating on filesAndFolders completed
 		public async Task ApplyFilesAndFoldersChangesAsync()
 		{
@@ -1426,6 +1603,8 @@ namespace Files.App.ViewModels
 					// source revision can never replace newer visible items.
 					var spec = directoryFilterSpec;
 					var directoryKey = WorkingDirectory ?? string.Empty;
+					var recursiveEnabled = FilterBar.RecursiveEnabled;
+					var recursiveDepth = FilterBar.RecursiveDepth;
 					var sourceRevision = Interlocked.Read(ref filterSourceRevision);
 					var generation = Interlocked.Increment(ref filterGeneration);
 
@@ -1447,6 +1626,23 @@ namespace Files.App.ViewModels
 
 					if (!isQueryView && !spec.IsEmpty)
 					{
+						if (recursiveEnabled && !IsSearchResults)
+						{
+							var recursiveItems = await CollectRecursiveItemsAsync(filesAndFoldersLocal, directoryKey, recursiveDepth, context.Token);
+
+							if (recursiveItems.Count > 0)
+							{
+								var candidates = new List<ListedItem>(filesAndFoldersLocal.Count + recursiveItems.Count);
+								candidates.AddRange(filesAndFoldersLocal);
+								candidates.AddRange(recursiveItems);
+
+								// The root list is already sorted; the collected subtree items are not, and the
+								// projection keeps the order it is given.
+								filesAndFoldersLocal = SortingHelper.OrderFileList(candidates, folderSettings.DirectorySortOption, folderSettings.DirectorySortDirection,
+									folderSettings.SortDirectoriesAlongsideFiles, folderSettings.SortFilesFirst).ToList();
+							}
+						}
+
 						var (items, error) = await Task.Run(() => FilterItems(filesAndFoldersLocal, spec, context.Token), context.Token);
 
 						if (items is null)
@@ -1469,6 +1665,7 @@ namespace Files.App.ViewModels
 								directoryFilterSpec = lastCommittedFilterSpec;
 
 								OnPropertyChanged(nameof(DirectoryFilter));
+								OnPropertyChanged(nameof(IsRecursiveFilterActive));
 								DirectoryFilterFailed?.Invoke(this, message);
 							});
 
@@ -2536,6 +2733,7 @@ namespace Files.App.ViewModels
 		public void RefreshItems(string? previousDir, Action? postLoadCallback = null)
 		{
 			hardLinkCache.Clear();
+			InvalidateRecursiveItemsCache();
 			_ = RapidAddItemsToCollectionAsync(WorkingDirectory, previousDir, postLoadCallback);
 		}
 
@@ -4173,7 +4371,9 @@ namespace Files.App.ViewModels
 			StorageTrashBinService.Watcher.ItemDeleted -= RecycleBinItemDeletedAsync;
 			StorageTrashBinService.Watcher.RefreshRequested -= RecycleBinRefreshRequestedAsync;
 			FilterBar.SpecChanged -= FilterBar_SpecChanged;
+			FilterBar.PropertyChanged -= FilterBar_PropertyChanged;
 			FilterBar.ChoiceProvider = null;
+			InvalidateRecursiveItemsCache();
 			UserSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
 			fileTagsSettingsService.OnSettingImportedEvent -= FileTagsSettingsService_OnSettingUpdated;
 			fileTagsSettingsService.OnTagsUpdated -= FileTagsSettingsService_OnSettingUpdated;

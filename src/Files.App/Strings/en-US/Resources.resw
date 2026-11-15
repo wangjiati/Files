@@ -1982,6 +1982,9 @@
   <data name="FilterJoinOrContent" xml:space="preserve">
     <value>or</value>
   </data>
+  <data name="FilterLocationColumn" xml:space="preserve">
+    <value>Location</value>
+  </data>
   <data name="FilterConditionCountFormat" xml:space="preserve">
     <value>{0} matching items</value>
   </data>
