@@ -81,6 +81,12 @@ namespace Files.App.Utils.Storage
 		public DirectoryNameScope Scope { get; init; } = DirectoryNameScope.DisplayName;
 
 		/// <summary>
+		/// Makes name text and wildcard comparisons case sensitive. Regex conditions keep their own
+		/// <see cref="DirectoryRegexOptions.IgnoreCase"/> flag.
+		/// </summary>
+		public bool CaseSensitive { get; init; }
+
+		/// <summary>
 		/// Per-condition regular expression. When set on a name condition it replaces the text comparison.
 		/// </summary>
 		public DirectoryRegexOptions? Regex { get; init; }
@@ -174,8 +180,9 @@ namespace Files.App.Utils.Storage
 			=> Columns.Any(filter => filter.Column == column);
 
 		/// <summary>
-		/// Builds a display name filter from whitespace or comma separated keywords.
-		/// Tokens containing <c>*</c> or <c>?</c> match the whole display name as wildcards; other tokens are contains checks.
+		/// Builds a name filter from whitespace or comma separated keywords.
+		/// Tokens containing <c>*</c> or <c>?</c> match the whole raw file name as wildcards; other tokens are
+		/// contains checks against the display name.
 		/// </summary>
 		public static DirectoryFilterSpec FromKeywordText(string? text)
 		{
@@ -189,12 +196,19 @@ namespace Files.App.Utils.Storage
 				if (token.Length == 0)
 					continue;
 
+				var isWildcard = token.IndexOfAny(WildcardCharacters) >= 0;
+
 				columns.Add(new DirectoryColumnFilter
 				{
 					Column = DirectoryColumnKind.Name,
-					Operator = token.IndexOfAny(WildcardCharacters) >= 0
+					Operator = isWildcard
 						? DirectoryTextOperator.Wildcard
 						: DirectoryTextOperator.Contains,
+					// Wildcards compare the real file name so "*.png" and "*.lnk" also match when the
+					// extension is hidden from the display name.
+					Scope = isWildcard
+						? DirectoryNameScope.RawName
+						: DirectoryNameScope.DisplayName,
 					Text = token,
 				});
 			}

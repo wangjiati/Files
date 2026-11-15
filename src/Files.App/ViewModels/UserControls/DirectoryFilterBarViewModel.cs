@@ -226,7 +226,8 @@ namespace Files.App.ViewModels.UserControls
 				if (column.Column is not DirectoryColumnKind.Name
 					|| column.Regex is not null
 					|| column.Length is not null
-					|| column.Scope is not DirectoryNameScope.DisplayName
+					|| column.CaseSensitive
+					|| !IsKeywordScope(column)
 					|| !IsKeywordText(column.Text, column.Operator))
 				{
 					return false;
@@ -241,6 +242,13 @@ namespace Files.App.ViewModels.UserControls
 			keywordText = string.Join(" ", texts);
 			return true;
 		}
+
+		// Wildcards are parsed against the raw name so they keep matching hidden extensions, while plain
+		// keywords are parsed against the display name.
+		private static bool IsKeywordScope(DirectoryColumnFilter column)
+			=> column.Operator is DirectoryTextOperator.Wildcard
+				? column.Scope is DirectoryNameScope.RawName
+				: column.Scope is DirectoryNameScope.DisplayName;
 
 		// The keyword parser splits on whitespace and commas and treats '*' and '?' as wildcards, so only
 		// tokens that survive that parse as the same condition can be restored into the keyword box.
@@ -297,7 +305,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				nameCondition.UseRegex = true;
 				nameCondition.RegexPattern = regex.Pattern;
-				nameCondition.RegexTargetIndex = (int)regex.Target;
+				nameCondition.RegexTarget = regex.Target;
 				nameCondition.RegexIgnoreCase = regex.IgnoreCase;
 			}
 
@@ -359,6 +367,7 @@ namespace Files.App.ViewModels.UserControls
 				&& left.Column == right.Column
 				&& left.Operator == right.Operator
 				&& left.Scope == right.Scope
+				&& left.CaseSensitive == right.CaseSensitive
 				&& Equals(left.Regex, right.Regex)
 				&& string.Equals(left.Text, right.Text, StringComparison.Ordinal)
 				&& left.Length == right.Length

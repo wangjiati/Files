@@ -1928,6 +1928,9 @@
   <data name="FilterRegexIgnoreCase" xml:space="preserve">
     <value>区分大小写</value>
   </data>
+  <data name="FilterCaseSensitive" xml:space="preserve">
+    <value>区分大小写</value>
+  </data>
   <data name="FilterTargetRawName" xml:space="preserve">
     <value>完整文件名（含扩展名）</value>
   </data>

@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Helpers;
 using Files.App.Utils.Storage;
 using Files.App.ViewModels.UserControls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -44,19 +45,101 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void ToColumnFilter_LengthOperator_DropsHiddenText()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty)
+			{
+				Text = "report",
+				OperatorIndex = (int)DirectoryTextOperator.LengthGreaterThan,
+				Length = 6,
+			};
+
+			var condition = viewModel.ToColumnFilter();
+
+			Assert.IsNull(condition.Text);
+			Assert.AreEqual(6, condition.Length);
+		}
+
+		[TestMethod]
+		public void ToColumnFilter_MapsCaseSensitive()
+		{
+			var defaultViewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+			Assert.IsFalse(defaultViewModel.CaseSensitive);
+			Assert.IsFalse(defaultViewModel.ToColumnFilter().CaseSensitive);
+
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty)
+			{
+				Text = "report",
+				CaseSensitive = true,
+			};
+
+			Assert.IsTrue(viewModel.ToColumnFilter().CaseSensitive);
+		}
+
+		[TestMethod]
+		public void LoadFrom_RestoresCaseSensitive()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+
+			viewModel.LoadFrom(new DirectoryColumnFilter
+			{
+				Column = DirectoryColumnKind.Name,
+				Text = "report",
+				CaseSensitive = true,
+			});
+
+			Assert.IsTrue(viewModel.CaseSensitive);
+			Assert.IsTrue(viewModel.ToColumnFilter().CaseSensitive);
+		}
+
+		[TestMethod]
+		public void RegexTargetChoices_OfferOnlyNameTargets()
+		{
+			var viewModel = new DirectoryFilterViewModel(
+				DirectoryColumnKind.Name,
+				DirectoryFilterSpec.Empty,
+				localize: key => key);
+
+			Assert.AreEqual(2, viewModel.RegexTargetChoices.Length);
+			CollectionAssert.DoesNotContain(viewModel.RegexTargetChoices, Strings.FilterTargetFullPath);
+			Assert.AreEqual(0, viewModel.RegexTargetIndex);
+
+			viewModel.RegexTargetIndex = 1;
+			Assert.AreEqual(DirectoryRegexTarget.DisplayName, viewModel.RegexTarget);
+
+			// A stale index from the removed target must be ignored.
+			viewModel.RegexTargetIndex = 2;
+			Assert.AreEqual(DirectoryRegexTarget.DisplayName, viewModel.RegexTarget);
+		}
+
+		[TestMethod]
 		public void Constructor_SeedsRegexMode()
 		{
 			var initial = new DirectoryFilterSpec
 			{
-				Regex = new DirectoryRegexOptions(@"\.md$", DirectoryRegexTarget.FullPath, IgnoreCase: false),
+				Regex = new DirectoryRegexOptions(@"\.md$", DirectoryRegexTarget.DisplayName, IgnoreCase: false),
 			};
 
 			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, initial);
 
 			Assert.IsTrue(viewModel.UseRegex);
 			Assert.AreEqual(@"\.md$", viewModel.RegexPattern);
-			Assert.AreEqual((int)DirectoryRegexTarget.FullPath, viewModel.RegexTargetIndex);
+			Assert.AreEqual((int)DirectoryRegexTarget.DisplayName, viewModel.RegexTargetIndex);
 			Assert.IsFalse(viewModel.RegexIgnoreCase);
+		}
+
+		[TestMethod]
+		public void Constructor_MapsLegacyFullPathRegexTargetToRawName()
+		{
+			var initial = new DirectoryFilterSpec
+			{
+				Regex = new DirectoryRegexOptions(@"\.md$", DirectoryRegexTarget.FullPath, IgnoreCase: true),
+			};
+
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, initial);
+
+			Assert.AreEqual(0, viewModel.RegexTargetIndex);
+			Assert.AreEqual(DirectoryRegexTarget.RawName, viewModel.RegexTarget);
 		}
 
 		[TestMethod]
@@ -207,14 +290,14 @@ namespace Files.App.UnitTests.Filtering
 			var condition = new DirectoryColumnFilter
 			{
 				Column = DirectoryColumnKind.Name,
-				Regex = new DirectoryRegexOptions(@"^C:\\Items\\.*\.txt$", DirectoryRegexTarget.FullPath, IgnoreCase: false),
+				Regex = new DirectoryRegexOptions(@"^report$", DirectoryRegexTarget.DisplayName, IgnoreCase: false),
 			};
 
 			viewModel.LoadFrom(condition);
 
 			Assert.IsTrue(viewModel.UseRegex);
-			Assert.AreEqual(@"^C:\\Items\\.*\.txt$", viewModel.RegexPattern);
-			Assert.AreEqual((int)DirectoryRegexTarget.FullPath, viewModel.RegexTargetIndex);
+			Assert.AreEqual(@"^report$", viewModel.RegexPattern);
+			Assert.AreEqual((int)DirectoryRegexTarget.DisplayName, viewModel.RegexTargetIndex);
 			Assert.IsFalse(viewModel.RegexIgnoreCase);
 			Assert.IsTrue(viewModel.IsActive);
 			Assert.AreEqual(condition.Regex, viewModel.ToColumnFilter().Regex);

@@ -1943,6 +1943,9 @@
   <data name="FilterRegexIgnoreCase" xml:space="preserve">
     <value>Match case</value>
   </data>
+  <data name="FilterCaseSensitive" xml:space="preserve">
+    <value>Match case</value>
+  </data>
   <data name="FilterTargetRawName" xml:space="preserve">
     <value>Full file name (includes extension)</value>
   </data>

@@ -438,6 +438,122 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void Wildcard_RawNameScope_MatchesHiddenExtension()
+		{
+			var items = new[] { CreateItem(1, "report.txt", displayName: "report") };
+			var rawNameSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Wildcard,
+					Text = "*.txt",
+					Scope = DirectoryNameScope.RawName,
+				}],
+			};
+			var displayNameSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Wildcard,
+					Text = "*.txt",
+				}],
+			};
+
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, rawNameSpec).ToArray());
+			Assert.AreEqual(0, DirectoryFilterEvaluator.Evaluate(items, displayNameSpec).Count);
+		}
+
+		[TestMethod]
+		public void FromKeywordText_WildcardCondition_UsesRawNameScope()
+		{
+			var spec = DirectoryFilterSpec.FromKeywordText("*.txt report");
+
+			var wildcard = spec.Columns.Single(column => column.Operator is DirectoryTextOperator.Wildcard);
+			var contains = spec.Columns.Single(column => column.Operator is DirectoryTextOperator.Contains);
+
+			Assert.AreEqual(DirectoryNameScope.RawName, wildcard.Scope);
+			Assert.AreEqual(DirectoryNameScope.DisplayName, contains.Scope);
+		}
+
+		[TestMethod]
+		public void KeywordWildcard_MatchesItemsWhoseDisplayNameHidesTheExtension()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "report.txt", displayName: "report"),
+				CreateItem(2, "shortcut.lnk", displayName: "shortcut"),
+				CreateItem(3, "notes.md", displayName: "notes"),
+			};
+
+			CollectionAssert.AreEqual(
+				new long[] { 1 },
+				DirectoryFilterEvaluator.Evaluate(items, DirectoryFilterSpec.FromKeywordText("*.txt")).ToArray());
+			CollectionAssert.AreEqual(
+				new long[] { 2 },
+				DirectoryFilterEvaluator.Evaluate(items, DirectoryFilterSpec.FromKeywordText("*.lnk")).ToArray());
+		}
+
+		[TestMethod]
+		public void CaseSensitiveText_RejectsDifferentCase()
+		{
+			var items = new[] { CreateItem(1, "Report.txt") };
+			var sensitiveSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Contains,
+					Text = "report",
+					CaseSensitive = true,
+				}],
+			};
+			var insensitiveSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Contains,
+					Text = "report",
+				}],
+			};
+
+			Assert.AreEqual(0, DirectoryFilterEvaluator.Evaluate(items, sensitiveSpec).Count);
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, insensitiveSpec).ToArray());
+		}
+
+		[TestMethod]
+		public void CaseSensitiveWildcard_RequiresExactCase()
+		{
+			var items = new[] { CreateItem(1, "Report.TXT", displayName: "Report") };
+			var sensitiveSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Wildcard,
+					Text = "*.txt",
+					Scope = DirectoryNameScope.RawName,
+					CaseSensitive = true,
+				}],
+			};
+			var insensitiveSpec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Wildcard,
+					Text = "*.txt",
+					Scope = DirectoryNameScope.RawName,
+				}],
+			};
+
+			Assert.AreEqual(0, DirectoryFilterEvaluator.Evaluate(items, sensitiveSpec).Count);
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, insensitiveSpec).ToArray());
+		}
+
+		[TestMethod]
 		public void FromKeywordText_SplitsOnSpaceAndCommas()
 		{
 			var textSpec = DirectoryFilterSpec.FromKeywordText("报告, 2026 目标");

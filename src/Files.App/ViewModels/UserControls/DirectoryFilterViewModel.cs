@@ -56,6 +56,15 @@ namespace Files.App.ViewModels.UserControls
 	{
 		private static readonly long[] SizeUnitMultipliers = [1, 1024, 1024L * 1024, 1024L * 1024 * 1024];
 
+		/// <summary>
+		/// Regex name fields offered by the editor. Full path remains only for decoding legacy addresses.
+		/// </summary>
+		private static readonly DirectoryRegexTarget[] RegexTargets =
+		[
+			DirectoryRegexTarget.RawName,
+			DirectoryRegexTarget.DisplayName,
+		];
+
 		private readonly DirectoryColumnKind column;
 		private readonly Func<DateTimeOffset> clock;
 		private readonly Func<string, string> localize;
@@ -73,6 +82,9 @@ namespace Files.App.ViewModels.UserControls
 
 		[ObservableProperty]
 		private string? text;
+
+		[ObservableProperty]
+		private bool caseSensitive;
 
 		[ObservableProperty]
 		private int operatorIndex;
@@ -105,10 +117,43 @@ namespace Files.App.ViewModels.UserControls
 		private string? regexPattern;
 
 		[ObservableProperty]
-		private int regexTargetIndex;
-
-		[ObservableProperty]
 		private bool regexIgnoreCase = true;
+
+		private DirectoryRegexTarget regexTarget = DirectoryRegexTarget.RawName;
+
+		/// <summary>
+		/// Regex name field to match against.
+		/// </summary>
+		public DirectoryRegexTarget RegexTarget
+		{
+			get => regexTarget;
+			set
+			{
+				// Addresses written before the full path target was removed keep working by matching
+				// the full file name instead.
+				var normalized = value is DirectoryRegexTarget.FullPath
+					? DirectoryRegexTarget.RawName
+					: value;
+
+				if (SetProperty(ref regexTarget, normalized))
+					OnPropertyChanged(nameof(RegexTargetIndex));
+			}
+		}
+
+		/// <summary>
+		/// <see cref="RegexTarget"/> as a combo box index. Indexes outside the offered targets are ignored.
+		/// </summary>
+		public int RegexTargetIndex
+		{
+			get => Math.Max(0, Array.IndexOf(RegexTargets, RegexTarget));
+			set
+			{
+				if (value is < 0 || value >= RegexTargets.Length)
+					return;
+
+				RegexTarget = RegexTargets[value];
+			}
+		}
 
 		public DirectoryFilterViewModel(DirectoryColumnKind column, DirectoryFilterSpec currentSpec, Func<DateTimeOffset>? clock = null, Func<string, string>? localize = null)
 		{
@@ -203,7 +248,6 @@ namespace Files.App.ViewModels.UserControls
 		[
 			localize(Strings.FilterTargetRawName),
 			localize(Strings.FilterTargetDisplayName),
-			localize(Strings.FilterTargetFullPath),
 		];
 
 		/// <summary>
@@ -230,7 +274,9 @@ namespace Files.App.ViewModels.UserControls
 			{
 				DirectoryColumnKind.Name => UseRegex
 					? !string.IsNullOrWhiteSpace(RegexPattern)
-					: !string.IsNullOrWhiteSpace(Text) || HasLengthValue,
+					: IsLengthOperator
+						? HasLengthValue
+						: !string.IsNullOrWhiteSpace(Text),
 				DirectoryColumnKind.Type => Choices.Any(option => option.IsSelected),
 				DirectoryColumnKind.Extension => ExtensionChoices.Any(option => option.IsSelected) || IncludeEmpty,
 				DirectoryColumnKind.Tags => Choices.Any(option => option.IsSelected) || IncludeEmpty,
@@ -395,13 +441,15 @@ namespace Files.App.ViewModels.UserControls
 				Join = Join,
 				Column = column,
 				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard),
-				Text = useRegex ? null : Text?.Trim(),
+				// Length operators compare the name length, so a leftover draft text must not leak into the condition.
+				Text = useRegex || IsLengthOperator ? null : Text?.Trim(),
 				Length = useRegex ? null : Length,
 				Scope = Scope,
+				CaseSensitive = column is DirectoryColumnKind.Name && CaseSensitive,
 				Regex = useRegex
 					? new DirectoryRegexOptions(
 						RegexPattern!.Trim(),
-						(DirectoryRegexTarget)Math.Clamp(RegexTargetIndex, 0, 2),
+						RegexTarget,
 						RegexIgnoreCase)
 					: null,
 				Values = values,
@@ -420,6 +468,7 @@ namespace Files.App.ViewModels.UserControls
 		{
 			Join = filter.Join;
 			Scope = filter.Scope;
+			CaseSensitive = filter.CaseSensitive;
 			Length = filter.Length;
 
 			switch (filter.Column)
@@ -432,7 +481,7 @@ namespace Files.App.ViewModels.UserControls
 					{
 						UseRegex = true;
 						RegexPattern = regex.Pattern;
-						RegexTargetIndex = (int)regex.Target;
+						RegexTarget = regex.Target;
 						RegexIgnoreCase = regex.IgnoreCase;
 
 						if (regex.Target is DirectoryRegexTarget.RawName or DirectoryRegexTarget.DisplayName)
@@ -512,7 +561,7 @@ namespace Files.App.ViewModels.UserControls
 		private DirectoryRegexOptions BuildRegexOptions()
 			=> new(
 				RegexPattern?.Trim() ?? string.Empty,
-				(DirectoryRegexTarget)Math.Clamp(RegexTargetIndex, 0, 2),
+				RegexTarget,
 				RegexIgnoreCase);
 
 		private static List<string> GetSelectedValues(IReadOnlyList<DirectoryFilterValueOption> options)
@@ -549,6 +598,7 @@ namespace Files.App.ViewModels.UserControls
 					{
 						Text = nameFilter.Text;
 						OperatorIndex = (int)nameFilter.Operator;
+						CaseSensitive = nameFilter.CaseSensitive;
 					}
 					else if (!string.IsNullOrEmpty(spec.NameContains))
 					{
@@ -560,7 +610,7 @@ namespace Files.App.ViewModels.UserControls
 					{
 						UseRegex = true;
 						RegexPattern = regex.Pattern;
-						RegexTargetIndex = (int)regex.Target;
+						RegexTarget = regex.Target;
 						RegexIgnoreCase = regex.IgnoreCase;
 					}
 					break;

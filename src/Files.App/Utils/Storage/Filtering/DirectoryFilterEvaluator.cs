@@ -25,8 +25,9 @@ namespace Files.App.Utils.Storage
 
 		/// <summary>
 		/// Wildcard patterns repeat per item and per projection, so their translated expressions are shared.
+		/// Case sensitivity is part of the key because it changes the compiled options.
 		/// </summary>
-		private static readonly ConcurrentDictionary<string, Regex> WildcardRegexCache = new(StringComparer.Ordinal);
+		private static readonly ConcurrentDictionary<(string Pattern, bool CaseSensitive), Regex> WildcardRegexCache = new();
 
 		public static IReadOnlyList<long> Evaluate(IReadOnlyList<DirectoryItemFilterSnapshot> items, DirectoryFilterSpec spec)
 			=> EvaluateDetailed(items, spec).ItemIds;
@@ -197,17 +198,21 @@ namespace Files.App.Utils.Storage
 			if (string.IsNullOrEmpty(filter.Text))
 				return true;
 
+			var comparison = filter.CaseSensitive
+				? StringComparison.Ordinal
+				: StringComparison.OrdinalIgnoreCase;
+
 			return filter.Operator switch
 			{
-				DirectoryTextOperator.NotContains => !value.Contains(filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.StartsWith => value.StartsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.StartsWithNot => !value.StartsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.EndsWith => value.EndsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.EndsWithNot => !value.EndsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.Equals => string.Equals(value, filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.NotEquals => !string.Equals(value, filter.Text, StringComparison.OrdinalIgnoreCase),
-				DirectoryTextOperator.Wildcard => MatchesWildcard(value, filter.Text),
-				_ => value.Contains(filter.Text, StringComparison.OrdinalIgnoreCase),
+				DirectoryTextOperator.NotContains => !value.Contains(filter.Text, comparison),
+				DirectoryTextOperator.StartsWith => value.StartsWith(filter.Text, comparison),
+				DirectoryTextOperator.StartsWithNot => !value.StartsWith(filter.Text, comparison),
+				DirectoryTextOperator.EndsWith => value.EndsWith(filter.Text, comparison),
+				DirectoryTextOperator.EndsWithNot => !value.EndsWith(filter.Text, comparison),
+				DirectoryTextOperator.Equals => string.Equals(value, filter.Text, comparison),
+				DirectoryTextOperator.NotEquals => !string.Equals(value, filter.Text, comparison),
+				DirectoryTextOperator.Wildcard => MatchesWildcard(value, filter.Text, filter.CaseSensitive),
+				_ => value.Contains(filter.Text, comparison),
 			};
 		}
 
@@ -217,15 +222,15 @@ namespace Files.App.Utils.Storage
 				or DirectoryTextOperator.LengthEquals
 				or DirectoryTextOperator.LengthNotEquals;
 
-		private static bool MatchesWildcard(string value, string pattern)
-			=> WildcardRegexCache.GetOrAdd(pattern, CreateWildcardRegex).IsMatch(value);
+		private static bool MatchesWildcard(string value, string pattern, bool caseSensitive)
+			=> WildcardRegexCache.GetOrAdd((pattern, caseSensitive), CreateWildcardRegex).IsMatch(value);
 
-		private static Regex CreateWildcardRegex(string pattern)
+		private static Regex CreateWildcardRegex((string Pattern, bool CaseSensitive) key)
 		{
-			var builder = new StringBuilder(pattern.Length + 8);
+			var builder = new StringBuilder(key.Pattern.Length + 8);
 			builder.Append('^');
 
-			foreach (var character in pattern)
+			foreach (var character in key.Pattern)
 			{
 				switch (character)
 				{
@@ -245,7 +250,11 @@ namespace Files.App.Utils.Storage
 
 			builder.Append('$');
 
-			return new Regex(builder.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, DirectoryRegexFilter.MatchTimeout);
+			var options = RegexOptions.CultureInvariant;
+			if (!key.CaseSensitive)
+				options |= RegexOptions.IgnoreCase;
+
+			return new Regex(builder.ToString(), options, DirectoryRegexFilter.MatchTimeout);
 		}
 
 		private static bool MatchesChoices(string? value, DirectoryColumnFilter filter, bool normalizeExtension)

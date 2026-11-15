@@ -1922,6 +1922,9 @@
   <data name="FilterRegexIgnoreCase" xml:space="preserve">
     <value>區分大小寫</value>
   </data>
+  <data name="FilterCaseSensitive" xml:space="preserve">
+    <value>區分大小寫</value>
+  </data>
   <data name="FilterTargetRawName" xml:space="preserve">
     <value>完整檔案名稱（含副檔名）</value>
   </data>

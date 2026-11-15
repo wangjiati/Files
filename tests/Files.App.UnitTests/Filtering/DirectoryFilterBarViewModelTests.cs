@@ -248,6 +248,27 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void LoadFrom_CaseSensitiveNameSpec_SwitchesToAdvanced()
+		{
+			var viewModel = new DirectoryFilterBarViewModel();
+
+			viewModel.LoadFrom(new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Contains,
+					Text = "report",
+					CaseSensitive = true,
+				}],
+			});
+
+			Assert.AreEqual(FilterMode.Advanced, viewModel.Mode);
+			Assert.IsTrue(viewModel.NameCondition.CaseSensitive);
+			Assert.IsTrue(viewModel.BuildSpec().Columns.Single().CaseSensitive);
+		}
+
+		[TestMethod]
 		public void LoadFrom_EmptySpec_ClearsBar()
 		{
 			var viewModel = new DirectoryFilterBarViewModel
@@ -411,6 +432,28 @@ namespace Files.App.UnitTests.Filtering
 			});
 
 			Assert.AreEqual(0, raised);
+		}
+
+		[TestMethod]
+		public void BuildSpec_LengthOperatorWithoutValue_DropsHiddenText()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.NameCondition.Text = "report";
+			viewModel.NameCondition.OperatorIndex = (int)DirectoryTextOperator.LengthGreaterThan;
+
+			Assert.IsFalse(viewModel.NameCondition.IsActive);
+			Assert.IsTrue(viewModel.BuildSpec().IsEmpty);
+
+			viewModel.NameCondition.Length = 6;
+
+			Assert.IsTrue(viewModel.NameCondition.IsActive);
+
+			var column = viewModel.BuildSpec().Columns.Single();
+			Assert.IsNull(column.Text);
+			Assert.AreEqual(6, column.Length);
 		}
 
 		[TestMethod]

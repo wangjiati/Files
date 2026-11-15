@@ -60,11 +60,27 @@
 						Header="{helpers:ResourceString Name=FilterRegexTarget}"
 						HorizontalAlignment="Stretch"
 						SelectedIndex="{x:Bind ViewModel.ScopeIndex, Mode=TwoWay}" />
-					<TextBox
-						x:Name="FilterTextBox"
-						PlaceholderText="{helpers:ResourceString Name=Filter}"
-						Text="{x:Bind ViewModel.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-						Visibility="{x:Bind ViewModel.IsLengthOperator, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
+					<Grid
+						ColumnSpacing="6"
+						Visibility="{x:Bind ViewModel.IsLengthOperator, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<TextBox
+							x:Name="FilterTextBox"
+							Grid.Column="0"
+							PlaceholderText="{helpers:ResourceString Name=Filter}"
+							Text="{x:Bind ViewModel.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+						<CheckBox
+							x:Name="CaseSensitiveCheck"
+							Grid.Column="1"
+							MinWidth="0"
+							AutomationProperties.Name="{helpers:ResourceString Name=FilterCaseSensitive}"
+							Content="Aa"
+							IsChecked="{x:Bind ViewModel.CaseSensitive, Mode=TwoWay}"
+							VerticalAlignment="Bottom" />
+					</Grid>
 					<NumberBox
 						x:Name="LengthBox"
 						Header="{helpers:ResourceString Name=FilterNameLength}"
