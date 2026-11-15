@@ -31,11 +31,14 @@ namespace Files.App.UserControls
 		{
 			ViewModel = viewModel;
 			TitleText.Text = viewModel.Title;
-			ColumnEditor.ViewModel = viewModel;
+			ColumnEditor.Initialize(viewModel);
 		}
 
 		private void Apply_Click(object sender, RoutedEventArgs e)
-			=> ApplyRequested?.Invoke(this, EventArgs.Empty);
+		{
+			if (ColumnEditor.Commit())
+				ApplyRequested?.Invoke(this, EventArgs.Empty);
+		}
 
 		private void Clear_Click(object sender, RoutedEventArgs e)
 			=> ClearRequested?.Invoke(this, EventArgs.Empty);
