@@ -176,6 +176,24 @@ namespace Files.App.ViewModels.UserControls
 		/// </summary>
 		public string? RegexError { get; private set; }
 
+		/// <summary>
+		/// Whether this editor currently contributes a meaningful condition to the filter chain.
+		/// Blank drafts stay inactive so they never establish an OR group that matches everything.
+		/// </summary>
+		public bool IsActive
+			=> column switch
+			{
+				DirectoryColumnKind.Name => UseRegex
+					? !string.IsNullOrWhiteSpace(RegexPattern)
+					: !string.IsNullOrWhiteSpace(Text) || HasLengthValue,
+				DirectoryColumnKind.Type => Choices.Any(option => option.IsSelected),
+				DirectoryColumnKind.Extension => ExtensionChoices.Any(option => option.IsSelected) || IncludeEmpty,
+				DirectoryColumnKind.Tags => Choices.Any(option => option.IsSelected) || IncludeEmpty,
+				DirectoryColumnKind.Size => ToBytes(MinSizeText) is not null || ToBytes(MaxSizeText) is not null,
+				DirectoryColumnKind.ModifiedDate or DirectoryColumnKind.CreatedDate => MinDate is not null || MaxDate is not null,
+				_ => false,
+			};
+
 		public ObservableCollection<DirectoryFilterValueOption> Choices { get; private set; } = [];
 
 		public ObservableCollection<DirectoryFilterValueOption> ExtensionChoices { get; private set; } = [];
@@ -345,6 +363,8 @@ namespace Files.App.ViewModels.UserControls
 		/// </summary>
 		public DirectoryColumnFilter ToColumnFilter()
 		{
+			var useRegex = column is DirectoryColumnKind.Name && UseRegex && !string.IsNullOrWhiteSpace(RegexPattern);
+
 			List<string> values = column switch
 			{
 				DirectoryColumnKind.Extension => GetSelectedValues(ExtensionChoices),
@@ -357,9 +377,15 @@ namespace Files.App.ViewModels.UserControls
 				Join = Join,
 				Column = column,
 				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard),
-				Text = Text?.Trim(),
-				Length = Length,
+				Text = useRegex ? null : Text?.Trim(),
+				Length = useRegex ? null : Length,
 				Scope = Scope,
+				Regex = useRegex
+					? new DirectoryRegexOptions(
+						RegexPattern!.Trim(),
+						(DirectoryRegexTarget)Math.Clamp(RegexTargetIndex, 0, 2),
+						RegexIgnoreCase)
+					: null,
 				Values = values,
 				IncludeEmpty = column is DirectoryColumnKind.Extension or DirectoryColumnKind.Tags && IncludeEmpty,
 				MinSize = column is DirectoryColumnKind.Size ? ToBytes(MinSizeText) : null,
@@ -383,6 +409,26 @@ namespace Files.App.ViewModels.UserControls
 				case DirectoryColumnKind.Name:
 					Text = filter.Text;
 					OperatorIndex = (int)filter.Operator;
+
+					if (filter.Regex is { } regex)
+					{
+						UseRegex = true;
+						RegexPattern = regex.Pattern;
+						RegexTargetIndex = (int)regex.Target;
+						RegexIgnoreCase = regex.IgnoreCase;
+
+						if (regex.Target is DirectoryRegexTarget.RawName or DirectoryRegexTarget.DisplayName)
+						{
+							Scope = regex.Target is DirectoryRegexTarget.RawName
+								? DirectoryNameScope.RawName
+								: DirectoryNameScope.DisplayName;
+						}
+					}
+					else
+					{
+						UseRegex = false;
+						RegexPattern = null;
+					}
 					break;
 
 				case DirectoryColumnKind.Type:
@@ -499,6 +545,13 @@ namespace Files.App.ViewModels.UserControls
 
 		private static List<string> GetSelectedValues(IReadOnlyList<DirectoryFilterValueOption> options)
 			=> options.Where(option => option.IsSelected).Select(option => option.Value).ToList();
+
+		private bool HasLengthValue
+			=> Length is not null
+				&& (DirectoryTextOperator)OperatorIndex is DirectoryTextOperator.LengthGreaterThan
+					or DirectoryTextOperator.LengthLessThan
+					or DirectoryTextOperator.LengthEquals
+					or DirectoryTextOperator.LengthNotEquals;
 
 		private static void ApplySelection(IReadOnlyList<DirectoryFilterValueOption> options, IReadOnlyList<string> values)
 		{

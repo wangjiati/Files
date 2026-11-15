@@ -81,6 +81,11 @@ namespace Files.App.Utils.Storage
 		public DirectoryNameScope Scope { get; init; } = DirectoryNameScope.DisplayName;
 
 		/// <summary>
+		/// Per-condition regular expression. When set on a name condition it replaces the text comparison.
+		/// </summary>
+		public DirectoryRegexOptions? Regex { get; init; }
+
+		/// <summary>
 		/// Text used by <see cref="DirectoryColumnKind.Name"/> conditions. Wildcard conditions use it as the pattern.
 		/// </summary>
 		public string? Text { get; init; }

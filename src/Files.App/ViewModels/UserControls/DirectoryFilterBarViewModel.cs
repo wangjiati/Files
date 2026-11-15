@@ -64,9 +64,19 @@ namespace Files.App.ViewModels.UserControls
 		}
 
 		public DirectoryFilterSpec BuildSpec()
-			=> Mode is FilterMode.Basic
-				? DirectoryFilterSpec.FromKeywordText(KeywordText)
-				: new DirectoryFilterSpec { Columns = Conditions.Select(condition => condition.ToColumnFilter()).ToList() };
+		{
+			if (Mode is FilterMode.Basic)
+				return DirectoryFilterSpec.FromKeywordText(KeywordText);
+
+			var columns = Conditions
+				.Where(condition => condition.IsActive)
+				.Select(condition => condition.ToColumnFilter())
+				.ToList();
+
+			return columns.Count is 0
+				? DirectoryFilterSpec.Empty
+				: new DirectoryFilterSpec { Columns = columns };
+		}
 
 		public void AddCondition(DirectoryColumnKind column, DirectoryConditionJoin join)
 		{

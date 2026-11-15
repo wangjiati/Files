@@ -53,7 +53,12 @@ namespace Files.App.Utils.Storage
 				return new([], createError);
 			}
 
-			var stopwatch = regexFilter is null ? null : Stopwatch.StartNew();
+			if (!TryCreateConditionRegexes(spec, out var conditionRegexes, out var conditionError))
+				return new([], conditionError);
+
+			var stopwatch = regexFilter is not null || conditionRegexes is not null
+				? Stopwatch.StartNew()
+				: null;
 
 			try
 			{
@@ -61,16 +66,13 @@ namespace Files.App.Utils.Storage
 				{
 					cancellationToken.ThrowIfCancellationRequested();
 
-					if (regexFilter is not null)
-					{
-						if (stopwatch!.Elapsed > RegexTotalBudget)
-							return new([], DirectoryRegexError.Timeout);
+					if (stopwatch is not null && stopwatch.Elapsed > RegexTotalBudget)
+						return new([], DirectoryRegexError.Timeout);
 
-						if (!regexFilter.IsMatch(items[index]))
-							continue;
-					}
+					if (regexFilter is not null && !regexFilter.IsMatch(items[index]))
+						continue;
 
-					if (Matches(items[index], spec))
+					if (Matches(items[index], spec, conditionRegexes))
 						results.Add(items[index].ItemId);
 				}
 			}
@@ -85,6 +87,17 @@ namespace Files.App.Utils.Storage
 
 		public static bool Matches(in DirectoryItemFilterSnapshot item, DirectoryFilterSpec spec)
 		{
+			if (!TryCreateConditionRegexes(spec, out var conditionRegexes, out _))
+				return false;
+
+			return Matches(item, spec, conditionRegexes);
+		}
+
+		private static bool Matches(
+			in DirectoryItemFilterSnapshot item,
+			DirectoryFilterSpec spec,
+			DirectoryRegexFilter?[]? conditionRegexes)
+		{
 			if (!string.IsNullOrEmpty(spec.NameContains)
 				&& !item.DisplayName.Contains(spec.NameContains, StringComparison.OrdinalIgnoreCase))
 			{
@@ -98,12 +111,12 @@ namespace Files.App.Utils.Storage
 			// and the completed groups are OR-ed together. The first condition starts the first
 			// group, so its Join is not applicable.
 			var total = false;
-			var group = MatchesColumn(item, spec.Columns[0]);
+			var group = MatchesColumn(item, spec.Columns[0], conditionRegexes?[0]);
 
 			for (var index = 1; index < spec.Columns.Count; index++)
 			{
 				var filter = spec.Columns[index];
-				var matches = MatchesColumn(item, filter);
+				var matches = MatchesColumn(item, filter, conditionRegexes?[index]);
 
 				if (filter.Join is DirectoryConditionJoin.Or)
 				{
@@ -119,9 +132,37 @@ namespace Files.App.Utils.Storage
 			return total || group;
 		}
 
-		private static bool MatchesColumn(in DirectoryItemFilterSnapshot item, DirectoryColumnFilter filter)
+		private static bool TryCreateConditionRegexes(
+			DirectoryFilterSpec spec,
+			out DirectoryRegexFilter?[]? conditionRegexes,
+			out DirectoryRegexError error)
+		{
+			conditionRegexes = null;
+			error = DirectoryRegexError.None;
+
+			for (var index = 0; index < spec.Columns.Count; index++)
+			{
+				if (spec.Columns[index].Regex is not { } options)
+					continue;
+
+				conditionRegexes ??= new DirectoryRegexFilter?[spec.Columns.Count];
+
+				if (!DirectoryRegexFilter.TryCreate(options, out var filter, out error))
+					return false;
+
+				conditionRegexes[index] = filter;
+			}
+
+			return true;
+		}
+
+		private static bool MatchesColumn(
+			in DirectoryItemFilterSnapshot item,
+			DirectoryColumnFilter filter,
+			DirectoryRegexFilter? conditionRegex)
 			=> filter.Column switch
 			{
+				DirectoryColumnKind.Name when conditionRegex is not null => conditionRegex.IsMatch(item),
 				DirectoryColumnKind.Name => MatchesText(
 					filter.Scope is DirectoryNameScope.RawName ? item.RawName : item.DisplayName,
 					filter),

@@ -366,6 +366,88 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void ToColumnFilter_IncludesRegex()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty)
+			{
+				UseRegex = true,
+				RegexPattern = @"\.md$",
+				RegexTargetIndex = (int)DirectoryRegexTarget.RawName,
+				RegexIgnoreCase = false,
+				Text = "ignored",
+			};
+
+			var condition = viewModel.ToColumnFilter();
+
+			Assert.IsTrue(viewModel.IsActive);
+			Assert.IsNull(condition.Text);
+			Assert.IsNotNull(condition.Regex);
+			Assert.AreEqual(@"\.md$", condition.Regex!.Pattern);
+			Assert.AreEqual(DirectoryRegexTarget.RawName, condition.Regex.Target);
+			Assert.IsFalse(condition.Regex.IgnoreCase);
+		}
+
+		[TestMethod]
+		public void LoadFrom_RestoresRegexAndRoundTrips()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+			var condition = new DirectoryColumnFilter
+			{
+				Column = DirectoryColumnKind.Name,
+				Regex = new DirectoryRegexOptions(@"^C:\\Items\\.*\.txt$", DirectoryRegexTarget.FullPath, IgnoreCase: false),
+			};
+
+			viewModel.LoadFrom(condition);
+
+			Assert.IsTrue(viewModel.UseRegex);
+			Assert.AreEqual(@"^C:\\Items\\.*\.txt$", viewModel.RegexPattern);
+			Assert.AreEqual((int)DirectoryRegexTarget.FullPath, viewModel.RegexTargetIndex);
+			Assert.IsFalse(viewModel.RegexIgnoreCase);
+			Assert.IsTrue(viewModel.IsActive);
+			Assert.AreEqual(condition.Regex, viewModel.ToColumnFilter().Regex);
+
+			viewModel.LoadFrom(new DirectoryColumnFilter
+			{
+				Column = DirectoryColumnKind.Name,
+				Text = "report",
+			});
+
+			Assert.IsFalse(viewModel.UseRegex);
+			Assert.IsNull(viewModel.ToColumnFilter().Regex);
+		}
+
+		[TestMethod]
+		public void IsActive_UsesColumnValuesAndIgnoresBlankDrafts()
+		{
+			var name = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+			Assert.IsFalse(name.IsActive);
+			name.Text = " ";
+			Assert.IsFalse(name.IsActive);
+			name.Text = "report";
+			Assert.IsTrue(name.IsActive);
+			name.Text = null;
+			name.OperatorIndex = (int)DirectoryTextOperator.LengthEquals;
+			name.Length = 6;
+			Assert.IsTrue(name.IsActive);
+
+			var type = new DirectoryFilterViewModel(DirectoryColumnKind.Type, DirectoryFilterSpec.Empty);
+			type.LoadChoices([new DirectoryFilterChoice("Text Document", "Text Document")]);
+			Assert.IsFalse(type.IsActive);
+			type.Choices[0].IsSelected = true;
+			Assert.IsTrue(type.IsActive);
+
+			var size = new DirectoryFilterViewModel(DirectoryColumnKind.Size, DirectoryFilterSpec.Empty);
+			Assert.IsFalse(size.IsActive);
+			size.MinSizeText = "1";
+			Assert.IsTrue(size.IsActive);
+
+			var date = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty);
+			Assert.IsFalse(date.IsActive);
+			date.MaxDate = MaxDate;
+			Assert.IsTrue(date.IsActive);
+		}
+
+		[TestMethod]
 		[DataRow(DirectoryDatePreset.LastHour, -1)]
 		[DataRow(DirectoryDatePreset.Last6Hours, -6)]
 		[DataRow(DirectoryDatePreset.Last24Hours, -24)]

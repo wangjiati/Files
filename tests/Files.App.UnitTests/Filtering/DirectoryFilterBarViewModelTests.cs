@@ -51,6 +51,47 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void BuildSpec_AdvancedMode_SkipsBlankDraftConditions()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.AddCondition(DirectoryColumnKind.Name, DirectoryConditionJoin.And);
+
+			var spec = viewModel.BuildSpec();
+
+			Assert.AreEqual(1, viewModel.Conditions.Count);
+			Assert.AreEqual(0, spec.Columns.Count);
+			Assert.IsTrue(spec.IsEmpty);
+		}
+
+		[TestMethod]
+		public void BuildSpec_AdvancedMode_OrDraftDoesNotDisableRealConditions()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.AddCondition(DirectoryColumnKind.Name, DirectoryConditionJoin.And);
+			viewModel.Conditions[0].Text = "report";
+			viewModel.AddCondition(DirectoryColumnKind.Name, DirectoryConditionJoin.Or);
+
+			var spec = viewModel.BuildSpec();
+
+			Assert.AreEqual(1, spec.Columns.Count);
+			Assert.AreEqual("report", spec.Columns[0].Text);
+
+			var items = new[]
+			{
+				new DirectoryItemFilterSnapshot(1, "report.txt", "report.txt", @"C:\report.txt", ".txt", null, [], 0, null, null, false),
+				new DirectoryItemFilterSnapshot(2, "other.txt", "other.txt", @"C:\other.txt", ".txt", null, [], 0, null, null, false),
+			};
+
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, spec).ToArray());
+		}
+
+		[TestMethod]
 		public void ModeSwitch_PreservesBothConfigurations()
 		{
 			var viewModel = new DirectoryFilterBarViewModel

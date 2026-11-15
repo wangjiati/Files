@@ -682,6 +682,67 @@ namespace Files.App.UnitTests.Filtering
 			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, displayNameLength).ToArray());
 		}
 
+		[TestMethod]
+		public void NameCondition_InlineRegex_MatchesSelectedTarget()
+		{
+			var item = CreateItem(1, "report.txt", displayName: "report");
+			var displayNameSpec = CreateRegexConditionSpec(
+				new DirectoryRegexOptions("^report$", DirectoryRegexTarget.DisplayName, IgnoreCase: true));
+			var rawNameSpec = CreateRegexConditionSpec(
+				new DirectoryRegexOptions(@"^report\.txt$", DirectoryRegexTarget.RawName, IgnoreCase: true));
+			var fullPathSpec = CreateRegexConditionSpec(
+				new DirectoryRegexOptions(@"^C:\\Items\\report\.txt$", DirectoryRegexTarget.FullPath, IgnoreCase: true));
+			var missSpec = CreateRegexConditionSpec(
+				new DirectoryRegexOptions("^other$", DirectoryRegexTarget.DisplayName, IgnoreCase: true));
+			var textOverriddenSpec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Text = "other",
+						Regex = new DirectoryRegexOptions("^report$", DirectoryRegexTarget.DisplayName, IgnoreCase: true),
+					},
+				],
+			};
+
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(new[] { item }, displayNameSpec).ToArray());
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(new[] { item }, rawNameSpec).ToArray());
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(new[] { item }, fullPathSpec).ToArray());
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(new[] { item }, textOverriddenSpec).ToArray());
+			Assert.AreEqual(0, DirectoryFilterEvaluator.Evaluate(new[] { item }, missSpec).Count);
+			Assert.IsTrue(DirectoryFilterEvaluator.Matches(item, rawNameSpec));
+		}
+
+		[TestMethod]
+		public void NameCondition_InlineRegex_InvalidPattern_ReturnsInvalidPattern()
+		{
+			var item = CreateItem(1, "report.txt", displayName: "report");
+			var spec = CreateRegexConditionSpec(
+				new DirectoryRegexOptions("[", DirectoryRegexTarget.DisplayName, IgnoreCase: true));
+
+			var result = DirectoryFilterEvaluator.EvaluateDetailed(new[] { item }, spec);
+
+			Assert.AreEqual(DirectoryRegexError.InvalidPattern, result.Error);
+			Assert.AreEqual(0, result.ItemIds.Count);
+		}
+
+		private static DirectoryFilterSpec CreateRegexConditionSpec(DirectoryRegexOptions regex)
+		{
+			return new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Regex = regex,
+					},
+				],
+			};
+		}
+
 		private static DirectoryItemFilterSnapshot CreateItem(
 			long id,
 			string rawName,
