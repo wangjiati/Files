@@ -51,6 +51,15 @@ namespace Files.App.Utils.Storage
 	}
 
 	/// <summary>
+	/// Name field a text condition compares against.
+	/// </summary>
+	public enum DirectoryNameScope
+	{
+		DisplayName,
+		RawName,
+	}
+
+	/// <summary>
 	/// A single immutable column condition. Conditions are joined left to right in a chain with
 	/// AND having higher precedence than OR, while multiple selected values inside one condition
 	/// are combined with OR.
@@ -65,6 +74,11 @@ namespace Files.App.Utils.Storage
 		public DirectoryColumnKind Column { get; init; }
 
 		public DirectoryTextOperator Operator { get; init; } = DirectoryTextOperator.Contains;
+
+		/// <summary>
+		/// Name field used by <see cref="DirectoryColumnKind.Name"/> text and length conditions.
+		/// </summary>
+		public DirectoryNameScope Scope { get; init; } = DirectoryNameScope.DisplayName;
 
 		/// <summary>
 		/// Text used by <see cref="DirectoryColumnKind.Name"/> conditions. Wildcard conditions use it as the pattern.

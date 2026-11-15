@@ -122,7 +122,9 @@ namespace Files.App.Utils.Storage
 		private static bool MatchesColumn(in DirectoryItemFilterSnapshot item, DirectoryColumnFilter filter)
 			=> filter.Column switch
 			{
-				DirectoryColumnKind.Name => MatchesText(item.DisplayName, filter),
+				DirectoryColumnKind.Name => MatchesText(
+					filter.Scope is DirectoryNameScope.RawName ? item.RawName : item.DisplayName,
+					filter),
 				DirectoryColumnKind.Type => MatchesChoices(item.ItemType, filter, normalizeExtension: false),
 				DirectoryColumnKind.Extension => MatchesChoices(item.Extension, filter, normalizeExtension: true),
 				DirectoryColumnKind.Tags => MatchesTags(item.TagIds, filter),

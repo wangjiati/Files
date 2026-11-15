@@ -300,5 +300,143 @@ namespace Files.App.UnitTests.Filtering
 			Assert.AreEqual(new DateTimeOffset(2026, 3, 9, 0, 0, 0, now.Offset), viewModel.MinDate);
 			Assert.AreEqual(new DateTimeOffset(2026, 3, 16, 0, 0, 0, now.Offset).AddTicks(-1), viewModel.MaxDate);
 		}
+
+		[TestMethod]
+		public void ToColumnFilter_IncludesJoinScopeLengthAndDatePreset()
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.ModifiedDate, DirectoryFilterSpec.Empty, () => now, key => key)
+			{
+				Join = DirectoryConditionJoin.Or,
+				Scope = DirectoryNameScope.RawName,
+				Length = 12,
+			};
+
+			viewModel.ApplyDatePreset(DirectoryDatePreset.Last6Hours);
+			var condition = viewModel.ToColumnFilter();
+
+			Assert.AreEqual(DirectoryColumnKind.ModifiedDate, condition.Column);
+			Assert.AreEqual(DirectoryConditionJoin.Or, condition.Join);
+			Assert.AreEqual(DirectoryNameScope.RawName, condition.Scope);
+			Assert.AreEqual(12, condition.Length);
+			Assert.AreEqual(now.AddHours(-6), condition.MinDate);
+			Assert.AreEqual(now, condition.MaxDate);
+		}
+
+		[TestMethod]
+		public void LoadFrom_RestoresJoinScopeLengthAndText()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+			var condition = new DirectoryColumnFilter
+			{
+				Column = DirectoryColumnKind.Name,
+				Join = DirectoryConditionJoin.Or,
+				Operator = DirectoryTextOperator.EndsWith,
+				Text = ".txt",
+				Length = 9,
+				Scope = DirectoryNameScope.RawName,
+			};
+
+			viewModel.LoadFrom(condition);
+
+			Assert.AreEqual(DirectoryConditionJoin.Or, viewModel.Join);
+			Assert.AreEqual((int)DirectoryTextOperator.EndsWith, viewModel.OperatorIndex);
+			Assert.AreEqual(".txt", viewModel.Text);
+			Assert.AreEqual(9, viewModel.Length);
+			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.Scope);
+		}
+
+		[TestMethod]
+		public void LoadFrom_ChoiceCondition_SelectsAlreadyLoadedChoices()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Tags, DirectoryFilterSpec.Empty);
+			viewModel.LoadChoices(
+				[new DirectoryFilterChoice("work", "Work"), new DirectoryFilterChoice("home", "Home")]);
+
+			viewModel.LoadFrom(new DirectoryColumnFilter
+			{
+				Column = DirectoryColumnKind.Tags,
+				Values = ["work"],
+				IncludeEmpty = true,
+			});
+
+			Assert.IsTrue(viewModel.Choices.Single(x => x.Value == "work").IsSelected);
+			Assert.IsFalse(viewModel.Choices.Single(x => x.Value == "home").IsSelected);
+			Assert.IsTrue(viewModel.IncludeEmpty);
+		}
+
+		[TestMethod]
+		[DataRow(DirectoryDatePreset.LastHour, -1)]
+		[DataRow(DirectoryDatePreset.Last6Hours, -6)]
+		[DataRow(DirectoryDatePreset.Last24Hours, -24)]
+		public void ApplyDatePreset_ComputesRelativeRange(DirectoryDatePreset preset, int hourOffset)
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty, () => now, key => key);
+
+			viewModel.ApplyDatePreset(preset);
+
+			Assert.AreEqual(now.AddHours(hourOffset), viewModel.MinDate);
+			Assert.AreEqual(now, viewModel.MaxDate);
+		}
+
+		[TestMethod]
+		[DataRow(DirectoryDatePreset.Last3Days, -3)]
+		[DataRow(DirectoryDatePreset.Last7Days, -7)]
+		[DataRow(DirectoryDatePreset.Last30Days, -30)]
+		public void ApplyDatePreset_DayPresets_CountBackFromClock(DirectoryDatePreset preset, int dayOffset)
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty, () => now, key => key);
+
+			viewModel.ApplyDatePreset(preset);
+
+			Assert.AreEqual(now.AddDays(dayOffset), viewModel.MinDate);
+			Assert.AreEqual(now, viewModel.MaxDate);
+		}
+
+		[TestMethod]
+		public void ApplyDatePreset_Yesterday_SpansWholePreviousDay()
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty, () => now, key => key);
+
+			viewModel.ApplyDatePreset(DirectoryDatePreset.Yesterday);
+
+			var yesterday = new DateTimeOffset(2026, 3, 14, 0, 0, 0, now.Offset);
+			Assert.AreEqual(yesterday, viewModel.MinDate);
+			Assert.AreEqual(yesterday.AddDays(1).AddTicks(-1), viewModel.MaxDate);
+		}
+
+		[TestMethod]
+		public void ApplyDatePreset_ThisMonth_StartsAtFirstDayMidnight()
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty, () => now, key => key);
+
+			viewModel.ApplyDatePreset(DirectoryDatePreset.ThisMonth);
+
+			Assert.AreEqual(new DateTimeOffset(2026, 3, 1, 0, 0, 0, now.Offset), viewModel.MinDate);
+			Assert.AreEqual(now, viewModel.MaxDate);
+		}
+
+		[TestMethod]
+		public void ApplyDatePreset_NoneAndCustom_LeaveBoundsUnchanged()
+		{
+			var now = new DateTimeOffset(2026, 3, 15, 14, 30, 0, TimeSpan.FromHours(8));
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.CreatedDate, DirectoryFilterSpec.Empty, () => now, key => key)
+			{
+				MinDate = MinDate,
+				MaxDate = MaxDate,
+			};
+
+			viewModel.ApplyDatePreset(DirectoryDatePreset.None);
+			Assert.AreEqual(MinDate, viewModel.MinDate);
+			Assert.AreEqual(MaxDate, viewModel.MaxDate);
+
+			viewModel.ApplyDatePreset(DirectoryDatePreset.Custom);
+			Assert.AreEqual(MinDate, viewModel.MinDate);
+			Assert.AreEqual(MaxDate, viewModel.MaxDate);
+		}
 	}
 }

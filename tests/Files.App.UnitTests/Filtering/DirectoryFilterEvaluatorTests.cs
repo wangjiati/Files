@@ -607,6 +607,81 @@ namespace Files.App.UnitTests.Filtering
 			CollectionAssert.AreEqual(new long[] { 1 }, result.ToArray());
 		}
 
+		[TestMethod]
+		public void NameCondition_RawNameScope_MatchesRawNameOnly()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "report.txt", displayName: "report"),
+			};
+			var rawNameSpec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.EndsWith,
+						Text = ".txt",
+						Scope = DirectoryNameScope.RawName,
+					},
+				],
+			};
+			var displayNameSpec = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.EndsWith,
+						Text = ".txt",
+					},
+				],
+			};
+
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, rawNameSpec).ToArray());
+			Assert.AreEqual(0, DirectoryFilterEvaluator.Evaluate(items, displayNameSpec).Count);
+			Assert.AreEqual(DirectoryNameScope.DisplayName, new DirectoryColumnFilter().Scope);
+		}
+
+		[TestMethod]
+		public void LengthOperator_RawNameScope_CountsRawName()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "report.txt", displayName: "report"),
+			};
+			var rawNameLength = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.LengthEquals,
+						Length = 10,
+						Scope = DirectoryNameScope.RawName,
+					},
+				],
+			};
+			var displayNameLength = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter
+					{
+						Column = DirectoryColumnKind.Name,
+						Operator = DirectoryTextOperator.LengthEquals,
+						Length = 6,
+					},
+				],
+			};
+
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, rawNameLength).ToArray());
+			CollectionAssert.AreEqual(new long[] { 1 }, DirectoryFilterEvaluator.Evaluate(items, displayNameLength).ToArray());
+		}
+
 		private static DirectoryItemFilterSnapshot CreateItem(
 			long id,
 			string rawName,

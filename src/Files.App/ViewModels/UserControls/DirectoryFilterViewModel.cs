@@ -30,6 +30,25 @@ namespace Files.App.ViewModels.UserControls
 	}
 
 	/// <summary>
+	/// Date range preset for date columns. Relative presets are recomputed from the current clock.
+	/// </summary>
+	public enum DirectoryDatePreset
+	{
+		None,
+		LastHour,
+		Last6Hours,
+		Last24Hours,
+		Today,
+		Yesterday,
+		Last3Days,
+		Last7Days,
+		Last30Days,
+		ThisMonth,
+		ThisYear,
+		Custom,
+	}
+
+	/// <summary>
 	/// Edits one column condition of the shared <see cref="DirectoryFilterSpec"/> without touching other columns.
 	/// The name column writes the Contains operator into the shared name box instead of adding a duplicate condition.
 	/// </summary>
@@ -42,6 +61,15 @@ namespace Files.App.ViewModels.UserControls
 		private readonly Func<string, string> localize;
 		private readonly List<string> seededValues = [];
 		private readonly List<string> seededExtensions = [];
+
+		[ObservableProperty]
+		private DirectoryConditionJoin join;
+
+		[ObservableProperty]
+		private DirectoryNameScope scope;
+
+		[ObservableProperty]
+		private int? length;
 
 		[ObservableProperty]
 		private string? text;
@@ -96,6 +124,7 @@ namespace Files.App.ViewModels.UserControls
 		public string Title => localize(column switch
 		{
 			DirectoryColumnKind.Type => Strings.Type,
+			DirectoryColumnKind.Extension => Strings.FilterExtensionSection,
 			DirectoryColumnKind.Tags => Strings.Tag,
 			DirectoryColumnKind.Size => Strings.Size,
 			DirectoryColumnKind.ModifiedDate => Strings.DateModifiedLowerCase,
@@ -107,9 +136,9 @@ namespace Files.App.ViewModels.UserControls
 
 		public bool IsNameColumn => column is DirectoryColumnKind.Name;
 
-		public bool IsChoiceColumn => column is DirectoryColumnKind.Type or DirectoryColumnKind.Tags;
+		public bool IsChoiceColumn => column is DirectoryColumnKind.Type or DirectoryColumnKind.Extension or DirectoryColumnKind.Tags;
 
-		public bool ShowsExtensionChoices => column is DirectoryColumnKind.Type;
+		public bool ShowsExtensionChoices => column is DirectoryColumnKind.Type or DirectoryColumnKind.Extension;
 
 		public bool IsSizeColumn => column is DirectoryColumnKind.Size;
 
@@ -178,6 +207,33 @@ namespace Files.App.ViewModels.UserControls
 				3 => (today.AddDays(-29), endOfToday),
 				4 => (new DateTimeOffset(now.Year, 1, 1, 0, 0, 0, now.Offset), endOfToday),
 				_ => ((DateTimeOffset?)null, (DateTimeOffset?)null),
+			};
+		}
+
+		/// <summary>
+		/// Applies a relative preset from the current clock. None and Custom leave the bounds to the caller.
+		/// </summary>
+		public void ApplyDatePreset(DirectoryDatePreset preset)
+		{
+			if (preset is DirectoryDatePreset.None or DirectoryDatePreset.Custom)
+				return;
+
+			var now = clock();
+			var today = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
+
+			(MinDate, MaxDate) = preset switch
+			{
+				DirectoryDatePreset.LastHour => (now.AddHours(-1), now),
+				DirectoryDatePreset.Last6Hours => (now.AddHours(-6), now),
+				DirectoryDatePreset.Last24Hours => (now.AddHours(-24), now),
+				DirectoryDatePreset.Today => (today, now),
+				DirectoryDatePreset.Yesterday => (today.AddDays(-1), today.AddTicks(-1)),
+				DirectoryDatePreset.Last3Days => (now.AddDays(-3), now),
+				DirectoryDatePreset.Last7Days => (now.AddDays(-7), now),
+				DirectoryDatePreset.Last30Days => (now.AddDays(-30), now),
+				DirectoryDatePreset.ThisMonth => (new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, now.Offset), now),
+				DirectoryDatePreset.ThisYear => (new DateTimeOffset(now.Year, 1, 1, 0, 0, 0, now.Offset), now),
+				_ => (MinDate, MaxDate),
 			};
 		}
 
@@ -284,6 +340,85 @@ namespace Files.App.ViewModels.UserControls
 		}
 
 		/// <summary>
+		/// Materializes the editor as one condition in the filter bar's condition chain.
+		/// The regex mode lives on the spec, not on a column condition.
+		/// </summary>
+		public DirectoryColumnFilter ToColumnFilter()
+		{
+			List<string> values = column switch
+			{
+				DirectoryColumnKind.Extension => GetSelectedValues(ExtensionChoices),
+				DirectoryColumnKind.Type or DirectoryColumnKind.Tags => GetSelectedValues(Choices),
+				_ => [],
+			};
+
+			return new DirectoryColumnFilter
+			{
+				Join = Join,
+				Column = column,
+				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard),
+				Text = Text?.Trim(),
+				Length = Length,
+				Scope = Scope,
+				Values = values,
+				IncludeEmpty = column is DirectoryColumnKind.Extension or DirectoryColumnKind.Tags && IncludeEmpty,
+				MinSize = column is DirectoryColumnKind.Size ? ToBytes(MinSizeText) : null,
+				MaxSize = column is DirectoryColumnKind.Size ? ToBytes(MaxSizeText) : null,
+				MinDate = column is DirectoryColumnKind.ModifiedDate or DirectoryColumnKind.CreatedDate ? MinDate : null,
+				MaxDate = column is DirectoryColumnKind.ModifiedDate or DirectoryColumnKind.CreatedDate ? MaxDate : null,
+			};
+		}
+
+		/// <summary>
+		/// Restores one condition, replacing the values edited earlier.
+		/// </summary>
+		public void LoadFrom(DirectoryColumnFilter filter)
+		{
+			Join = filter.Join;
+			Scope = filter.Scope;
+			Length = filter.Length;
+
+			switch (filter.Column)
+			{
+				case DirectoryColumnKind.Name:
+					Text = filter.Text;
+					OperatorIndex = (int)filter.Operator;
+					break;
+
+				case DirectoryColumnKind.Type:
+					seededValues.Clear();
+					seededValues.AddRange(filter.Values);
+					IncludeEmpty = filter.IncludeEmpty;
+					ApplySelection(Choices, filter.Values);
+					break;
+
+				case DirectoryColumnKind.Extension:
+					seededExtensions.Clear();
+					seededExtensions.AddRange(filter.Values);
+					IncludeEmpty = filter.IncludeEmpty;
+					ApplySelection(ExtensionChoices, filter.Values);
+					break;
+
+				case DirectoryColumnKind.Tags:
+					seededValues.Clear();
+					seededValues.AddRange(filter.Values);
+					IncludeEmpty = filter.IncludeEmpty;
+					ApplySelection(Choices, filter.Values);
+					break;
+
+				case DirectoryColumnKind.Size:
+					SeedSize(filter.MinSize, filter.MaxSize);
+					break;
+
+				case DirectoryColumnKind.ModifiedDate:
+				case DirectoryColumnKind.CreatedDate:
+					MinDate = filter.MinDate;
+					MaxDate = filter.MaxDate;
+					break;
+			}
+		}
+
+		/// <summary>
 		/// Validates the planned regex without touching the shared spec. The flyout must call this before applying.
 		/// </summary>
 		public bool ValidateRegex()
@@ -360,6 +495,15 @@ namespace Files.App.ViewModels.UserControls
 				MinSize = min,
 				MaxSize = max,
 			};
+		}
+
+		private static List<string> GetSelectedValues(IReadOnlyList<DirectoryFilterValueOption> options)
+			=> options.Where(option => option.IsSelected).Select(option => option.Value).ToList();
+
+		private static void ApplySelection(IReadOnlyList<DirectoryFilterValueOption> options, IReadOnlyList<string> values)
+		{
+			foreach (var option in options)
+				option.IsSelected = values.Contains(option.Value, StringComparer.OrdinalIgnoreCase);
 		}
 
 		private long? ToBytes(string? text)
