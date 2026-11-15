@@ -18,7 +18,7 @@
 			FontWeight="SemiBold" />
 
 		<!--  Same editor and query language as the top bar  -->
-		<local:DirectoryFilterEditor x:Name="ColumnEditor" />
+		<local:DirectoryFilterColumnEditor x:Name="ColumnEditor" />
 
 		<StackPanel
 			Orientation="Horizontal"

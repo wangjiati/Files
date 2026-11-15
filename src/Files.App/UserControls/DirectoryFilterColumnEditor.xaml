@@ -1,0 +1,164 @@
+<!--  Copyright (c) Files Community. Licensed under the MIT License.  -->
+<UserControl
+	x:Class="Files.App.UserControls.DirectoryFilterColumnEditor"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:helpers="using:Files.App.Helpers"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:vm="using:Files.App.ViewModels.UserControls"
+	mc:Ignorable="d">
+
+	<!--  Vertical form used by the column filter popup; the top bar keeps its compact inline editor.  -->
+	<StackPanel
+		Width="320"
+		Padding="4"
+		Spacing="10">
+		<TextBlock
+			x:Name="TitleText"
+			FontWeight="SemiBold" />
+
+		<!--  Name column: text and regex are alternative modes  -->
+		<StackPanel
+			x:Name="TextPanel"
+			Spacing="6"
+			Visibility="Collapsed">
+			<SelectorBar x:Name="MatchModeSelector" SelectionChanged="MatchMode_SelectionChanged">
+				<SelectorBarItem x:Name="TextModeItem" />
+				<SelectorBarItem x:Name="RegexModeItem" />
+			</SelectorBar>
+			<StackPanel
+				x:Name="TextMatchPanel"
+				Spacing="6">
+				<ComboBox
+					x:Name="OperatorCombo"
+					HorizontalAlignment="Stretch" />
+				<TextBox
+					x:Name="FilterTextBox"
+					KeyDown="TextInput_KeyDown"
+					PlaceholderText="{helpers:ResourceString Name=Filter}" />
+			</StackPanel>
+			<StackPanel
+				x:Name="RegexOptionsPanel"
+				Spacing="6"
+				Visibility="Collapsed">
+				<ComboBox
+					x:Name="RegexTargetCombo"
+					HorizontalAlignment="Stretch"
+					Header="{helpers:ResourceString Name=FilterRegexTarget}" />
+				<CheckBox
+					x:Name="RegexIgnoreCaseCheck"
+					Content="{helpers:ResourceString Name=FilterRegexIgnoreCase}" />
+				<TextBox
+					x:Name="RegexPatternBox"
+					KeyDown="TextInput_KeyDown"
+					PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}" />
+				<TextBlock
+					x:Name="RegexErrorText"
+					Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+					TextWrapping="Wrap"
+					Visibility="Collapsed" />
+			</StackPanel>
+		</StackPanel>
+
+		<!--  Type and tag columns  -->
+		<StackPanel
+			x:Name="ChoicePanel"
+			Spacing="6"
+			Visibility="Collapsed">
+			<ListView
+				x:Name="ChoicesList"
+				MaxHeight="220"
+				SelectionMode="None">
+				<ListView.ItemTemplate>
+					<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
+						<CheckBox
+							MinWidth="0"
+							Content="{x:Bind Label}"
+							IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+					</DataTemplate>
+				</ListView.ItemTemplate>
+			</ListView>
+			<CheckBox
+				x:Name="IncludeEmptyCheck"
+				Content="{helpers:ResourceString Name=FilterIncludeEmpty}" />
+		</StackPanel>
+
+		<!--  Extension choices, grouped with the type column  -->
+		<StackPanel
+			x:Name="ExtensionPanel"
+			Spacing="6"
+			Visibility="Collapsed">
+			<TextBlock
+				FontSize="12"
+				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+				Text="{helpers:ResourceString Name=FilterExtensionSection}" />
+			<ListView
+				x:Name="ExtensionList"
+				MaxHeight="160"
+				SelectionMode="None">
+				<ListView.ItemTemplate>
+					<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
+						<CheckBox
+							MinWidth="0"
+							Content="{x:Bind Label}"
+							IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+					</DataTemplate>
+				</ListView.ItemTemplate>
+			</ListView>
+		</StackPanel>
+
+		<!--  Size range  -->
+		<Grid
+			x:Name="SizePanel"
+			ColumnSpacing="6"
+			Visibility="Collapsed">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<StackPanel Grid.Column="0" Spacing="4">
+				<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMinSize}" />
+				<TextBox x:Name="MinSizeBox" KeyDown="TextInput_KeyDown" />
+			</StackPanel>
+
+			<ComboBox
+				x:Name="SizeUnitCombo"
+				Grid.Column="1"
+				Width="72"
+				VerticalAlignment="Bottom" />
+
+			<StackPanel Grid.Column="2" Spacing="4">
+				<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMaxSize}" />
+				<TextBox x:Name="MaxSizeBox" KeyDown="TextInput_KeyDown" />
+			</StackPanel>
+		</Grid>
+
+		<!--  Date range  -->
+		<StackPanel
+			x:Name="DatePanel"
+			Spacing="6"
+			Visibility="Collapsed">
+			<ComboBox
+				x:Name="DatePresetCombo"
+				HorizontalAlignment="Stretch"
+				SelectionChanged="DatePreset_SelectionChanged" />
+			<Grid ColumnSpacing="6">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<CalendarDatePicker
+					x:Name="MinDatePicker"
+					Grid.Column="0"
+					PlaceholderText="{helpers:ResourceString Name=FilterFrom}" />
+				<CalendarDatePicker
+					x:Name="MaxDatePicker"
+					Grid.Column="1"
+					PlaceholderText="{helpers:ResourceString Name=FilterTo}" />
+			</Grid>
+		</StackPanel>
+	</StackPanel>
+</UserControl>
