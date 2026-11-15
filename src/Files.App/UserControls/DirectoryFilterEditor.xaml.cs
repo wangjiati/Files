@@ -14,11 +14,11 @@ using System.Runtime.CompilerServices;
 namespace Files.App.UserControls
 {
 	/// <summary>
-	/// Inline editor for a single filter condition. Values are written to the view model immediately.
+	/// Inline editor for a single filter condition: one compact row whose values are written to
+	/// the view model immediately.
 	/// </summary>
 	public sealed partial class DirectoryFilterEditor : UserControl, INotifyPropertyChanged
 	{
-		private bool isSyncingMode;
 		private bool isSyncingUi;
 		private DirectoryFilterViewModel viewModel = new(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 
@@ -43,7 +43,6 @@ namespace Files.App.UserControls
 				// selection reset cannot write into the incoming condition. Identical lists are reused
 				// to avoid the reset in the first place.
 				SetItemSource(OperatorCombo, value.OperatorChoices);
-				SetItemSource(ScopeCombo, value.ScopeChoices);
 				SetItemSource(RegexTargetCombo, value.RegexTargetChoices);
 				SetItemSource(SizeUnitCombo, value.SizeUnitChoices);
 				SetItemSource(DatePresetCombo, value.DatePresetChoices);
@@ -95,11 +94,11 @@ namespace Files.App.UserControls
 					FilterTextBox.Focus(FocusState.Programmatic);
 			}
 			else if (ViewModel.IsChoiceColumn)
-				ChoicesList.Focus(FocusState.Programmatic);
+				ChoiceButton.Focus(FocusState.Programmatic);
 			else if (ViewModel.IsSizeColumn)
 				MinSizeBox.Focus(FocusState.Programmatic);
 			else if (ViewModel.IsDateColumn)
-				MinDatePicker.Focus(FocusState.Programmatic);
+				DatePresetCombo.Focus(FocusState.Programmatic);
 		}
 
 		private void ApplyViewModel()
@@ -113,7 +112,6 @@ namespace Files.App.UserControls
 
 				DatePresetCombo.SelectedIndex = Math.Clamp(ViewModel.DatePresetIndex, 0, ViewModel.DatePresetChoices.Length - 1);
 				RegexIgnoreCaseCheck.IsChecked = !ViewModel.RegexIgnoreCase;
-				SyncMode();
 				UpdateRegexError();
 			}
 			finally
@@ -127,7 +125,6 @@ namespace Files.App.UserControls
 			switch (e.PropertyName)
 			{
 				case nameof(DirectoryFilterViewModel.UseRegex):
-					SyncMode();
 					UpdateRegexError();
 					break;
 
@@ -150,24 +147,6 @@ namespace Files.App.UserControls
 				case nameof(DirectoryFilterViewModel.ExtensionChoices):
 					ExtensionList.ItemsSource = ViewModel.ExtensionChoices;
 					break;
-			}
-		}
-
-		private void SyncMode()
-		{
-			isSyncingMode = true;
-
-			try
-			{
-				var useRegex = ViewModel.UseRegex;
-
-				MatchModeSelector.SelectedItem = useRegex ? RegexModeItem : TextModeItem;
-				TextModeItem.IsSelected = !useRegex;
-				RegexModeItem.IsSelected = useRegex;
-			}
-			finally
-			{
-				isSyncingMode = false;
 			}
 		}
 
@@ -196,14 +175,6 @@ namespace Files.App.UserControls
 
 			RegexErrorText.Text = ViewModel.RegexError;
 			RegexErrorText.Visibility = Visibility.Visible;
-		}
-
-		private void MatchMode_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
-		{
-			if (isSyncingMode)
-				return;
-
-			ViewModel.UseRegex = MatchModeSelector.SelectedItem == RegexModeItem;
 		}
 
 		private void RegexIgnoreCase_Changed(object sender, RoutedEventArgs e)

@@ -332,7 +332,27 @@ namespace Files.App.ViewModels.UserControls
 
 		partial void OnTextChanged(string? value) => NotifyIsActiveChanged();
 
-		partial void OnScopeChanged(DirectoryNameScope value) => OnPropertyChanged(nameof(ScopeIndex));
+		partial void OnScopeChanged(DirectoryNameScope value)
+		{
+			OnPropertyChanged(nameof(ScopeIndex));
+			OnPropertyChanged(nameof(UseRawName));
+		}
+
+		/// <summary>
+		/// Compact scope switch used by the inline editor: raw file name vs display name.
+		/// </summary>
+		public bool UseRawName
+		{
+			get => Scope is DirectoryNameScope.RawName;
+			set => Scope = value ? DirectoryNameScope.RawName : DirectoryNameScope.DisplayName;
+		}
+
+		/// <summary>
+		/// True when the date condition uses a custom range and the inline editor shows the pickers.
+		/// </summary>
+		public bool IsCustomDatePreset => DatePresetIndex == (int)DirectoryDatePreset.Custom;
+
+		partial void OnDatePresetIndexChanged(int value) => OnPropertyChanged(nameof(IsCustomDatePreset));
 
 		partial void OnOperatorIndexChanged(int value)
 		{

@@ -5644,4 +5644,5 @@
   <data name="FilterDatePresetThisMonth" xml:space="preserve"><value>本月</value></data>
   <data name="FilterDatePresetThisYear" xml:space="preserve"><value>今年</value></data>
   <data name="FilterDatePresetCustom" xml:space="preserve"><value>自定义范围</value></data>
+  <data name="FilterChooseValues" xml:space="preserve"><value>选择…</value></data>
 </root>

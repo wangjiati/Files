@@ -25,205 +25,241 @@
 		</ResourceDictionary>
 	</UserControl.Resources>
 
-	<!--  The outline marks a draft condition  -->
+	<!--  One condition as a compact single row: [dimension] [Aa][.*][.ext] [operator] [value]  -->
 	<Border
 		x:Name="EditorBorder"
-		MinWidth="220"
-		Padding="6"
+		MinHeight="32"
+		Padding="4,1,4,1"
+		VerticalAlignment="Center"
 		BorderBrush="{x:Bind ViewModel.IsActive, Mode=OneWay, Converter={StaticResource DraftBorderBrush}}"
 		BorderThickness="1"
 		CornerRadius="4">
-		<StackPanel Spacing="10">
-			<TextBlock
-				FontWeight="SemiBold"
-				Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
+		<StackPanel
+			Orientation="Horizontal"
+			Spacing="4"
+			VerticalAlignment="Center">
 
-			<!--  Name column: text and regex are alternative modes  -->
+			<TextBlock
+				Margin="2,0,2,0"
+				FontSize="12"
+				Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+				Text="{x:Bind ViewModel.Title, Mode=OneWay}"
+				VerticalAlignment="Center" />
+
+			<!--  Name column: text operators, length operators and regex share one row  -->
 			<StackPanel
-				x:Name="TextPanel"
-				Spacing="6"
+				Orientation="Horizontal"
+				Spacing="4"
+				VerticalAlignment="Center"
 				Visibility="{x:Bind ViewModel.IsTextColumn, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-				<SelectorBar x:Name="MatchModeSelector" SelectionChanged="MatchMode_SelectionChanged">
-					<SelectorBarItem x:Name="TextModeItem" Text="{helpers:ResourceString Name=FilterModeText}" />
-					<SelectorBarItem x:Name="RegexModeItem" Text="{helpers:ResourceString Name=FilterModeRegex}" />
-				</SelectorBar>
+
+				<ToggleButton
+					x:Name="CaseToggle"
+					Width="36"
+					Height="30"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=FilterCaseSensitive}"
+					Content="Aa"
+					IsChecked="{x:Bind ViewModel.CaseSensitive, Mode=TwoWay}"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=FilterCaseSensitive}"
+					Visibility="{x:Bind ViewModel.UseRegex, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
+
+				<ToggleButton
+					x:Name="RegexToggle"
+					Width="36"
+					Height="30"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=FilterModeRegex}"
+					Content=".*"
+					IsChecked="{x:Bind ViewModel.UseRegex, Mode=TwoWay}"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=FilterModeRegex}" />
+
+				<ToggleButton
+					x:Name="ScopeToggle"
+					Width="44"
+					Height="30"
+					Padding="0"
+					AutomationProperties.Name="{helpers:ResourceString Name=FilterScopeRawName}"
+					Content=".ext"
+					IsChecked="{x:Bind ViewModel.UseRawName, Mode=TwoWay}"
+					ToolTipService.ToolTip="{helpers:ResourceString Name=FilterScopeRawName}"
+					Visibility="{x:Bind ViewModel.UseRegex, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
+
 				<StackPanel
-					x:Name="TextMatchPanel"
-					Spacing="6"
+					Orientation="Horizontal"
+					Spacing="4"
+					VerticalAlignment="Center"
 					Visibility="{x:Bind ViewModel.UseRegex, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
 					<ComboBox
 						x:Name="OperatorCombo"
-						HorizontalAlignment="Stretch"
+						Width="112"
+						Height="30"
 						SelectedIndex="{x:Bind ViewModel.OperatorIndex, Mode=TwoWay}" />
-					<ComboBox
-						x:Name="ScopeCombo"
-						Header="{helpers:ResourceString Name=FilterRegexTarget}"
-						HorizontalAlignment="Stretch"
-						SelectedIndex="{x:Bind ViewModel.ScopeIndex, Mode=TwoWay}" />
-					<Grid
-						ColumnSpacing="6"
-						Visibility="{x:Bind ViewModel.IsLengthOperator, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="*" />
-							<ColumnDefinition Width="Auto" />
-						</Grid.ColumnDefinitions>
-						<TextBox
-							x:Name="FilterTextBox"
-							Grid.Column="0"
-							PlaceholderText="{helpers:ResourceString Name=Filter}"
-							Text="{x:Bind ViewModel.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-						<CheckBox
-							x:Name="CaseSensitiveCheck"
-							Grid.Column="1"
-							MinWidth="0"
-							AutomationProperties.Name="{helpers:ResourceString Name=FilterCaseSensitive}"
-							Content="Aa"
-							IsChecked="{x:Bind ViewModel.CaseSensitive, Mode=TwoWay}"
-							VerticalAlignment="Bottom" />
-					</Grid>
+					<TextBox
+						x:Name="FilterTextBox"
+						Width="150"
+						Height="30"
+						PlaceholderText="{helpers:ResourceString Name=Filter}"
+						Text="{x:Bind ViewModel.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+						Visibility="{x:Bind ViewModel.IsLengthOperator, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
 					<NumberBox
 						x:Name="LengthBox"
-						Header="{helpers:ResourceString Name=FilterNameLength}"
+						Width="92"
+						Height="30"
 						Minimum="0"
 						SmallChange="1"
 						SpinButtonPlacementMode="Compact"
 						Value="{x:Bind LengthValue, Mode=TwoWay}"
 						Visibility="{x:Bind ViewModel.IsLengthOperator, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
 				</StackPanel>
+
 				<StackPanel
-					x:Name="RegexOptionsPanel"
-					Spacing="6"
+					Orientation="Horizontal"
+					Spacing="4"
+					VerticalAlignment="Center"
 					Visibility="{x:Bind ViewModel.UseRegex, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+					<TextBox
+						x:Name="RegexPatternBox"
+						Width="150"
+						Height="30"
+						PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}"
+						Text="{x:Bind ViewModel.RegexPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 					<ComboBox
 						x:Name="RegexTargetCombo"
-						Header="{helpers:ResourceString Name=FilterRegexTarget}"
-						HorizontalAlignment="Stretch"
+						Width="112"
+						Height="30"
 						SelectedIndex="{x:Bind ViewModel.RegexTargetIndex, Mode=TwoWay}" />
 					<CheckBox
 						x:Name="RegexIgnoreCaseCheck"
+						MinWidth="0"
+						Height="30"
+						AutomationProperties.Name="{helpers:ResourceString Name=FilterRegexIgnoreCase}"
 						Checked="RegexIgnoreCase_Changed"
-						Content="{helpers:ResourceString Name=FilterRegexIgnoreCase}"
+						Content="Aa"
 						Unchecked="RegexIgnoreCase_Changed" />
-					<TextBox
-						x:Name="RegexPatternBox"
-						PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}"
-						Text="{x:Bind ViewModel.RegexPattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 					<TextBlock
 						x:Name="RegexErrorText"
+						MaxWidth="220"
 						Foreground="{ThemeResource SystemFillColorCriticalBrush}"
 						TextWrapping="Wrap"
+						VerticalAlignment="Center"
 						Visibility="Collapsed" />
 				</StackPanel>
 			</StackPanel>
 
-			<!--  Type and tag columns  -->
+			<!--  Type, extension and tag columns: values open in a compact flyout  -->
 			<StackPanel
-				x:Name="ChoicePanel"
-				Spacing="6"
+				Orientation="Horizontal"
+				Spacing="4"
+				VerticalAlignment="Center"
 				Visibility="{x:Bind ViewModel.IsChoiceColumn, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-				<ListView
-					x:Name="ChoicesList"
-					MaxHeight="220"
-					SelectionMode="None"
-					Visibility="{x:Bind IsChoiceListVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-					<ListView.ItemTemplate>
-						<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
-							<CheckBox
-								MinWidth="0"
-								Content="{x:Bind Label}"
-								IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
-						</DataTemplate>
-					</ListView.ItemTemplate>
-				</ListView>
-				<CheckBox
-					x:Name="IncludeEmptyCheck"
-					Content="{helpers:ResourceString Name=FilterIncludeEmpty}"
-					IsChecked="{x:Bind ViewModel.IncludeEmpty, Mode=TwoWay}"
-					Visibility="{x:Bind IsIncludeEmptyVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-			</StackPanel>
-
-			<!--  Extensions are a separate dimension in the inline editor  -->
-			<StackPanel
-				x:Name="ExtensionPanel"
-				Spacing="6"
-				Visibility="{x:Bind IsExtensionSectionVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-				<TextBlock
-					FontSize="12"
-					Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-					Text="{helpers:ResourceString Name=FilterExtensionSection}" />
-				<ListView
-					x:Name="ExtensionList"
-					MaxHeight="160"
-					SelectionMode="None">
-					<ListView.ItemTemplate>
-						<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
-							<CheckBox
-								MinWidth="0"
-								Content="{x:Bind Label}"
-								IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
-						</DataTemplate>
-					</ListView.ItemTemplate>
-				</ListView>
+				<Button
+					x:Name="ChoiceButton"
+					MinWidth="96"
+					Height="30"
+					AutomationProperties.Name="{helpers:ResourceString Name=FilterChooseValues}"
+					Content="{helpers:ResourceString Name=FilterChooseValues}">
+					<Button.Flyout>
+						<Flyout Placement="Bottom">
+							<StackPanel Width="230" Spacing="6">
+								<ListView
+									x:Name="ChoicesList"
+									MaxHeight="220"
+									SelectionMode="None"
+									Visibility="{x:Bind IsChoiceListVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+									<ListView.ItemTemplate>
+										<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
+											<CheckBox
+												MinWidth="0"
+												Content="{x:Bind Label}"
+												IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+										</DataTemplate>
+									</ListView.ItemTemplate>
+								</ListView>
+								<ListView
+									x:Name="ExtensionList"
+									MaxHeight="160"
+									SelectionMode="None"
+									Visibility="{x:Bind IsExtensionSectionVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+									<ListView.ItemTemplate>
+										<DataTemplate x:DataType="vm:DirectoryFilterValueOption">
+											<CheckBox
+												MinWidth="0"
+												Content="{x:Bind Label}"
+												IsChecked="{x:Bind IsSelected, Mode=TwoWay}" />
+										</DataTemplate>
+									</ListView.ItemTemplate>
+								</ListView>
+								<CheckBox
+									x:Name="IncludeEmptyCheck"
+									Content="{helpers:ResourceString Name=FilterIncludeEmpty}"
+									IsChecked="{x:Bind ViewModel.IncludeEmpty, Mode=TwoWay}"
+									Visibility="{x:Bind IsIncludeEmptyVisible, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+							</StackPanel>
+						</Flyout>
+					</Button.Flyout>
+				</Button>
 			</StackPanel>
 
 			<!--  Size range  -->
-			<Grid
-				x:Name="SizePanel"
-				ColumnSpacing="6"
+			<StackPanel
+				Orientation="Horizontal"
+				Spacing="4"
+				VerticalAlignment="Center"
 				Visibility="{x:Bind ViewModel.IsSizeColumn, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-				</Grid.ColumnDefinitions>
-
-				<StackPanel Grid.Column="0" Spacing="4">
-					<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMinSize}" />
-					<TextBox
-						x:Name="MinSizeBox"
-						Text="{x:Bind ViewModel.MinSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-				</StackPanel>
-
+				<TextBox
+					x:Name="MinSizeBox"
+					Width="66"
+					Height="30"
+					PlaceholderText="{helpers:ResourceString Name=FilterMinSize}"
+					Text="{x:Bind ViewModel.MinSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 				<ComboBox
 					x:Name="SizeUnitCombo"
-					Grid.Column="1"
 					Width="72"
-					VerticalAlignment="Bottom"
+					Height="30"
 					SelectedIndex="{x:Bind ViewModel.SizeUnitIndex, Mode=TwoWay}" />
+				<TextBlock
+					Margin="2,0,2,0"
+					Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+					Text="–"
+					VerticalAlignment="Center" />
+				<TextBox
+					x:Name="MaxSizeBox"
+					Width="66"
+					Height="30"
+					PlaceholderText="{helpers:ResourceString Name=FilterMaxSize}"
+					Text="{x:Bind ViewModel.MaxSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+			</StackPanel>
 
-				<StackPanel Grid.Column="2" Spacing="4">
-					<TextBlock FontSize="12" Text="{helpers:ResourceString Name=FilterMaxSize}" />
-					<TextBox
-						x:Name="MaxSizeBox"
-						Text="{x:Bind ViewModel.MaxSizeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-				</StackPanel>
-			</Grid>
-
-			<!--  Date range  -->
+			<!--  Date range: preset plus optional custom pickers  -->
 			<StackPanel
-				x:Name="DatePanel"
-				Spacing="6"
+				Orientation="Horizontal"
+				Spacing="4"
+				VerticalAlignment="Center"
 				Visibility="{x:Bind ViewModel.IsDateColumn, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
 				<ComboBox
 					x:Name="DatePresetCombo"
-					HorizontalAlignment="Stretch"
+					Width="150"
+					Height="30"
 					SelectionChanged="DatePreset_SelectionChanged" />
-				<Grid ColumnSpacing="6">
-					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="*" />
-						<ColumnDefinition Width="*" />
-					</Grid.ColumnDefinitions>
+				<StackPanel
+					Orientation="Horizontal"
+					Spacing="4"
+					VerticalAlignment="Center"
+					Visibility="{x:Bind ViewModel.IsCustomDatePreset, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
 					<CalendarDatePicker
 						x:Name="MinDatePicker"
-						Grid.Column="0"
+						Width="132"
+						Height="30"
 						Date="{x:Bind ViewModel.MinDate, Mode=TwoWay}"
 						PlaceholderText="{helpers:ResourceString Name=FilterFrom}" />
 					<CalendarDatePicker
 						x:Name="MaxDatePicker"
-						Grid.Column="1"
+						Width="132"
+						Height="30"
 						Date="{x:Bind ViewModel.MaxDate, Mode=TwoWay}"
 						PlaceholderText="{helpers:ResourceString Name=FilterTo}" />
-				</Grid>
+				</StackPanel>
 			</StackPanel>
 		</StackPanel>
 	</Border>

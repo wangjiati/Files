@@ -5017,4 +5017,5 @@
   <data name="FilterDatePresetThisMonth" xml:space="preserve"><value>本月</value></data>
   <data name="FilterDatePresetThisYear" xml:space="preserve"><value>今年</value></data>
   <data name="FilterDatePresetCustom" xml:space="preserve"><value>自訂範圍</value></data>
+  <data name="FilterChooseValues" xml:space="preserve"><value>選擇…</value></data>
 </root>

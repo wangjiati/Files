@@ -76,10 +76,9 @@
 
 				<local:DirectoryFilterEditor
 					x:Name="NameEditor"
-					VerticalAlignment="Top"
+					VerticalAlignment="Center"
 					ViewModel="{x:Bind ViewModel.NameCondition, Mode=OneWay}"
-					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}"
-					Width="260" />
+					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
 
 				<Button
 					Content="{helpers:ResourceString Name=FilterAddConditionContent}"
@@ -149,7 +148,7 @@
 				Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
 				<ItemsControl.ItemsPanel>
 					<ItemsPanelTemplate>
-						<StackPanel Spacing="4" />
+						<StackPanel Orientation="Horizontal" Spacing="6" />
 					</ItemsPanelTemplate>
 				</ItemsControl.ItemsPanel>
 			</ItemsControl>

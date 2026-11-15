@@ -5829,4 +5829,5 @@
   <data name="GoToFolderAliasDescription" xml:space="preserve">
     <value>Go to a folder alias in the Omnibar</value>
   </data>
+  <data name="FilterChooseValues" xml:space="preserve"><value>Choose…</value></data>
 </root>
