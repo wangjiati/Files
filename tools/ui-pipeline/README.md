@@ -1,14 +1,15 @@
 # Automated UI test pipeline (test VMs)
 
 Drives the packaged Files app through UI Automation inside the two test VMs and
-produces a PASS/FAIL report. Everything runs in the VM's interactive session; the
-host only copies files, creates one scheduled task, and reads results back.
+produces a PASS/FAIL report. The host copies files over SMB, asks WinSimpleSSH
+(service mode) to launch the runner in the interactive desktop session, and reads
+results back over SMB.
 
 ## Why this shape
 
-- The app is a WinUI desktop app: UI tests need a logged-on interactive session,
-  so a plain remote process (session 0) is not enough. A scheduled task created
-  with `/IT` runs in the logged-on user's session.
+- The app is a WinUI desktop app: UI tests need an interactive desktop session, so
+  a plain remote process (session 0) is not enough. WinSimpleSSH's service mode
+  launches the runner through `CreateProcessAsUser` in the console session.
 - The runner is a compiled C# console app. No PowerShell scripts, no screen
   capture, and no obfuscation inside the guest: this keeps antivirus heuristics
   quiet (the host also never runs the app itself).
@@ -21,6 +22,9 @@ host only copies files, creates one scheduled task, and reads results back.
   SMB admin share accessible (`\\<ip>\c$`), and the local admin password known.
   In this repo's setup: Win10 `192.168.221.128` (`win10`) and Win11
   `192.168.221.130` (`win11`, rebuilt unencrypted config).
+- WinSimpleSSH built from https://github.com/wangjiati/WinSimpleSSH
+  (`SSHC.exe` client and `SSHServer.exe`); the orchestrator installs the service
+  on each VM on first use, so no scheduled tasks are created.
 - `vmrun` on the host when `-RevertSnapshots` is used.
 - The portable artifact produced by `.github/scripts/Build-Internal.ps1 -PortableOnly`.
 

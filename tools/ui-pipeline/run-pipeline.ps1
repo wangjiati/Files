@@ -1,29 +1,37 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
 Runs the packaged Files app through the UI test runner inside the test VMs.
 
 .DESCRIPTION
-Deploys the portable artifact and the compiled FilterUiTest runner over SMB,
-triggers the runner as an interactive scheduled task in the logged-on session,
-collects results, and prints a PASS/FAIL table.
+Deploys the portable artifact and the compiled FilterUiTest runner over SMB, then
+uses WinSimpleSSH (service mode) to execute the runner in the VM's interactive
+session. Results are copied back over SMB and summarized.
 
 .EXAMPLE
-pwsh -File tools/ui-pipeline/run-pipeline.ps1 -ArtifactZip artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip
+$env:FILES_VM_PASSWORD = '<password>'
+powershell -File tools/ui-pipeline/run-pipeline.ps1 -ArtifactZip artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip
 #>
-param(`r`n    [Parameter(Mandatory = $true)]
+param(
+    [Parameter(Mandatory = $true)]
     [string]$ArtifactZip,
 
     [string]$RunnerExe = "",
 
-    [switch]$RevertSnapshots,
+    [string]$SshcPath = "D:\tools\WinSimpleSSH\src\SSHClient\bin\Release\net452\SSHC.exe",
+
+    [string]$SshServerExe = "D:\tools\WinSimpleSSH\src\SSHServer\bin\Release\net452\SSHServer.exe",
 
     [string]$ResultsRoot = "artifacts/ui-pipeline/results",
 
-    [string]$GuestPassword = $env:FILES_VM_PASSWORD
+    [string]$GuestPassword = $env:FILES_VM_PASSWORD,
+
+    [switch]$RevertSnapshots,
+
+    [string]$OnlyIp = ""
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $vmrun = "C:\Program Files (x86)\VMware\VMware Workstation\vmrun.exe"
 
 $vms = @(
@@ -39,14 +47,16 @@ $vms = @(
     }
 )
 
+if (-not $GuestPassword) { throw "Set FILES_VM_PASSWORD or pass -GuestPassword (VM local admin password)." }
+if (-not (Test-Path $ArtifactZip)) { throw "artifact not found: $ArtifactZip" }
+if (-not (Test-Path $SshcPath)) { throw "SSHC not found: $SshcPath (build WinSimpleSSH first)" }
+
 if (-not $RunnerExe) {
     $RunnerExe = Join-Path $PSScriptRoot "..\..\artifacts\ui-pipeline\publish\FilterUiTest.exe"
 }
-
-if (-not $GuestPassword) { throw 'Set FILES_VM_PASSWORD or pass -GuestPassword (VM local admin password).' }
-
-if (-not (Test-Path $ArtifactZip)) { throw "artifact not found: $ArtifactZip" }
 if (-not (Test-Path $RunnerExe)) { throw "runner not found: $RunnerExe (publish FilesFilterUiTests first)" }
+
+$env:SSHC_PASSWORD = $GuestPassword
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $resultsDir = Join-Path $ResultsRoot $stamp
@@ -56,35 +66,64 @@ $stageApp = Join-Path $env:TEMP "files-ui-stage-$stamp"
 Write-Host "==> staging artifact"
 Expand-Archive -Path $ArtifactZip -DestinationPath $stageApp -Force
 
+function New-Credential([pscustomobject]$Vm) {
+    $secure = ConvertTo-SecureString $GuestPassword -AsPlainText -Force
+    New-Object System.Management.Automation.PSCredential($Vm.User, $secure)
+}
+
+function Ensure-SshService([pscustomobject]$Vm) {
+    if (Test-NetConnection -ComputerName $Vm.Ip -Port 22222 -InformationLevel Quiet -WarningAction SilentlyContinue) {
+        return
+    }
+
+    Write-Host "    bootstrap WinSimpleSSH service"
+    $share = "\\$($Vm.Ip)\c$"
+    New-Item -ItemType Directory -Force -Path "$share\Test\ssh" | Out-Null
+    Copy-Item $SshServerExe "$share\Test\ssh\SSHServer.exe" -Force
+    $json = '{"port":22222,"ipWhitelist":["192.168.221.*"],"users":[{"username":"' + $Vm.User + '","password":"' + $GuestPassword + '"}]}'
+    [System.IO.File]::WriteAllText("$share\Test\ssh\server.json", $json, (New-Object System.Text.UTF8Encoding($false)))
+    Invoke-WmiMethod -ComputerName $Vm.Ip -Credential (New-Credential $Vm) -Class Win32_Process -Name Create -ArgumentList "cmd.exe /c C:\Test\ssh\SSHServer.exe --install" -ErrorAction SilentlyContinue | Out-Null
+
+    $deadline = (Get-Date).AddMinutes(2)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-NetConnection -ComputerName $Vm.Ip -Port 22222 -InformationLevel Quiet -WarningAction SilentlyContinue) { return }
+        Start-Sleep -Seconds 5
+    }
+
+    throw "WinSimpleSSH service did not start on $($Vm.Ip)"
+}
+
+function Invoke-SshExec([pscustomobject]$Vm, [string]$Command) {
+    & $SshcPath exec $Vm.Ip -u $Vm.User --json $Command 2>$null | Out-Null
+    return $LASTEXITCODE
+}
+
+function Invoke-SshStart([pscustomobject]$Vm, [string]$Program) {
+    & $SshcPath start $Vm.Ip -u $Vm.User $Program 2>$null | Out-Null
+    return $LASTEXITCODE
+}
+
 $summary = @()
 
 foreach ($vm in $vms) {
-    $ip = $vm.Ip
-    Write-Host "==> $ip"
+    if ($OnlyIp -and $vm.Ip -ne $OnlyIp) { continue }
+
+    Write-Host "==> $($vm.Ip)"
+    Ensure-SshService $vm
 
     if ($RevertSnapshots) {
         Write-Host "    revert snapshot initial"
         & $vmrun -T ws revertToSnapshot $vm.Vmx initial | Out-Null
-    }
-
-    $running = (& $vmrun list 2>$null) -match [regex]::Escape($vm.Vmx)
-    if (-not $running) {
-        Write-Host "    start VM"
         & $vmrun -T ws start $vm.Vmx nogui | Out-Null
+        $deadline = (Get-Date).AddMinutes(5)
+        while ((Get-Date) -lt $deadline) {
+            if (Test-NetConnection -ComputerName $vm.Ip -Port 22222 -InformationLevel Quiet -WarningAction SilentlyContinue) { break }
+            Start-Sleep -Seconds 5
+        }
+        Ensure-SshService $vm
     }
 
-    $deadline = (Get-Date).AddMinutes(5)
-    while ((Get-Date) -lt $deadline) {
-        if (Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue) { break }
-        Start-Sleep -Seconds 5
-    }
-    if (-not (Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue)) {
-        Write-Host "    UNREACHABLE"
-        $summary += [pscustomobject]@{ Vm = $ip; Passed = 0; Failed = 1; Total = 1; Detail = "unreachable" }
-        continue
-    }
-
-    $share = "\\$ip\c$"
+    $share = "\\$($vm.Ip)\c$"
     $fixture = "$share\FilterTest"
     New-Item -ItemType Directory -Force -Path $fixture, "$fixture\sub\deep", "$share\Test\pipeline", "$share\Test\results" | Out-Null
     foreach ($file in @("a.zip", "b.zip", "report-2026.txt", "notes.md")) {
@@ -95,9 +134,7 @@ foreach ($vm in $vms) {
     Set-Content -Path "$fixture\sub\deep\deep.txt" -Value "x" -NoNewline
 
     Copy-Item $RunnerExe "$share\Test\pipeline\FilterUiTest.exe" -Force
-    $cred = New-Object System.Management.Automation.PSCredential($vm.User, (ConvertTo-SecureString $GuestPassword -AsPlainText -Force))
-    Invoke-WmiMethod -ComputerName $ip -Credential $cred -Class Win32_Process -Name Create -ArgumentList "cmd.exe /c taskkill /IM Files.exe /F /T & taskkill /IM FilterUiTest.exe /F /T" -ErrorAction SilentlyContinue | Out-Null
-    Start-Sleep -Seconds 2
+    Invoke-SshExec $vm "taskkill /IM Files.exe /F /T & taskkill /IM FilterUiTest.exe /F /T" | Out-Null
     if (Test-Path "$share\Test\app") { Remove-Item "$share\Test\app" -Recurse -Force -ErrorAction SilentlyContinue }
     robocopy $stageApp "$share\Test\app" /MIR /MT:16 /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
 
@@ -106,8 +143,8 @@ foreach ($vm in $vms) {
 
     Get-ChildItem "$share\Test\results" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-    & schtasks /s $ip /u $vm.User /p $GuestPassword /create /tn FilterUiTest /tr "cmd.exe /c C:\Test\pipeline\run.bat" /sc once /st 23:59 /it /f | Out-Null
-    & schtasks /s $ip /u $vm.User /p $GuestPassword /run /tn FilterUiTest | Out-Null
+    Write-Host "    run UI suite"
+    Invoke-SshStart $vm "C:\Test\pipeline\run.bat" | Out-Null
 
     $deadline = (Get-Date).AddMinutes(5)
     while ((Get-Date) -lt $deadline) {
@@ -115,7 +152,7 @@ foreach ($vm in $vms) {
         Start-Sleep -Seconds 5
     }
 
-    $vmResultDir = Join-Path $resultsDir $ip
+    $vmResultDir = Join-Path $resultsDir $vm.Ip
     New-Item -ItemType Directory -Force -Path $vmResultDir | Out-Null
 
     if (Test-Path "$share\Test\results\summary.json") {
@@ -127,14 +164,14 @@ foreach ($vm in $vms) {
             Write-Host ("    {0} {1} :: {2}" -f $mark, $result.Name, $result.Detail)
         }
         $summary += [pscustomobject]@{
-            Vm = $ip; Passed = $json.passed; Failed = $json.failed; Total = ($json.passed + $json.failed)
+            Vm = $vm.Ip; Passed = $json.passed; Failed = $json.failed; Total = ($json.passed + $json.failed)
             Detail = ($json.results | ForEach-Object { "$($_.Name)=$($_.Pass)" }) -join ";"
         }
     }
     else {
-        Write-Host "    NO RESULTS (no logged-on session or runner crashed)"
+        Write-Host "    NO RESULTS (interactive session missing or runner crashed)"
         Copy-Item "$share\Test\results\run.log" $vmResultDir -Force -ErrorAction SilentlyContinue
-        $summary += [pscustomobject]@{ Vm = $ip; Passed = 0; Failed = 1; Total = 1; Detail = "no results" }
+        $summary += [pscustomobject]@{ Vm = $vm.Ip; Passed = 0; Failed = 1; Total = 1; Detail = "no results" }
     }
 }
 

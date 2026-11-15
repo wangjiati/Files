@@ -144,11 +144,17 @@ internal static class Program
                              || (e.Current.AutomationId ?? "").Contains("Filter"))
                     .ToList();
                 Log($"header filter buttons: {headerFilters.Count}");
+                foreach (var candidate in headerFilters)
+                {
+                    var rect = candidate.Current.BoundingRectangle;
+                    Log($"  header button name=[{candidate.Current.Name}] id=[{candidate.Current.AutomationId}] x={rect.X} y={rect.Y}");
+                }
                 if (headerFilters.Count < 2)
                 {
                     throw new InvalidOperationException($"header filter buttons found: {headerFilters.Count}");
                 }
-                Invoke(headerFilters[1]);
+                var headerButton = headerFilters.OrderBy(e => e.Current.BoundingRectangle.Y).Last();
+                Invoke(headerButton);
                 Thread.Sleep(1500);
                 var advanced = FindByName(["高级", "Advanced"], ControlType.ListItem);
                 var editor = WaitFor(() => FindById("FilterTextBox"), 5);
