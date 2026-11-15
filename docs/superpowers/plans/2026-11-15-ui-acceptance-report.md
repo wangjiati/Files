@@ -1,9 +1,9 @@
 # 全视图筛选 — 打包件 UI 验收报告
 
 日期：2026-11-15
-分支：`filter-bar-implementation`（commit `4388f87b4`）
+分支：`main`（commit `5971162ea`）
 打包件：`artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip`
-SHA-256：`7A2562917E8D7DF674D53A8F982BEC6F42B30EBE713CEE8EEB2CA688EF69FE67`
+SHA-256：`C56A90A77514AB8062459072475AE3FF2527C86898E1AB345DC2D89D980F13C1`
 构建：`.github/scripts/Build-Internal.ps1 -PortableOnly -ReplaceExistingRelease`（单元测试 548/548 通过）
 
 ## 测试环境
@@ -40,7 +40,7 @@ powershell -File run-pipeline.ps1 `
 | `advanced-editor` | 高级模式暴露名称条件编辑器 | ✅ | ✅ |
 | `recursion-location` | 搜索子文件夹（2 层）命中 4 个 zip，位置列出现 | ✅ | ✅ |
 | `clear-all` | 清除筛选恢复完整列表 | ✅ | ✅ |
-| `column-header-append` | 列头漏斗追加条件并切到高级 | ✅ | ✅ |
+| `column-header-flyout` | 列头漏斗打开弹窗，点“应用”后条件进入筛选栏条件列表 | ✅ | ✅ |
 
 原始结果：`artifacts/ui-pipeline/results/20261115-202549/`（`summary.json`、`run.log`、`pipeline-summary.json`）。
 
