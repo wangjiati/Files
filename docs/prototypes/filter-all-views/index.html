@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files — 全视图筛选 · 1:1 交互原型</title>
+<style>
+/* ============ WinUI 3 / Fluent 2 主题令牌（与 Files 实际视觉对齐） ============ */
+:root{
+  --font:"Segoe UI Variable Text","Segoe UI Variable Display","Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif;
+  --icon-font:"Segoe Fluent Icons","Segoe MDL2 Assets";
+  --layer0:#f3f3f3;--layer1:#ffffff;--flyout:#fcfcfc;
+  --stroke:#e5e5e5;--divider:#ebebeb;
+  --ctrl:#fdfdfd;--ctrl-stroke:#c9c9c9;--ctrl-stroke-outer:#dcdcdc;
+  --hover:#f0f0f0;--pressed:#e9e9e9;--subtle:#eeeeee;--toggle-checked:#ececec;
+  --chip-bg:#ececec;--chip-hover:#e2e2e2;
+  --text:#1b1b1b;--text-2:#5d5d5d;--text-3:#8a8a8a;
+  --accent:#0067c0;--accent-hover:#1975c5;--accent-pressed:#005ba1;
+  --accent-text:#0067c0;--on-accent:#ffffff;
+  --danger:#c42b1c;
+  --sel-fill:#f0f6fb;--sel-stroke:#cfe4f7;
+  --shadow:0 8px 16px rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.10);
+  --scrollbar:#c4c4c4;
+}
+[data-theme=dark]{
+  --layer0:#202020;--layer1:#2b2b2b;--flyout:#2d2d2d;
+  --stroke:#383838;--divider:#2e2e2e;
+  --ctrl:#333333;--ctrl-stroke:#3f3f3f;--ctrl-stroke-outer:#4a4a4a;
+  --hover:#363636;--pressed:#3f3f3f;--subtle:#323232;--toggle-checked:#3a3a3a;
+  --chip-bg:#3a3a3a;--chip-hover:#454545;
+  --text:#ffffff;--text-2:#cfcfcf;--text-3:#9e9e9e;
+  --accent:#0078d4;--accent-hover:#1a86d9;--accent-pressed:#006cbe;
+  --accent-text:#4cc2ff;--on-accent:#ffffff;
+  --danger:#ff99a4;
+  --sel-fill:#2c3a4d;--sel-stroke:#3d5a7a;
+  --shadow:0 8px 16px rgba(0,0,0,.26),0 2px 4px rgba(0,0,0,.20);
+  --scrollbar:#5f5f5f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:14px;color:var(--text);background:var(--layer0);overflow:hidden;user-select:none}
+::-webkit-scrollbar{width:12px;height:12px}
+::-webkit-scrollbar-thumb{background:var(--scrollbar);border:3.5px solid transparent;background-clip:content-box;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{border:2.5px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+
+.icon{font-family:var(--icon-font);font-weight:400;font-style:normal;line-height:1;display:inline-block}
+
+/* ============ 应用外框 ============ */
+.app{display:flex;flex-direction:column;height:100vh;min-width:980px;position:relative}
+
+/* 标题栏 / 标签页（Files：标签页位于标题栏） */
+.tabbar{display:flex;align-items:flex-end;height:40px;padding-left:8px;flex:none}
+.tab{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;margin-top:6px;
+  border-radius:7px 7px 0 0;min-width:180px;max-width:220px;color:var(--text-2)}
+.tab.active{background:var(--layer1);color:var(--text);box-shadow:0 -1px 0 var(--stroke),1px 0 0 var(--stroke),-1px 0 0 var(--stroke)}
+.tab .t-ic{width:16px;text-align:center;font-size:15px}
+.tab .t-t{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+.tab .t-x{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-2)}
+.tab .t-x:hover{background:var(--hover)}
+.tab-plus{width:32px;height:32px;margin:6px 4px 0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-2);cursor:pointer;font-size:11px}
+.tab-plus:hover{background:var(--hover)}
+.tabbar .spacer{flex:1}
+.tab-tool{width:36px;height:32px;margin:6px 4px 0;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-2);cursor:pointer;font-size:14px}
+.tab-tool:hover{background:var(--hover)}
+.caption-btns{display:flex;height:40px;margin-left:8px}
+.caption-btns span{width:46px;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:10px}
+.caption-btns span:hover{background:var(--hover)}
+
+/* 工具栏 */
+.toolbar{display:flex;align-items:center;gap:8px;height:48px;padding:0 12px;flex:none;background:var(--layer1)}
+.tbtn{min-width:36px;height:36px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-2);cursor:default;position:relative;font-size:16px}
+.tbtn:hover{background:var(--hover)}
+.tbtn:active{background:var(--pressed)}
+.tbtn.on{background:var(--toggle-checked);color:var(--text)}
+.tbtn.dim{opacity:.4;pointer-events:none}
+.tsep{width:1px;height:22px;background:var(--divider);margin:0 2px;flex:none}
+.addr{flex:1;display:flex;align-items:center;height:34px;border:1px solid var(--ctrl-stroke-outer);border-bottom-color:var(--ctrl-stroke);
+  border-radius:4px;background:var(--ctrl);padding:0 4px;min-width:180px}
+.addr:hover{background:var(--layer1)}
+.addr .crumb{display:flex;align-items:center;padding:0 8px;height:28px;border-radius:4px;color:var(--text-2);font-size:13px}
+.addr .crumb:hover{background:var(--hover)}
+.addr .crumb.last{color:var(--text);font-weight:600}
+.addr .chev{font-size:8px;color:var(--text-3)}
+.addr .a-sp{flex:1}
+.addr .a-act{width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-2);font-size:13px}
+.addr .a-act:hover{background:var(--hover)}
+.cmds{display:flex;align-items:center;gap:2px;flex:none}
+.searchbox{width:240px;height:34px;border:1px solid var(--ctrl-stroke-outer);border-bottom-color:var(--ctrl-stroke);
+  border-radius:4px;background:var(--ctrl);display:flex;align-items:center;padding:0 4px 0 10px;gap:8px;color:var(--text-3);margin-left:4px}
+.searchbox input{flex:1;border:0;outline:0;background:transparent;color:var(--text);font-family:var(--font);font-size:13px}
+.searchbox input::placeholder{color:var(--text-3)}
+
+/* ============ ② 筛选栏：单行统一条件表达式（所有条件与第一个名称条件同一套控件） ============ */
+.filterbar{border-top:1px solid var(--divider);border-bottom:1px solid var(--divider);
+  background:var(--layer0);padding:8px 12px 8px 26px;flex:none;position:relative;z-index:20}
+.fb-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;row-gap:6px}
+.filterbar .fb-icon{width:16px;height:16px;flex:none;display:flex}
+/* 常规/高级切换（WinUI SelectorBar 样式） */
+.mode-switch{display:inline-flex;background:var(--subtle);border-radius:16px;padding:2px;flex:none;gap:2px}
+.mode-switch .ms{height:26px;padding:0 14px;border-radius:14px;display:inline-flex;align-items:center;
+  font-size:12px;color:var(--text-2);cursor:default;white-space:nowrap}
+.mode-switch .ms:hover{color:var(--text)}
+.mode-switch .ms.on{background:var(--layer1);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* 表达式流：名称条件 + 追加条件 + ＋添加 在同一行内流动，用满整行宽度后才在条件边界换行 */
+.chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1;min-width:0}
+/* 条件组通用形态（名称组与所有追加条件完全一致） */
+.name-group,.cond{display:inline-flex;align-items:center;gap:6px;flex:none}
+/* 条件标题（维度名）：加粗主色，与控件形成明确的“标题/值”层级 */
+.ng-label,.c-dim{color:var(--text);font-weight:600;font-size:13px;flex:none;white-space:nowrap;margin-right:2px}
+/* 运算符/单位/预设下拉：与名称运算符同款（30px、13px、同边框） */
+.ng-op,.c-combo{height:30px;min-width:70px;border:1px solid var(--ctrl-stroke);border-radius:4px;background:var(--layer1);
+  display:inline-flex;align-items:center;gap:6px;padding:0 8px;cursor:default;color:var(--text);font-size:13px;flex:none;white-space:nowrap}
+.ng-op:hover,.c-combo:hover{background:var(--hover)}
+.ng-op .chev,.c-combo .chev{font-size:8px;color:var(--text-3)}
+/* 输入框：名称输入框、条件输入框、令牌盒同款度量 */
+.ng-box,.tbx{height:30px;border:1px solid var(--ctrl-stroke);border-radius:4px;background:var(--layer1);
+  display:flex;align-items:center;padding:0 10px;flex:none}
+.ng-box input{width:168px;border:0;outline:0;background:transparent;color:var(--text);font-family:var(--font);font-size:13px}
+.ng-box input::placeholder{color:var(--text-3)}
+.name-group.active .ng-box{border-color:var(--accent)}
+.ng-box.invalid{border-color:var(--danger)}
+.cond input.c-in{height:30px;border:1px solid var(--ctrl-stroke);border-radius:4px;background:var(--layer1);
+  padding:0 10px;color:var(--text);font-family:var(--font);font-size:13px;outline:0}
+.cond input.c-in:focus,.ng-box:focus-within,.tbx:focus-within{border-color:var(--accent)}
+.cond input.c-in.w-l{width:150px}
+.cond input.c-in.w-s{width:64px}
+.cond input.c-in.w-d{width:126px}
+.cond.invalid input.c-in{border-color:var(--danger)}
+/* 图标开关（Aa/.*/.ext）：始终有描边的开关盒，点亮为强调色 */
+.ng-toggle{width:28px;height:28px;border:1px solid var(--ctrl-stroke);border-radius:4px;background:var(--layer1);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--text-2);cursor:pointer;flex:none;font-size:12px;font-weight:600}
+.ng-toggle:hover{background:var(--hover);color:var(--text)}
+.ng-toggle.on{color:var(--accent-text);background:var(--sel-fill);border-color:var(--accent)}
+/* 移除按钮：与 ng-tool 同款，条件内始终可见 */
+.ng-tool,.cond .c-x{width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  color:var(--text-2);cursor:pointer;flex:none;font-size:12px}
+.ng-tool{display:none}
+.ng-tool.show{display:flex}
+.ng-tool:hover,.cond .c-x:hover{background:var(--pressed);color:var(--text)}
+.addbtn{height:30px;border:1px solid var(--ctrl-stroke);border-radius:4px;background:var(--layer1);
+  display:inline-flex;align-items:center;gap:6px;padding:0 10px;cursor:default;color:var(--text-2);font-size:13px;flex:none}
+.addbtn:hover{background:var(--hover)}
+.addbtn .icon{font-size:10px}
+.filterbar .chk{height:30px;min-height:30px;flex:none;font-size:13px;color:var(--text-2)}
+/* 表达式流式项：连接符 + 条件组 为不可分行内组 */
+.cond-wrap{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:100%}
+/* 条件组：无外框控件行，与名称组完全同构；草稿以控件虚线框表达 */
+.cond.draft .c-in,.cond.draft .tbx,.cond.draft .c-combo{border-style:dashed}
+.cond.draft .c-dim{color:var(--text-3)}
+/* 令牌输入盒：与名称输入框同款边框，内部容纳值令牌 */
+.tbx{gap:4px;min-width:132px;max-width:460px;overflow:hidden}
+.tbx-ph{color:var(--text-3);font-size:13px;cursor:default;white-space:nowrap}
+.tok{display:inline-flex;align-items:center;height:20px;border-radius:3px;background:var(--chip-bg);
+  padding:0 4px 0 8px;font-size:12px;color:var(--text);gap:2px;flex:none;white-space:nowrap}
+.tok .t-x{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:8px;color:var(--text-2)}
+.tok .t-x:hover{background:var(--pressed)}
+.tok-add{width:20px;height:20px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--text-2);cursor:pointer;flex:none}
+.tok-add:hover{background:var(--pressed);color:var(--text)}
+/* 连接符 */
+.joiner{height:22px;padding:0 8px;border-radius:11px;font-size:12px;color:var(--text-2);cursor:pointer;
+  display:inline-flex;align-items:center;border:1px dashed var(--ctrl-stroke);flex:none}
+.joiner:hover{background:var(--hover)}
+.joiner.or{color:var(--accent-text);border-color:var(--sel-stroke);border-style:solid}
+.joiner.lonely{opacity:.5}
+.fb-count{color:var(--text-2);font-size:13px;white-space:nowrap}
+.fb-clear{height:30px;padding:0 8px;border-radius:4px;color:var(--accent-text);cursor:default;display:none;align-items:center;font-size:13px}
+.fb-clear:hover{background:var(--hover)}
+.fb-clear.show{display:inline-flex}
+.fb-hint{color:var(--text-3);font-size:12px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+kbd{font-family:var(--font);font-size:11px;border:1px solid var(--ctrl-stroke);border-bottom-width:2px;border-radius:4px;
+  padding:1px 5px;background:var(--layer1);color:var(--text-2)}
+
+/* ============ 内容区 ============ */
+.content{flex:1;overflow:auto;position:relative;background:var(--layer0);min-height:0}
+.view-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;height:100%;color:var(--text-2)}
+.view-empty .e-ic{font-size:52px;color:var(--text-3)}
+.view-empty .e-txt{font-size:14px}
+.view-empty .e-btn{color:var(--accent-text);border-radius:4px;padding:6px 12px;cursor:default;font-size:13px}
+.view-empty .e-btn:hover{background:var(--hover)}
+
+/* 详细信息视图 */
+/* 详细信息视图：固定列布局，名称列取剩余宽度，长名省略号生效 */
+.dgrid{width:100%;border-collapse:collapse;table-layout:fixed}
+.dgrid th{position:sticky;top:0;z-index:5;background:var(--layer0);text-align:left;font-weight:400;color:var(--text-2);
+  height:36px;padding:0 10px 0 12px;border-bottom:1px solid var(--divider);white-space:nowrap;font-size:13px}
+.dgrid th.sortable:hover{background:var(--subtle)}
+.dgrid th .h-in{display:flex;align-items:center;gap:4px}
+.sort-arr{font-size:9px;color:var(--text-3);width:12px;flex:none}
+.hfilter{width:26px;height:26px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;position:relative;visibility:hidden;margin-left:auto;flex:none;cursor:pointer}
+.dgrid th:hover .hfilter{visibility:visible}
+.hfilter:hover{background:var(--pressed)}
+.hfilter.active{visibility:visible;color:var(--accent-text)}
+.hfilter .dot{position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--accent);display:none}
+.hfilter.active .dot{display:block}
+.dgrid td{height:37px;padding:0 10px 0 12px;white-space:nowrap;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.dgrid td.sec{color:var(--text-2)}
+.dgrid tr{cursor:default}
+.dgrid tbody tr:hover td{background:var(--subtle)}
+.dgrid tbody tr.sel td{background:var(--sel-fill);border-bottom-color:var(--sel-stroke)}
+.cell-name{display:flex;align-items:center;gap:10px}
+.tagpill{display:inline-block;background:var(--chip-bg);border-radius:9px;padding:1px 9px;font-size:11px;margin-right:4px;color:var(--text-2)}
+
+/* 列表视图 */
+/* 列表视图：确定性 grid 列布局（按可视高度算行数，纵向填满再向右），不用 multicol */
+.vlist{padding:8px 4px 8px 10px;display:grid;grid-auto-flow:column;grid-auto-columns:260px;
+  align-content:start;justify-content:start}
+.litem{display:flex;align-items:center;gap:8px;height:34px;padding:0 8px;border-radius:4px;cursor:default}
+.litem:hover{background:var(--subtle)}
+.litem.sel{background:var(--sel-fill)}
+.litem span{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 卡片视图 */
+.vcards{display:flex;flex-wrap:wrap;gap:8px;padding:12px 4px 12px 12px;align-content:flex-start}
+.card{width:262px;height:62px;border-radius:4px;padding:9px 12px;display:flex;align-items:center;gap:12px;cursor:default;border:1px solid transparent}
+.card:hover{background:var(--subtle)}
+.card.sel{background:var(--sel-fill);border-color:var(--sel-stroke)}
+.card .c-tx{overflow:hidden}
+.card .c-n{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .c-s{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+
+/* 网格视图 */
+.vgrid{display:flex;flex-wrap:wrap;gap:4px;padding:12px 8px;align-content:flex-start}
+.gitem{padding:10px 6px 8px;border-radius:4px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:default;border:1px solid transparent}
+.gitem:hover{background:var(--subtle)}
+.gitem.sel{background:var(--sel-fill);border-color:var(--sel-stroke)}
+.gitem .g-n{font-size:12px;text-align:center;line-height:1.25;max-width:120px;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all}
+
+/* 列视图 */
+.vcolumns{display:flex;height:100%;overflow-x:auto}
+.cpane{width:252px;flex:none;border-right:1px solid var(--divider);padding:4px 2px;overflow-y:auto}
+.citem{display:flex;align-items:center;gap:8px;height:34px;padding:0 8px 0 10px;border-radius:4px;cursor:default}
+.citem:hover{background:var(--subtle)}
+.citem.sel{background:var(--sel-fill)}
+.citem.cur{background:var(--pressed)}
+.citem span{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.citem .ci-chev{margin-left:auto;font-size:9px;color:var(--text-3)}
+
+/* ============ 状态栏 ============ */
+.statusbar{height:32px;border-top:1px solid var(--divider);display:flex;align-items:center;padding:0 12px;
+  gap:16px;font-size:12px;color:var(--text-2);flex:none;background:var(--layer0)}
+.statusbar .s-sp{flex:1}
+.sbtn{height:24px;border-radius:4px;padding:0 8px;display:inline-flex;align-items:center;color:var(--text-2);cursor:default;gap:6px}
+.sbtn:hover{background:var(--hover)}
+
+/* ============ Flyout / 菜单（弹出层栈支持嵌套） ============ */
+.flyout{position:fixed;z-index:1000;background:var(--flyout);border:1px solid var(--stroke);border-radius:8px;
+  box-shadow:var(--shadow);animation:flyin .12s ease-out}
+@keyframes flyin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.menu{padding:4px;min-width:180px;max-height:420px;overflow-y:auto}
+.mitem{height:34px;border-radius:5px;padding:0 10px;display:flex;align-items:center;gap:10px;font-size:13px;cursor:default;color:var(--text)}
+.mitem:hover{background:var(--hover)}
+.mitem .mi-ck{width:16px;text-align:center;font-size:11px;color:var(--text-2)}
+.mitem .mi-sp{flex:1}
+.mitem .mi-cnt{font-size:11px;color:var(--text-3)}
+.msep{height:1px;background:var(--divider);margin:4px 6px}
+.menu.pick{max-height:320px;overflow-y:auto}
+.mitem.dis{opacity:.4;pointer-events:none}
+
+/* 条件控件（.cond 等）与复选框（选择器/递归） */
+.chk{display:flex;align-items:center;gap:8px;min-height:30px;cursor:default;font-size:13px;border-radius:4px;padding:0 4px}
+.chk:hover .cb{border-color:var(--text-2)}
+.cb{width:16px;height:16px;border:1px solid #6b6b6b;border-radius:4px;flex:none;position:relative;background:var(--layer1)}
+[data-theme=dark] .cb{border-color:#7a7a7a}
+.chk.on .cb{background:var(--accent);border-color:var(--accent)}
+.chk.on .cb::after{content:"\E73E";font-family:var(--icon-font);position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;color:var(--on-accent);font-size:11px}
+.chk .cl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-theme=dark] .cond input.c-in.w-d::-webkit-calendar-picker-indicator{filter:invert(1)}
+
+/* ============ 设计说明层 ============ */
+.anno-panel{position:fixed;top:44px;right:12px;bottom:44px;width:344px;background:var(--flyout);border:1px solid var(--stroke);
+  border-radius:8px;box-shadow:var(--shadow);z-index:900;display:none;flex-direction:column;overflow:hidden}
+.anno-panel.show{display:flex}
+.anno-head{padding:14px 16px 10px;border-bottom:1px solid var(--divider)}
+.anno-head h2{font-size:15px;font-weight:600}
+.anno-head p{font-size:12px;color:var(--text-2);margin-top:6px;line-height:1.6}
+.anno-body{flex:1;overflow-y:auto;padding:6px 10px 16px}
+.anno-sec{border-radius:6px;padding:10px 12px;margin-top:8px;transition:background .4s}
+.anno-sec.hl{background:var(--subtle)}
+.anno-sec h3{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.anno-sec p{font-size:12px;color:var(--text-2);line-height:1.7;margin-top:6px}
+.anno-sec b{color:var(--text);font-weight:600}
+.anno-sec .dm{color:var(--text-3);border-top:1px dashed var(--stroke);margin-top:8px;padding-top:8px;font-size:11px;line-height:1.6}
+.anno-dot{position:absolute;z-index:950;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:12px;font-weight:600;display:none;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.35);
+  cursor:pointer;transform:translate(9px,-9px)}
+.anno-dot.show{display:flex}
+svg.ficon{display:block;flex:none}
+</style>
+</head>
+<body data-theme="light">
+<div class="app" id="app">
+
+  <!-- 标题栏 / 标签页 -->
+  <div class="tabbar">
+    <div class="tab active"><span class="t-ic icon">&#xE8B7;</span><span class="t-t">项目资料</span><span class="t-x icon">&#xE711;</span></div>
+    <div class="tab-plus icon" title="新建标签页">&#xE710;</div>
+    <div class="spacer"></div>
+    <div class="tab-tool icon" id="themeBtn" title="切换浅色/深色主题">&#xE706;</div>
+    <div class="caption-btns"><span class="icon">&#xE921;</span><span class="icon">&#xE922;</span><span class="icon">&#xE8BB;</span></div>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="toolbar">
+    <div class="tbtn icon dim" title="返回 (Alt+←)">&#xE72B;</div>
+    <div class="tbtn icon dim" title="前进 (Alt+→)">&#xE72A;</div>
+    <div class="tbtn icon" title="上移 (Alt+↑)">&#xE74A;</div>
+    <div class="addr">
+      <div class="crumb">家</div><div class="chev icon">&#xE76C;</div>
+      <div class="crumb">文档</div><div class="chev icon">&#xE76C;</div>
+      <div class="crumb last">项目资料</div>
+      <div class="a-sp"></div>
+      <div class="a-act icon" title="刷新 (F5)">&#xE72C;</div>
+    </div>
+    <div class="cmds">
+      <div class="tbtn icon" title="新建">&#xE710;</div>
+      <div class="tsep"></div>
+      <div class="tbtn icon" title="剪切">&#xE8C6;</div>
+      <div class="tbtn icon" title="复制">&#xE8C8;</div>
+      <div class="tbtn icon" title="粘贴">&#xE77F;</div>
+      <div class="tsep"></div>
+      <div class="tbtn icon" title="重命名">&#xE8AC;</div>
+      <div class="tbtn icon" title="共享">&#xE72D;</div>
+      <div class="tbtn icon" title="删除">&#xE74D;</div>
+      <div class="tsep"></div>
+      <div class="tbtn icon" title="排序方式">&#xE8CB;</div>
+      <div class="tbtn icon" title="分组依据">&#xE8D0;</div>
+      <!-- ① 统一筛选入口：原工具栏漏斗开关（ToggleFilterHeader），5 种视图一致可用 -->
+      <div class="tbtn icon" id="btnFilterToggle" title="筛选 (Ctrl+Shift+F)">&#xE71C;</div>
+      <div class="tbtn icon" title="SQL 查询">&#xEC7A;</div>
+      <div class="tbtn icon" id="btnViewMenu" title="查看">&#xE8A5;</div>
+      <div class="tbtn icon" title="更多">&#xE712;</div>
+      <div class="searchbox"><span class="icon">&#xE721;</span><input placeholder="搜索" spellcheck="false"></div>
+    </div>
+  </div>
+
+  <!-- ② 筛选栏：单行统一表达式——名称条件与全部追加条件同一套控件，用满整行宽度才在条件边界换行 -->
+  <div class="filterbar" id="filterBar">
+    <div class="fb-row">
+      <div class="mode-switch" id="modeSwitch">
+        <span class="ms on" data-mode="basic">常规</span>
+        <span class="ms" data-mode="advanced">高级</span>
+      </div>
+      <div class="fb-icon" id="fbIcon"></div>
+      <div class="chips" id="chips">
+        <div class="name-group" id="nameGroup">
+          <span class="ng-label">名称</span>
+          <div class="ng-toggle" id="ngCase" title="区分大小写（文本与正则通用）">Aa</div>
+          <div class="ng-toggle" id="ngRx" title="正则表达式">.*</div>
+          <div class="ng-toggle" id="ngExt" title="作用域（文本与正则通用）：点亮 = 完整文件名（含扩展名）；不点亮 = 显示名称（不含扩展名）" style="font-size:11px">.ext</div>
+          <div class="ng-op" id="ngOp" title="运算符"><span id="ngOpv">包含</span><span class="icon chev">&#xE70D;</span></div>
+          <div class="ng-box" id="ngBox"><input id="nameInput" placeholder="文件名" spellcheck="false"></div>
+          <div class="ng-tool icon" id="ngX" title="清除名称筛选">&#xE711;</div>
+        </div>
+      </div>
+      <div class="chk" id="recursiveChk" title="筛选时同时搜索子文件夹内的项目（深度可在右侧调整，默认 2 层；未筛选时不展开显示；列视图按栏浏览，不递归）"><span class="cb"></span><span class="cl">搜索子文件夹</span></div>
+      <div class="c-combo" id="depthCtl" style="display:none" title="递归深度（默认 2 层，可调）"><span id="depthV">2 层</span><span class="icon chev">&#xE70D;</span></div>
+      <span class="fb-hint" id="fbHint"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></span>
+      <span class="fb-count" id="fbCount"></span>
+      <span class="fb-clear" id="fbClear"><span class="icon" style="font-size:11px;margin-right:5px">&#xE711;</span>清除所有筛选</span>
+    </div>
+  </div>
+
+  <!-- 内容区：5 种视图 -->
+  <div class="content" id="content"></div>
+
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <span id="stSel">项目资料</span>
+    <span class="s-sp"></span>
+    <span id="stCount">0 个项目</span>
+    <div class="sbtn" id="annoBtn"><span class="icon">&#xE90A;</span>设计说明</div>
+  </div>
+</div>
+
+<!-- 设计说明面板 -->
+<div class="anno-panel" id="annoPanel">
+  <div class="anno-head">
+    <h2>全视图筛选 · 交互设计说明</h2>
+    <p>面向<b>重度资源管理器用户</b>：效率、组合性、信息密度优先。名称维度完全内联（零弹层）；全部维度是可重复添加、带<b>并且/或者</b>连接符的<b>展开式条件控件组</b>——即时编辑、即时生效，不再收起成摘要药丸；“搜索子文件夹”仅在筛选生效时参与匹配。画布上的编号圆点对应下列章节，全部流程可点击试用。</p>
+  </div>
+  <div class="anno-body">
+    <div class="anno-sec" id="sec1"><h3>1 · 统一入口：工具栏漏斗按钮</h3>
+      <p>沿用现有 <b>ToggleFilterButton</b>（访问键 F，增设 <b>Ctrl+Shift+F</b>）。点按显示/隐藏筛选栏；筛选生效时按钮保持点亮；收起但筛选仍生效时，按钮右上出现<b>活动圆点</b>（与列头 FilterActiveDot 同一语言）。</p>
+      <p class="dm">映射：Toolbar.xaml 的 AppBarToggleButton（FilterHeader）→ 增加“筛选生效”指示。</p></div>
+    <div class="anno-sec" id="sec2"><h3>2 · 常规/高级切换 + 单行统一表达式</h3>
+      <p>筛选栏最前是 <b>[常规 | 高级]</b> 分段切换：<b>常规</b> = 纯搜索框——名称框支持<b>多关键字</b>（空格或逗号分隔，需同时满足）与 <b>Windows 通配符</b>（* 任意串、? 单字符，整名匹配、忽略大小写），<b>没有“添加”与条件列表</b>（高级设置的条件下不参与常规求值）；<b>高级</b> = 完整能力（12 个运算符、取反、连接符、正则作用域）。两套配置<b>互不丢失</b>，切回高级即恢复。</p>
+      <p>名称条件与全部追加条件在<b>同一行内流动</b>，共用完全相同的一套控件（30px 高、13px 字号、同款边框/开关/移除按钮）：<b>[维度名][Aa][.*][.ext][运算符▾][输入框][×]</b>。<b>追加的“名称”条件同样具备这三个开关</b>（高级）；其余维度为 [维度名][运算符▾][值控件][×]。整行宽度用满后才在<b>条件边界</b>换行，＋添加 始终贴住最后一个条件。</p>
+      <p class="dm">映射：ModernShellPage.xaml 的 FilterHeader 行；VS Code 检索栏先例。</p></div>
+    <div class="anno-sec" id="sec3"><h3>3 · 添加筛选 = 追加条件控件组（草稿即聚焦）</h3>
+      <p>菜单顶部选择连接符 <b>[并且添加 | 或者添加]</b>，每次点击新增一条<b>独立条件控件组</b>（七个维度任选、同维度可重复），入列即为<b>可编辑草稿</b>并自动聚焦首个控件（选择类自动弹值选择器）。菜单里已添加的维度显示 <b>×N</b> 计数。<b>求值：AND 优先结合</b>（A 并且 B 或者 C = (A∧B)∨C）；复杂嵌套逻辑仍归正则。</p></div>
+    <div class="anno-sec" id="sec4"><h3>4 · 条件即控件：形态统一、即时生效</h3>
+      <p>每条条件都是<b>展开的即时编辑控件组</b>，外观与第一个名称条件完全一致：<b>类型 [是▾] ⟨[Word 文档 ×][PNG 图像 ×] ＋⟩</b>（值在输入盒内以令牌呈现，盒式与名称输入框同款）、<b>大小 [1][MB▾]–[100]</b>、<b>修改日期 [最近 1 小时▾]</b>（预设含<b>最近 1/6/24 小时、今天、昨天、最近 3/7/30 天、本月、今年</b>——按当前时间<b>动态计算区间</b>；选“自定义…”就地展开 从/至）、<b>名称 [Aa][.*][.ext][开头是▾][输入框]</b>。<b>全部即时生效，无“应用”按钮</b>；选择类支持 <b>是/不是</b> 取反、令牌单删、超过 5 个折叠 +N；未生效草稿以控件虚线框呈现；<b>每条追加条件（含第一条）始终带 并且/或者 连接符</b>——暂无可连接的前置条件时呈弱化态，填入名称后即刻生效；点击切换、同维度多条自动编号。</p></div>
+    <div class="anno-sec" id="sec5"><h3>5 · 匹配计数与一键清除</h3>
+      <p>右侧实时 <b>“N 个匹配项”</b>；任意筛选生效时出现 <b>清除所有筛选</b>（含名称主条件与全部 chip；递归开关为作用域，保持不动）。零匹配时内容区空态 + 同款清除按钮。状态栏显示“已显示 N / M”。</p></div>
+    <div class="anno-sec" id="sec6"><h3>6 · 值选择器：多选即时，编辑 Flyout 退役</h3>
+      <p>类型/扩展名/标签经条件组内的 <b>＋</b> 打开<b>复选选择器</b>：勾选即时生效且保持打开（连续多选），选中值回显为条件组内令牌；标签的选择器尾部提供“包含没有值的项目”。原 <b>DirectoryFilterFlyout 的“应用/清除”流程退役</b>——所有编辑都在内联控件上即时完成，列头入口=追加同名条件草稿。</p>
+      <p class="dm">映射：内联条件控件直绑 DirectoryFilterViewModel（属性即筛选状态）；选择器复用其选项构建逻辑；新增 choice 取反（是/不是）需引擎扩展。</p></div>
+    <div class="anno-sec" id="sec7"><h3>7 · 列头 = 与筛选栏同一套条件</h3>
+      <p>详细视图每个列头漏斗都<b>追加同维度的条件控件组</b>（与「添加」菜单产出的完全一致）：名称列头追加的<b>名称条件具备与筛选栏相同的完整算法</b>——Aa/.*/.ext 三开关与 12 个运算符（含长度类）；类型/日期/大小/标签列头同理。列头激活圆点与条件增删双向同步；<b>常规模式下点击列头自动切到高级</b>并追加条件（列筛选即高级算法）。</p></div>
+    <div class="anno-sec" id="sec8"><h3>8 · 跨视图持久 + 递归子文件夹（防爆炸）</h3>
+      <p>切换 5 种视图筛选不丢。“<b>搜索子文件夹</b>”是<b>筛选的匹配范围，不是显示方式</b>：仅在<b>筛选生效</b>时把子目录项目纳入匹配——<b>未筛选时勾选不改变当前文件夹视图</b>，避免“勾选即全量平铺”的递归爆炸。<b>递归深度默认 2 层、可调（1/2/3/5/不限）</b>，常规与高级模式共用；生效时详细视图自动出现<b>“位置”列</b>，卡片副行与其余视图 tooltip 显示相对路径，状态栏附“（含 N 层子文件夹）”；列视图按栏浏览、不递归。</p>
+      <p class="dm">映射：引擎需<b>惰性</b>递归枚举（进度可见、可取消）与每项相对路径来源；原型为两层样例数据。</p></div>
+    <div class="anno-sec" id="sec9"><h3>设计决策与开放问题</h3>
+      <p><b>决策（可推翻）：</b>⓪ 人设=重度用户；① 原 FilesAndFoldersFilter 并入名称维度；② 名称完全内联、单一关键字/短语；③ <b>Aa=区分大小写</b>、<b>.ext=作用域</b>，三开关同族，文本/正则通用；④ <b>条件列表 + 并且/或者连接符</b>：AND 优先结合，同维度可重复；⑤ 扩展名独立成维度；⑥ <b>搜索子文件夹</b>为作用域开关（仅筛选生效时参与），清除筛选时保持；⑦ 空态文案“没有与筛选条件匹配的项”；⑧ <b>条件为展开控件组、全部即时生效</b>（无应用按钮、无药丸摘要）；⑨ 选择类支持 <b>是/不是</b> 取反（需引擎扩展）；⑩ <b>常规/高级切换</b>（默认常规）：常规=纯搜索框（多关键字空格/逗号分隔 + Windows 通配符 * ?，无添加/条件），高级=完整能力，两套配置互不丢失；<b>递归深度默认 2 层可调</b>（常规/高级共用）。<br><b>开放问题：</b>列视图递归语义（建议不递归）；递归结果的分组/排序策略；地址栏是否编码递归状态；括号分组 UI（当前判断：不需要，复杂逻辑归正则）。</p></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= 样例数据 ================= */
+const DAY=864e5,NOW=Date.now();
+const dA=(d,h=10)=>NOW-d*DAY-h*36e5;
+const TYPE_MAP={docx:"Word 文档",xlsx:"Excel 工作表",pdf:"PDF 文档",pptx:"PowerPoint 演示文稿",
+  md:"Markdown 文件",txt:"文本文档",png:"PNG 图像",jpg:"JPEG 图像",svg:"SVG 图像",mp4:"MP4 视频",
+  mov:"QuickTime 视频",zip:"ZIP 压缩文件","7z":"7-Zip 压缩文件",ai:"Adobe Illustrator 文件"};
+function it(n,m,c,size,tags,children){
+  const isFolder=!!children;const e=n.lastIndexOf(".");
+  return{n,folder:isFolder,m,c,size:isFolder?null:size,tags:tags||[],ext:isFolder?"":n.slice(e+1).toLowerCase(),
+    type:isFolder?"文件夹":(TYPE_MAP[n.slice(e+1).toLowerCase()]||"文件"),children:children||null,loc:""}}
+const DATA=[
+ it("设计稿",dA(1),dA(120),null,["设计"],[
+   it("概念稿-首页.png",dA(1),dA(3),2516582,["设计"]),it("banner-final.jpg",dA(4),dA(12),4300800,["设计"]),
+   it("图标库.svg",dA(6),dA(45),98304,["设计"]),it("logo.ai",dA(60),dA(200),2306867,["设计"]),
+   it("品牌视觉规范.pdf",dA(5),dA(90),13421772,["设计"]),it("切图@2x.png",dA(4),dA(12),1153433,["设计"]),
+   it("旧版",dA(30),dA(200),null,["设计"],[
+     it("旧版-首页.png",dA(40),dA(210),2149581,["设计"]),it("旧版-图标.svg",dA(41),dA(211),63488,["设计"])])]),
+ it("源代码",dA(5),dA(200),null,["技术"],[
+   it("api接口说明.md",dA(5),dA(70),28672,["技术"]),it("app架构图.png",dA(8),dA(40),3984589,["技术"]),
+   it("数据库设计.docx",dA(15),dA(50),1992294,["技术"]),it("源代码.zip",dA(16),dA(16),90177536,[]),
+   it("README.md",dA(3),dA(180),4096,[])]),
+ it("归档",dA(25),dA(300),null,[],[
+   it("素材包.7z",dA(25),dA(100),1288490188,[]),it("老版方案.docx",dA(90),dA(380),655360,[]),
+   it("合同扫描件.pdf",dA(45),dA(300),8808038,["财务"]),it("发布录像.mov",dA(11),dA(11),337641472,[])]),
+ it("会议记录",dA(2),dA(90),null,["会议"],[
+   it("会议纪要-1112.docx",dA(2),dA(2),47104,["会议"]),it("会议纪要-1105.docx",dA(9),dA(9),44032,["会议"]),
+   it("里程碑.md",dA(7),dA(60),12288,["项目"]),it("notes.txt",dA(1),dA(1),0,[])]),
+ it("2026年度市场报告.docx",dA(2),dA(30),3355443,["市场"]),
+ it("产品需求清单 v2.xlsx",dA(1),dA(14),880640,["产品"]),
+ it("发布计划.pptx",dA(0,2),dA(21),5872025,["产品","市场"]),
+ it("预算表-2027.xlsx",dA(10),dA(120),737280,["财务"]),
+ it("会议纪要-1112.docx",dA(2),dA(2),47104,["会议"]),
+ it("品牌视觉规范.pdf",dA(5),dA(90),13421772,["设计"]),
+ it("合同扫描件.pdf",dA(45),dA(300),8808038,["财务"]),
+ it("README.md",dA(3),dA(180),4096,[]),
+ it("里程碑.md",dA(7),dA(60),12288,["项目"]),
+ it("api接口说明.md",dA(5),dA(70),28672,["技术"]),
+ it("首页-视觉稿.png",dA(1),dA(3),2516582,["设计"]),
+ it("头像切图@2x.png",dA(4),dA(12),1153433,["设计"]),
+ it("app架构图.png",dA(8),dA(40),3984589,["技术"]),
+ it("banner-final.jpg",dA(4),dA(12),4300800,["设计"]),
+ it("图标库.svg",dA(6),dA(45),98304,["设计"]),
+ it("宣传视频.mp4",dA(9),dA(33),155189248,["市场"]),
+ it("演示录制.mov",dA(11),dA(11),337641472,[]),
+ it("源代码.zip",dA(16),dA(16),90177536,[]),
+ it("logo.ai",dA(60),dA(200),2306867,["设计"]),
+ it("老版方案.docx",dA(90),dA(380),655360,[]),
+ it("notes.txt",dA(1),dA(1),0,[])
+];
+const roots=DATA;
+
+/* ================= 图标（随主题重绘） ================= */
+const EXT_COLOR={docx:"#2b579a",xlsx:"#217346",pdf:"#d0342c",pptx:"#c43e1c",md:"#5c6bc0",txt:"#8d8d8d",
+  png:"#0f9d8f",jpg:"#0f9d8f",svg:"#0f9d8f",mp4:"#8e44ad",mov:"#8e44ad",zip:"#b8860b","7z":"#b8860b",ai:"#d97706"};
+function iconHTML(item,size){
+  const dark=document.body.dataset.theme==="dark";
+  if(item.folder){
+    const back=dark?"#8a6511":"#e6a63a",front=dark?"#c79529":"#f2c14e";
+    return`<svg class="ficon" width="${size}" height="${size}" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M1.6 13V5.2c0-.9.7-1.7 1.6-1.7h3l1.6 1.9h5c.9 0 1.6.7 1.6 1.6V13c0 .9-.7 1.6-1.6 1.6H3.2c-.9 0-1.6-.7-1.6-1.6Z" fill="${back}"/>
+      <path d="M1.6 13V7h12.8v6c0 .9-.7 1.6-1.6 1.6H3.2c-.9 0-1.6-.7-1.6-1.6Z" fill="${front}"/></svg>`;
+  }
+  const c=EXT_COLOR[item.ext]||"#7f8c9b";
+  const page=dark?"#3d3d3d":"#ffffff",fold=dark?"#323232":"#e8edf3",stroke=dark?"#6a6a6a":"#c3ccd6";
+  const lines=size>=48?`
+    <rect x="5.2" y="6.2" width="5.6" height="1.1" rx=".55" fill="${c}" opacity=".85"/>
+    <rect x="5.2" y="8.2" width="5.6" height="1.1" rx=".55" fill="${c}" opacity=".6"/>`:"";
+  return`<svg class="ficon" width="${size}" height="${size}" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M3.4 1.6h6L12.6 5v9.4H3.4z" fill="${page}" stroke="${stroke}"/>
+    <path d="M9.4 1.6V5h3.2" fill="${fold}" stroke="${stroke}"/>
+    <rect x="3.4" y="11.2" width="9.2" height="3.2" rx="1" fill="${c}"/>${lines}</svg>`;
+}
+
+/* ================= 筛选模型 =================
+   内联名称 = 主条件 nameMain；conds = 附加条件列表（同维度可重复）。
+   语义：跨条件 AND；条件内复选 OR；Aa（区分大小写）文本/正则通用。 */
+const DIMS=["name","type","ext","modified","created","size","tags"];
+const DIM_LABEL={name:"名称",type:"类型",ext:"扩展名",modified:"修改日期",created:"创建日期",size:"大小",tags:"文件标签"};
+const OPS=[["contains","包含"],["notcontains","不包含"],
+  ["startswith","开头是"],["startswithnot","开头不是"],
+  ["endswith","结尾是"],["endswithnot","结尾不是"],
+  ["equals","等于"],["notequals","不等于"],
+  ["lengthgt","长度大于"],["lengthlt","长度小于"],
+  ["lengtheq","长度等于"],["lengthneq","长度不等于"]];
+/* 长度类运算符：值为字符数（按 .ext 作用域所选字段计算） */
+const LEN_OPS=new Set(["lengthgt","lengthlt","lengtheq","lengthneq"]);
+const UNITS=[["B","B"],["KB","KB"],["MB","MB"],["GB","GB"]];
+const UNIT_MUL={B:1,KB:1024,MB:1048576,GB:1073741824};
+
+const emptyNameCond=()=>({mode:"text",op:"contains",text:"",len:"",regex:"",rxIgnore:true,rxTarget:"raw"});
+function newCond(dim){
+  switch(dim){
+    case"name":return{dim,...emptyNameCond()};
+    case"type":case"ext":return{dim,values:new Set(),neg:false};
+    case"tags":return{dim,values:new Set(),includeEmpty:false,neg:false};
+    case"size":return{dim,min:null,max:null,unit:"MB"};
+    default:return{dim,from:null,to:null,label:"",pk:null,custom:false};
+  }
+}
+let nameMain=emptyNameCond();
+let conds=[];
+let recursive=false;
+/* 常规/高级：常规=纯搜索框（多关键字+通配符，无添加/条件）；高级=完整能力 */
+let mode="basic",basicText="";
+/* 递归深度（默认 2 层，可调；99=不限） */
+let depth=2;
+
+function nameActive(c){
+  if(c.mode==="regex")return!!c.regex;
+  if(LEN_OPS.has(c.op))return c.len!=="";
+  return!!c.text;
+}
+function condActive(c){
+  if(c.dim==="name")return mode==="basic"?!!c.text:nameActive(c);
+  switch(c.dim){
+    case"type":case"ext":case"tags":return c.values.size>0;
+    case"size":return c.min!=null||c.max!=null;
+    default:return c.custom?!!(c.from||c.to):(!!c.pk&&c.pk!=="all");
+  }
+}
+const condsOf=dim=>conds.filter(c=>c.dim===dim&&condActive(c));
+function dimActive(dim){
+  if(dim==="name")return(mode==="basic"?!!basicText:nameActive(nameMain))||condsOf("name").length>0;
+  return condsOf(dim).length>0;
+}
+function anyActive(){
+  if(mode==="basic")return basicKeywords().length>0;
+  return dimActive("name")||DIMS.slice(1).some(dimActive);
+}
+/* 常规：多关键字（空格/逗号分隔，AND）+ Windows 通配符（* 与 ?，整名匹配、忽略大小写） */
+function basicKeywords(){return basicText.split(/[\s,，]+/).map(s=>s.trim()).filter(Boolean)}
+function wildcardMatch(name,kw){
+  let re="";
+  for(const ch of kw){
+    if(ch==="*")re+=".*";
+    else if(ch==="?")re+=".";
+    else re+=ch.replace(/[.+^${}()|[\]\\]/g,"\\$&");
+  }
+  try{return new RegExp("^"+re+"$","i").test(name)}catch(e){return false}
+}
+function matchBasic(item){
+  return basicKeywords().every(kw=>/[*?]/.test(kw)?wildcardMatch(item.n,kw)
+    :item.n.toLowerCase().includes(kw.toLowerCase()));
+}
+
+function displayOf(item){if(item.folder)return item.n;const e=item.n.lastIndexOf(".");return e>0?item.n.slice(0,e):item.n}
+function matchNameCond(item,c,basic){
+  if(basic)return item.n.toLowerCase().includes((c.text||"").toLowerCase()); /* 常规：固定包含 */
+  if(!nameActive(c))return true;
+  const lc=c.rxIgnore;
+  const field=c.rxTarget==="display"?displayOf(item):item.n;
+  if(c.mode==="regex"){
+    try{const re=new RegExp(c.regex,lc?"i":"");
+      return re.test(field)}
+    catch(e){return true}
+  }
+  if(LEN_OPS.has(c.op)){ /* 字符数比较 */
+    const n=parseInt(c.len,10);
+    if(isNaN(n))return true;
+    const len=field.length;
+    switch(c.op){
+      case"lengthgt":return len>n;
+      case"lengthlt":return len<n;
+      case"lengtheq":return len===n;
+      default:return len!==n;
+    }
+  }
+  const hay=lc?field.toLowerCase():field;
+  const t=lc?c.text.toLowerCase():c.text;
+  switch(c.op){
+    case"notcontains":return!hay.includes(t);
+    case"startswith":return hay.startsWith(t);
+    case"startswithnot":return!hay.startsWith(t);
+    case"endswith":return hay.endsWith(t);
+    case"endswithnot":return!hay.endsWith(t);
+    case"notequals":return hay!==t;
+    default:return hay.includes(t);
+  }
+}
+function matchCond(item,c){
+  switch(c.dim){
+    case"name":return matchNameCond(item,c);
+    case"type":{if(c.values.size===0)return true;const r=c.values.has(item.type);return c.neg?!r:r}
+    case"ext":{if(c.values.size===0)return true;const r=!!item.ext&&c.values.has(item.ext);return c.neg?!r:r}
+    case"tags":{
+      if(c.values.size===0)return true;
+      const r=item.tags.length===0?c.includeEmpty:item.tags.some(x=>c.values.has(x));
+      return c.neg?!r:r}
+    case"size":{
+      if(item.folder)return false; /* 与现引擎一致：大小筛选不含文件夹 */
+      const b=item.size,u=UNIT_MUL[c.unit];
+      if(c.min!=null&&b<c.min*u)return false;
+      if(c.max!=null&&b>c.max*u)return false;
+      return true}
+    default:{ /* modified / created：预设动态区间（含小时级）或自定义日期区间 */
+      const t=item[c.dim==="modified"?"m":"c"];
+      let from=-Infinity,to=Infinity;
+      if(c.custom){
+        if(!c.from&&!c.to)return true;
+        if(c.from)from=new Date(c.from+"T00:00:00").getTime();
+        if(c.to)to=new Date(c.to+"T23:59:59").getTime();
+      }else{
+        const r=presetRange(c.pk);
+        if(!r)return true;
+        from=r[0];to=r[1];
+      }
+      return t>=from&&t<=to}
+  }
+}
+/* 求值：高级=条件链 AND 优先结合；常规=多关键字/通配符（无添加条件，忽略高级条件） */
+function evalChain(item){
+  const elems=[];
+  if(mode==="basic"){
+    if(basicKeywords().length)elems.push({f:()=>matchBasic(item),join:"and"});
+  }else{
+    if(nameActive(nameMain))elems.push({f:()=>matchNameCond(item,nameMain),join:"and"});
+    conds.forEach(c=>{if(condActive(c))elems.push({f:()=>matchCond(item,c),join:c.join||"and"})});
+  }
+  if(elems.length===0)return true;
+  let group=true,total=false;
+  elems.forEach((el,i)=>{
+    const v=el.f();
+    if(i===0){group=v;return}
+    if(el.join==="or"){total=total||group;group=v}
+    else group=group&&v;
+  });
+  return total||group;
+}
+const passes=item=>evalChain(item);
+
+/* ================= 应用状态 ================= */
+let view="details",gridSize=96,panes=[null],sel=new Set(),sortState=["name","asc"],barVisible=true;
+/* 递归防爆炸：递归只是“筛选的匹配范围”，不是显示方式——仅在筛选生效时平铺参与匹配 */
+const flatMode=()=>recursive&&anyActive()&&view!=="columns";
+function ctxItems(){
+  if(view==="columns"){
+    const f=panes[panes.length-1];
+    if(!f){roots.forEach(r=>r.loc="");return roots}
+    f.children.forEach(ch=>ch.loc=f.n);return f.children;
+  }
+  if(flatMode()){
+    const out=[];
+    const walk=(items,level,parentLoc)=>{
+      items.forEach(r=>{
+        r.loc=parentLoc;
+        out.push(r);
+        if(level+1<=depth&&r.folder&&r.children){
+          walk(r.children,level+1,parentLoc?parentLoc+"\\"+r.n:r.n);
+        }
+      });
+    };
+    walk(roots,0,"");
+    return out;
+  }
+  roots.forEach(r=>r.loc="");
+  return roots;
+}
+
+/* ================= 工具 ================= */
+const $=id=>document.getElementById(id);
+function fmtSize(b){if(b==null)return"";if(b===0)return"0 KB";
+  if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(0)+" KB";
+  if(b<1073741824)return(b/1048576).toFixed(1)+" MB";return(b/1073741824).toFixed(2)+" GB"}
+function fmtDate(ts){const d=new Date(ts),p=x=>String(x).padStart(2,"0");
+  return`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function flatChildren(){const out=[];roots.forEach(r=>{if(r.children)out.push(...r.children)});return out}
+function uniqueOf(arr,fn){return[...new Set(arr.map(fn))].sort()}
+function allTags(){return[...new Set(roots.concat(flatChildren()).flatMap(i=>i.tags))].sort()}
+function allExts(){return uniqueOf(roots.concat(flatChildren()),i=>i.ext).filter(Boolean)}
+function allTypes(){return uniqueOf(roots.concat(flatChildren()),i=>i.type).filter(t=>t!=="文件夹")}
+function regexOk(pattern,ignoreCase){try{new RegExp(pattern,ignoreCase?"i":"");return true}catch(e){return false}}
+
+/* ================= 弹出层栈（Flyout 可嵌套） ================= */
+const flyStack=[];
+function popFly(){const f=flyStack.pop();if(f)f.el.remove()}
+function closeAllFly(){while(flyStack.length)popFly()}
+function showFlyout(anchor,content){
+  const el=document.createElement("div");el.className="flyout";el.appendChild(content);
+  document.body.appendChild(el);
+  const r=anchor.getBoundingClientRect(),w=el.offsetWidth,h=el.offsetHeight;
+  let x=r.left,y=r.bottom+6;
+  if(y+h>innerHeight-8)y=r.top-h-6;
+  if(x<8)x=8;if(x+w>innerWidth-8)x=Math.max(8,innerWidth-w-8);
+  el.style.left=x+"px";el.style.top=y+"px";
+  flyStack.push({el,anchor});return el;
+}
+document.addEventListener("pointerdown",e=>{
+  if(!flyStack.length)return;
+  const inside=flyStack.some(f=>f.el.contains(e.target)||f.anchor.contains(e.target));
+  if(!inside)closeAllFly();
+},true);
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    if(flyStack.length){popFly();return}
+    $("annoPanel").classList.remove("show");refreshDots(false);
+  }
+  if(e.ctrlKey&&e.shiftKey&&(e.key==="F"||e.key==="f")){e.preventDefault();setBarVisible(true);$("nameInput").focus()}
+});
+
+/* ================= 菜单原语 ================= */
+function menuItem(label,check,fn,cnt){
+  const d=document.createElement("div");d.className="mitem";
+  d.innerHTML=`<span>${label}</span><span class="mi-sp"></span>`+
+    (cnt?`<span class="mi-cnt">×${cnt}</span>`:"")+(check?`<span class="mi-ck icon">&#xE73E;</span>`:"");
+  d.onclick=e=>{e.stopPropagation();fn()};return d;
+}
+function menuSep(){const d=document.createElement("div");d.className="msep";return d}
+
+function openViewMenu(anchor){
+  const m=document.createElement("div");m.className="menu";m.style.minWidth="170px";
+  [["details","详细信息"],["list","列表"],["cards","卡片"],["grid","网格"],["columns","列视图"]].forEach(([id,label])=>
+    m.appendChild(menuItem(label,view===id,()=>{closeAllFly();view=id;panes=[null];sel.clear();render()})));
+  m.appendChild(menuSep());
+  if(view==="grid"){
+    [[48,"小"],[96,"中"],[128,"大"]].forEach(([v,l])=>m.appendChild(menuItem(l,gridSize===v,()=>{closeAllFly();gridSize=v;render()})));
+    m.appendChild(menuSep());
+  }
+  const cl=menuItem("清除所有筛选",false,()=>{closeAllFly();clearAll()});
+  if(!anyActive())cl.classList.add("dis");m.appendChild(cl);
+  showFlyout(anchor,m);
+}
+/* ③ 添加条件：高级模式顶部选连接符（并且/或者）；常规模式固定 并且、不显示连接符选择 */
+let defaultJoin="and";
+function openAddMenu(anchor){
+  const m=document.createElement("div");m.className="menu";m.style.minWidth="200px";
+  if(mode!=="basic"){
+    const head=document.createElement("div");head.style.cssText="display:flex;gap:4px;padding:2px 2px 4px";
+    [["and","并且添加"],["or","或者添加"]].forEach(([j,l])=>{
+      const b=document.createElement("div");b.className="mitem";
+      b.style.cssText="flex:1;justify-content:center"+(defaultJoin===j?";background:var(--subtle);font-weight:600":"");
+      b.innerHTML=`<span>${l}</span>`;
+      b.onclick=e=>{e.stopPropagation();defaultJoin=j;popFly();openAddMenu(anchor)};
+      head.appendChild(b)});
+    m.appendChild(head);m.appendChild(menuSep());
+  }
+  DIMS.forEach(d=>m.appendChild(menuItem(DIM_LABEL[d],dimActive(d),()=>{
+    closeAllFly();
+    const c=newCond(d);c.join=mode==="basic"?"and":defaultJoin;conds.push(c);
+    render();focusLastCond()},condsOf(d).length||0)));
+  m.appendChild(menuSep());
+  const cl=menuItem("清除所有筛选",false,()=>{closeAllFly();clearAll()});
+  if(!anyActive())cl.classList.add("dis");m.appendChild(cl);
+  showFlyout(anchor,m);
+}
+
+/* ================= 条件控件原语（展开式即时编辑） ================= */
+function makeCheck(label,on){
+  const d=document.createElement("div");d.className="chk"+(on?" on":"");
+  d.innerHTML=`<span class="cb"></span><span class="cl">${esc(label)}</span>`;
+  d.onclick=e=>{e.stopPropagation();d.classList.toggle("on")};
+  d.isOn=()=>d.classList.contains("on");return d;
+}
+/* 紧凑下拉（值语义），用于条件组内的运算符/单位/预设 */
+function miniCombo(opts,cur,onPick){
+  const w=document.createElement("span");w.className="c-combo";
+  const lbl=(opts.find(o=>o[0]===cur)||opts[0])[1];
+  w.innerHTML=`<span>${lbl}</span><span class="icon chev">&#xE70D;</span>`;
+  w.onclick=e=>{e.stopPropagation();
+    const m=document.createElement("div");m.className="menu";m.style.minWidth="132px";
+    opts.forEach(o=>m.appendChild(menuItem(o[1],o[0]===cur,()=>{popFly();onPick(o[0])})));
+    showFlyout(w,m)};
+  return w;
+}
+const PRE_D=[["all","所有日期"],["h1","最近 1 小时"],["h6","最近 6 小时"],["h24","最近 24 小时"],
+  ["today","今天"],["yesterday","昨天"],["d3","最近 3 天"],["d7","最近 7 天"],["d30","最近 30 天"],
+  ["month","本月"],["year","今年"],["custom","自定义…"]];
+/* 预设 → 相对当前时间的区间（毫秒）；null 表示不限制 */
+function presetRange(pk){
+  if(!pk||pk==="all")return null;
+  const now=Date.now(),day0=new Date();day0.setHours(0,0,0,0);
+  const d0=day0.getTime(),H=3600e3,D=864e5;
+  switch(pk){
+    case"h1":return[now-H,now];
+    case"h6":return[now-6*H,now];
+    case"h24":return[now-24*H,now];
+    case"today":return[d0,now];
+    case"yesterday":return[d0-D,d0-1];
+    case"d3":return[now-3*D,now];
+    case"d7":return[now-7*D,now];
+    case"d30":return[now-30*D,now];
+    case"month":{const s=new Date(day0.getFullYear(),day0.getMonth(),1).getTime();return[s,now]}
+    case"year":{const s=new Date(day0.getFullYear(),0,1).getTime();return[s,now]}
+    default:return null;
+  }
+}
+/* 值选择器：多选即时生效（保持打开），选中值以令牌呈现在条件组内 */
+function openPicker(c,anchor){
+  const m=document.createElement("div");m.className="menu pick";m.style.minWidth="196px";
+  const src=c.dim==="type"?allTypes():c.dim==="ext"?allExts():allTags();
+  src.forEach(v=>{
+    const ch=makeCheck(v,c.values.has(v));
+    ch.onclick=e=>{e.stopPropagation();
+      c.values.has(v)?c.values.delete(v):c.values.add(v);
+      render();repositionPicker(c)};
+    m.appendChild(ch)});
+  if(c.dim==="tags"){
+    m.appendChild(menuSep());
+    const inc=makeCheck("包含没有值的项目",c.includeEmpty);
+    inc.onclick=e=>{e.stopPropagation();inc.classList.toggle("on");
+      c.includeEmpty=inc.isOn();render();repositionPicker(c)};
+    m.appendChild(inc);
+  }
+  showFlyout(anchor,m);
+}
+/* 勾选后条件组被重建：把仍打开的选择器重新吸附到该条件的 ＋ 按钮 */
+function repositionPicker(c){
+  const top=flyStack[flyStack.length-1];if(!top)return;
+  const g=[...document.querySelectorAll(".cond")].find(el=>el.__cond===c);
+  if(!g)return;
+  const el=g.querySelector(".tok-add")||g.querySelector(".c-combo");if(!el)return;
+  const r=el.getBoundingClientRect(),w=top.el.offsetWidth,h=top.el.offsetHeight;
+  let x=r.left,y=r.bottom+6;
+  if(y+h>innerHeight-8)y=r.top-h-6;
+  if(x<8)x=8;if(x+w>innerWidth-8)x=Math.max(8,innerWidth-w-8);
+  top.el.style.left=x+"px";top.el.style.top=y+"px";top.anchor=el;
+}
+
+/* ================= 条件控件组（展开的即时编辑控件，非摘要药丸） ================= */
+function buildCond(c,i){
+  const wrap=document.createElement("span");wrap.className="cond-wrap";
+  const basic=mode==="basic";
+  /* 高级：每条追加条件都带 并且/或者（与名称组关联，无可连接条件时弱化）；常规：固定 并且，不显示连接符 */
+  if(!basic){
+    const lonely=i===0&&!nameActive(nameMain);
+    const j=document.createElement("span");
+    j.className="joiner"+((c.join||"and")==="or"?" or":"")+(lonely?" lonely":"");
+    j.textContent=(c.join||"and")==="or"?"或者":"并且";
+    j.title="点击切换 并且/或者（AND 优先结合：A 并且 B 或者 C = (A∧B)∨C）"+(lonely?"；填入名称后生效":"");
+    j.onclick=e=>{e.stopPropagation();c.join=(c.join||"and")==="or"?"and":"or";render()};
+    wrap.appendChild(j);
+  }
+  const g=document.createElement("span");g.className="cond";g.__cond=c;
+  if(!condActive(c))g.classList.add("draft"); /* 草稿态：控件虚线框提示尚未生效 */
+  const ord=conds.filter(x=>x.dim===c.dim).indexOf(c)+1;
+  const multi=conds.filter(x=>x.dim===c.dim).length>1;
+  const dim=document.createElement("span");dim.className="c-dim";
+  dim.textContent=DIM_LABEL[c.dim]+(multi?` ${ord}`:"");
+  g.appendChild(dim);
+  const x=document.createElement("span");x.className="c-x icon";x.innerHTML="&#xE711;";x.title="移除此条件";
+  x.onclick=e=>{e.stopPropagation();conds=conds.filter(t=>t!==c);render()};
+  const numInput=(val,cls,ph)=>{const b=document.createElement("input");b.className="c-in "+cls;
+    b.type="number";b.min="0";b.step="any";b.value=val==null?"":val;if(ph)b.placeholder=ph;return b};
+  const findCondEl=()=>[...document.querySelectorAll(".cond")].find(k=>k.__cond===c)||null;
+  const focusInput=()=>{const el=findCondEl();const b=el&&el.querySelector("input");if(b){b.focus();if(b.select)b.select()}};
+
+  if(c.dim==="name"){
+    if(basic){
+      /* 常规：单一名称输入（固定包含），无开关/运算符 */
+      const inp=document.createElement("input");inp.className="c-in w-l";inp.spellcheck=false;
+      inp.placeholder="名称";inp.value=c.text;
+      inp.oninput=()=>{c.text=inp.value;renderLive()};
+      inp.onkeydown=e=>{if(e.key==="Enter")render()};
+      g.appendChild(inp);
+    }else{
+      /* 高级：与第一个名称条件完全同款：Aa / .* / .ext 三个图标开关 + 运算符 + 输入框 */
+      const rx=c.mode==="regex";
+      const tog=(label,on,title,fn)=>{const b=document.createElement("span");
+        b.className="ng-toggle"+(on?" on":"");b.textContent=label;b.title=title;
+        b.onclick=e=>{e.stopPropagation();fn();render();focusInput()};return b};
+      g.append(
+        tog("Aa",!c.rxIgnore,"区分大小写（文本与正则通用）",()=>{c.rxIgnore=!c.rxIgnore}),
+        tog(".*",rx,"正则表达式",()=>{c.mode=rx?"text":"regex"}),
+        tog(".ext",c.rxTarget!=="display","作用域（文本与正则通用）：点亮 = 完整文件名（含扩展名）；不点亮 = 显示名称（不含扩展名）",()=>{c.rxTarget=c.rxTarget==="display"?"raw":"display"})
+      );
+      if(!rx)g.appendChild(miniCombo(OPS,c.op,v=>{c.op=v;render()}));
+      /* 长度类运算符：输入框切换为数字输入 */
+      const isLen=!rx&&LEN_OPS.has(c.op);
+      const inp=document.createElement("input");
+      inp.className="c-in "+(isLen?"w-s":"w-l");
+      if(isLen){inp.type="number";inp.min="0";inp.step="1";inp.placeholder="长度";inp.value=c.len;}
+      else{inp.spellcheck=false;inp.placeholder=rx?"正则表达式":"名称";inp.value=rx?c.regex:c.text;}
+      if(rx&&c.regex&&!regexOk(c.regex,c.rxIgnore))g.classList.add("invalid");
+      inp.oninput=()=>{
+        if(c.mode==="regex")c.regex=inp.value;
+        else if(LEN_OPS.has(c.op))c.len=inp.value;
+        else c.text=inp.value;
+        g.classList.toggle("invalid",c.mode==="regex"&&!!c.regex&&!regexOk(c.regex,c.rxIgnore));
+        renderLive()};
+      inp.onkeydown=e=>{if(e.key==="Enter")render()};
+      g.appendChild(inp);
+    }
+  }
+  else if(c.dim==="type"||c.dim==="ext"||c.dim==="tags"){
+    if(!basic)g.appendChild(miniCombo([["is","是"],["not","不是"]],c.neg?"not":"is",v=>{c.neg=v==="not";render()}));
+    const tbx=document.createElement("span");tbx.className="tbx";
+    const vals=[...c.values];
+    if(vals.length===0){
+      const ph=document.createElement("span");ph.className="tbx-ph";ph.textContent="选择…";
+      ph.onclick=e=>{e.stopPropagation();openPicker(c,ph)};
+      tbx.appendChild(ph);
+    }
+    vals.slice(0,5).forEach(v=>{
+      const t=document.createElement("span");t.className="tok";t.textContent=(c.dim==="ext"?"."+v:v);
+      const tx=document.createElement("span");tx.className="t-x icon";tx.innerHTML="&#xE711;";
+      tx.onclick=e=>{e.stopPropagation();c.values.delete(v);render()};
+      t.appendChild(tx);tbx.appendChild(t)});
+    if(vals.length>5){ /* 令牌溢出：+N 打开选择器查看全部 */
+      const more=document.createElement("span");more.className="tok";more.style.cursor="pointer";
+      more.textContent="+"+(vals.length-5);more.title="查看全部已选值";
+      more.onclick=e=>{e.stopPropagation();openPicker(c,more)};tbx.appendChild(more)}
+    const add=document.createElement("span");add.className="tok-add";add.innerHTML="&#xE710;";add.title="选择值";
+    add.onclick=e=>{e.stopPropagation();openPicker(c,add)};
+    tbx.appendChild(add);
+    g.appendChild(tbx);
+  }
+  else if(c.dim==="size"){
+    const mn=numInput(c.min,"w-s","最小"),mx=numInput(c.max,"w-s","最大");
+    mn.oninput=()=>{c.min=mn.value===""?null:+mn.value;renderLive()};
+    mx.oninput=()=>{c.max=mx.value===""?null:+mx.value;renderLive()};
+    mn.onkeydown=mx.onkeydown=e=>{if(e.key==="Enter")render()};
+    const dash=document.createElement("span");dash.textContent="–";dash.style.color="var(--text-3)";
+    g.append(mn,miniCombo(UNITS,c.unit,v=>{c.unit=v;render()}),dash,mx);
+  }
+  else{ /* 修改日期 / 创建日期：预设动态区间（含小时级），自定义就地展开 从/至 */
+    const cur=()=>c.custom?"custom":(c.pk||"all");
+    g.appendChild(miniCombo(PRE_D,cur(),v=>{
+      if(v==="custom"){c.custom=true;c.pk=null;if(!c.from&&!c.to){c.from=isoDaysAgo(6);c.to=isoToday()}}
+      else if(v==="all"){c.custom=false;c.pk=null;c.from=c.to=null}
+      else{c.custom=false;c.pk=v;c.from=c.to=null}
+      render()}));
+    if(c.custom){
+      const mk=(v,ph,set)=>{const b=document.createElement("input");b.className="c-in w-d";b.type="date";
+        b.value=v||"";b.title=ph;
+        b.onchange=()=>{set(b.value||null);c.pk=null;c.custom=true;render()};return b};
+      g.append(mk(c.from,"从",val=>c.from=val),mk(c.to,"至",val=>c.to=val));
+    }
+  }
+  g.appendChild(x);
+  wrap.appendChild(g);
+  return wrap;
+}
+/* 添加条件后聚焦其首个可编辑控件（输入框或打开选择器/预设） */
+function focusLastCond(){
+  const last=$("chips").lastChild;if(!last)return;
+  const g=last.querySelector(".cond");if(!g)return;
+  const inp=g.querySelector("input");
+  if(inp){inp.focus();if(inp.select)inp.select();return}
+  const btn=g.querySelector(".tok-add")||g.querySelector(".c-combo");
+  if(btn)btn.click();
+}
+function isoToday(){const d=new Date(),p=x=>String(x).padStart(2,"0");
+  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function isoDaysAgo(n){const d=new Date(Date.now()-n*DAY),p=x=>String(x).padStart(2,"0");
+  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+
+/* ================= 清除 ================= */
+function clearAll(){
+  nameMain=emptyNameCond();conds=[];basicText="";
+  $("nameInput").value=""; /* 递归为作用域开关，保持不动；常规/高级模式保持 */
+  render();
+}
+
+/* ================= 筛选栏渲染 ================= */
+function setBarVisible(v){barVisible=v;$("filterBar").style.display=v?"":"none";render()}
+function renderExpr(){
+  /* 名称主条件完全内联（零弹层），与追加条件同一套控件、同一条流 */
+  const ng=$("nameGroup"),basic=mode==="basic",rx=!basic&&nameMain.mode==="regex";
+  /* 常规/高级切换态 */
+  [...$("modeSwitch").children].forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+  /* 常规隐藏高级开关与运算符 */
+  $("ngCase").style.display=basic?"none":"";
+  $("ngRx").style.display=basic?"none":"";
+  $("ngExt").style.display=basic?"none":"";
+  $("ngOp").style.display=basic||rx?"none":"";
+  if(basic){
+    $("ngOpv").textContent="包含";
+    $("ngCase").classList.remove("on");
+    $("ngRx").classList.remove("on");
+    $("ngExt").classList.remove("on");
+  }else{
+    $("ngOpv").textContent=(OPS.find(o=>o[0]===nameMain.op)||OPS[0])[1];
+    $("ngExt").classList.toggle("on",nameMain.rxTarget!=="display");
+    $("ngCase").classList.toggle("on",!nameMain.rxIgnore); /* Aa 点亮 = 区分大小写 */
+    $("ngRx").classList.toggle("on",rx);
+  }
+  const inp=$("nameInput"),isLen=!basic&&!rx&&LEN_OPS.has(nameMain.op);
+  if(document.activeElement!==inp){
+    if(basic||rx){
+      inp.type="text";inp.placeholder="文件名";inp.style.width="168px";
+      inp.value=basic?basicText:nameMain.regex;
+    }else if(isLen){
+      inp.type="number";inp.min="0";inp.step="1";inp.placeholder="长度";inp.style.width="88px";
+      inp.value=nameMain.len;
+    }else{
+      inp.type="text";inp.placeholder="文件名";inp.style.width="168px";
+      inp.value=nameMain.text;
+    }
+  }
+  $("ngBox").classList.toggle("invalid",!basic&&rx&&!!nameMain.regex&&!regexOk(nameMain.regex,nameMain.rxIgnore));
+  ng.classList.toggle("active",basic?!!basicText:nameActive(nameMain));
+  $("ngX").classList.toggle("show",basic?!!basicText:nameActive(nameMain));
+  $("recursiveChk").classList.toggle("on",recursive);
+
+  /* 常规 = 纯搜索框（无添加/条件）；高级 = 条件流（＋添加贴最后一个条件） */
+  const chips=$("chips");
+  [...chips.children].forEach(ch=>{if(ch!==ng)ch.remove()});
+  if(mode!=="basic"){
+    conds.forEach((c,i)=>chips.appendChild(buildCond(c,i)));
+    const addBtn=document.createElement("span");addBtn.className="addbtn";addBtn.id="addFilterBtn";
+    addBtn.innerHTML='<span class="icon">&#xE710;</span>添加';
+    addBtn.title="添加筛选条件";
+    addBtn.onclick=e=>{e.stopPropagation();openAddMenu(addBtn)};
+    if(conds.length)chips.lastChild.appendChild(addBtn);
+    else chips.appendChild(addBtn);
+  }
+  /* 递归深度控件（递归开启时出现） */
+  $("depthCtl").style.display=recursive?"inline-flex":"none";
+  $("depthV").textContent=depth>=99?"不限":depth+" 层";
+  $("ngBox").title=basic?"支持多关键字（空格或逗号分隔，需同时满足）与通配符 * ?":"文件名筛选";
+  const t=$("btnFilterToggle");
+  t.classList.toggle("on",barVisible);
+  t.innerHTML="&#xE71C;"+(!barVisible&&anyActive()
+    ?"<span style='position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--accent)'></span>":"");
+}
+/* 条件内输入时只刷新结果区；同步草稿/校验态，不重建表达式行（保持焦点/光标） */
+function renderLive(){
+  document.querySelectorAll(".cond").forEach(g=>{
+    const c=g.__cond;if(!c)return;
+    g.classList.toggle("draft",!condActive(c));
+    g.classList.toggle("invalid",c.mode==="regex"&&!!c.regex&&!regexOk(c.regex,c.rxIgnore));
+  });
+  const items=ctxItems(),shown=items.filter(passes);
+  $("fbCount").textContent=anyActive()?`${shown.length} 个匹配项`:"";
+  $("fbClear").classList.toggle("show",anyActive());
+  $("fbHint").style.display=anyActive()?"none":"";
+  renderContent(shown);renderStatus();
+}
+
+/* ================= 视图渲染 ================= */
+function sortItems(arr){
+  const[col,dir]=sortState;const s=dir==="asc"?1:-1;
+  const val=i=>col==="name"?i.n:col==="type"?i.type:col==="size"?(i.size==null?-1:i.size)
+    :col==="tags"?i.tags.join():i[col];
+  return[...arr].sort((a,b)=>{const va=val(a),vb=val(b);
+    return(typeof va==="string"?va.localeCompare(vb,"zh"):va-vb)*s});
+}
+function itemId(item){return(item.folder?"D:":"F:")+(item.loc?item.loc+"\\":"")+item.n}
+function rowSel(el,item,multi){
+  if(!multi)sel.clear();
+  const key=itemId(item);
+  if(sel.has(key)&&multi)sel.delete(key);else sel.add(key);
+  document.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
+  el.classList.add("sel");renderStatus();
+}
+function markSel(scope){scope.querySelectorAll("[data-id]").forEach(el=>{if(sel.has(el.dataset.id))el.classList.add("sel")})}
+
+function renderContent(shown){
+  const c=$("content");c.innerHTML="";
+  if(shown.length===0){
+    const e=document.createElement("div");e.className="view-empty";
+    e.innerHTML=`<span class="e-ic icon">&#xE71C;</span><div class="e-txt">没有与筛选条件匹配的项</div>`;
+    const b=document.createElement("div");b.className="e-btn";b.textContent="清除所有筛选";b.onclick=clearAll;
+    e.appendChild(b);c.appendChild(e);return;
+  }
+  if(view==="details")renderDetails(c,shown);
+  else if(view==="list")renderList(c,shown);
+  else if(view==="cards")renderCards(c,shown);
+  else if(view==="grid")renderGrid(c,shown);
+  else renderColumns(c);
+}
+function renderDetails(c,items){
+  const t=document.createElement("table");t.className="dgrid";
+  const cols=[["name","名称",1]];
+  if(flatMode())cols.push(["loc","位置",0]); /* 递归筛选生效时自动出现“位置”列 */
+  cols.push(["type","类型",0],["modified","修改日期",0],["created","创建日期",0],["size","大小",0],["tags","标签",0]);
+  const hr=document.createElement("tr");
+  cols.forEach(([id,label,flex])=>{
+    const th=document.createElement("th");th.classList.add("sortable");
+    const inn=document.createElement("div");inn.className="h-in";
+    const arr=document.createElement("span");arr.className="sort-arr icon";
+    if(sortState[0]===id)arr.innerHTML=sortState[1]==="asc"?"&#xE70E;":"&#xE70D;";
+    inn.append(arr,document.createTextNode(label));
+    /* ⑦ 列头筛选快捷入口（名称列头聚焦内联组） */
+    if(id!=="loc"){
+      const f=document.createElement("span");
+      f.className="hfilter icon"+(dimActive(id)?" active":"");
+      f.innerHTML="&#xE71C;<span class='dot'></span>";f.title="筛选";
+      f.onclick=e=>{e.stopPropagation();
+        if(mode==="basic")mode="advanced"; /* 列筛选使用高级算法：常规模式下自动切换 */
+        conds.push(newCond(id));render();focusLastCond()};
+      inn.appendChild(f);
+    }
+    th.appendChild(inn);
+    if(flex)th.style.width="auto"; /* 名称列取剩余宽度 */
+    else th.style.width=id==="tags"?"150px":id==="type"?"176px":id==="loc"?"130px":"150px";
+    th.onclick=()=>{sortState=[id,sortState[0]===id&&sortState[1]==="asc"?"desc":"asc"];render()};
+    hr.appendChild(th);
+  });
+  const thead=document.createElement("thead");thead.appendChild(hr);t.appendChild(thead);
+  const tb=document.createElement("tbody");
+  sortItems(items).forEach(item=>{
+    const tr=document.createElement("tr");tr.dataset.id=itemId(item);
+    const tagHtml=item.tags.map(x=>`<span class="tagpill">${esc(x)}</span>`).join("")||'<span style="color:var(--text-3)">—</span>';
+    const locTd=flatMode()?`<td class="sec">${esc(item.loc)}</td>`:"";
+    tr.innerHTML=`<td><div class="cell-name">${iconHTML(item,20)}<span>${esc(item.n)}</span></div></td>${locTd}
+      <td class="sec">${esc(item.type)}</td><td class="sec">${fmtDate(item.m)}</td>
+      <td class="sec">${fmtDate(item.c)}</td><td class="sec">${item.folder?"":fmtSize(item.size)}</td>
+      <td class="sec">${tagHtml}</td>`;
+    tr.onclick=e=>rowSel(tr,item,e.ctrlKey||e.metaKey);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);c.appendChild(t);markSel(c);
+}
+function renderList(c,items){
+  const d=document.createElement("div");d.className="vlist";
+  const rows=Math.max(1,Math.floor((c.clientHeight-16)/34)); /* 按可视高度计算行数 */
+  d.style.gridTemplateRows=`repeat(${rows},34px)`;
+  sortItems(items).forEach(item=>{
+    const l=document.createElement("div");l.className="litem";l.dataset.id=itemId(item);
+    l.title=item.loc?`${item.n} · ${item.loc}`:item.n;
+    l.innerHTML=`${iconHTML(item,16)}<span>${esc(item.n)}</span>`;
+    l.onclick=e=>rowSel(l,item,e.ctrlKey||e.metaKey);d.appendChild(l);
+  });
+  c.appendChild(d);markSel(c);
+}
+function renderCards(c,items){
+  const d=document.createElement("div");d.className="vcards";
+  sortItems(items).forEach(item=>{
+    const x=document.createElement("div");x.className="card";x.dataset.id=itemId(item);
+    x.title=item.loc?`${item.n} · ${item.loc}`:item.n;
+    x.innerHTML=`${iconHTML(item,32)}<div class="c-tx"><div class="c-n">${esc(item.n)}</div>
+      <div class="c-s">${item.loc?esc(item.loc)+" · ":""}${esc(item.type)}${item.folder?"":" · "+fmtSize(item.size)}</div></div>`;
+    x.onclick=e=>rowSel(x,item,e.ctrlKey||e.metaKey);d.appendChild(x);
+  });
+  c.appendChild(d);markSel(c);
+}
+function renderGrid(c,items){
+  const d=document.createElement("div");d.className="vgrid";
+  sortItems(items).forEach(item=>{
+    const g=document.createElement("div");g.className="gitem";g.dataset.id=itemId(item);
+    g.title=item.loc?`${item.n} · ${item.loc}`:item.n;
+    g.style.width=(gridSize+34)+"px";
+    g.innerHTML=`${iconHTML(item,gridSize)}<div class="g-n">${esc(item.n)}</div>`;
+    g.onclick=e=>rowSel(g,item,e.ctrlKey||e.metaKey);d.appendChild(g);
+  });
+  c.appendChild(d);markSel(c);
+}
+function renderColumns(c){
+  const d=document.createElement("div");d.className="vcolumns";
+  panes.forEach((folder,pi)=>{
+    const src=folder?folder.children:roots;
+    const shown=src.filter(passes); /* 列视图按栏筛选，不递归 */
+    const pane=document.createElement("div");pane.className="cpane";
+    if(shown.length===0){
+      const e=document.createElement("div");e.className="view-empty";e.style.height="200px";
+      e.innerHTML=`<span class="e-ic icon" style="font-size:28px">&#xE71C;</span><div class="e-txt" style="font-size:12px">没有与筛选条件匹配的项</div>`;
+      pane.appendChild(e);
+    }
+    sortItems(shown).forEach(item=>{
+      const ci=document.createElement("div");ci.className="citem";ci.dataset.id=itemId(item);
+      if(panes[pi+1]===item)ci.classList.add("cur");
+      ci.innerHTML=`${iconHTML(item,16)}<span>${esc(item.n)}</span>${item.folder?`<span class="ci-chev icon">&#xE70D;</span>`:""}`;
+      ci.onclick=e=>{rowSel(ci,item,e.ctrlKey||e.metaKey);
+        if(item.folder){panes=panes.slice(0,pi+1);panes.push(item);render()}};
+      pane.appendChild(ci);
+    });
+    d.appendChild(pane);
+  });
+  c.appendChild(d);markSel(c);
+}
+function renderStatus(){
+  const items=ctxItems(),shown=items.filter(passes);
+  const suffix=flatMode()?`（含${depth>=99?"不限":depth+" 层"}子文件夹）`:"";
+  $("stCount").textContent=anyActive()?`已显示 ${shown.length} / ${items.length} 个项目${suffix}`:`${shown.length} 个项目${suffix}`;
+  const pool=view==="columns"?items.concat(flatChildren()):items;
+  if(sel.size===0)$("stSel").textContent="项目资料";
+  else if(sel.size===1){
+    const k=[...sel][0];const item=pool.find(i=>itemId(i)===k);
+    if(item)$("stSel").textContent=`${item.loc?item.loc+" · ":""}${item.n} · ${item.type}${item.folder?"":" · "+fmtSize(item.size)}`;
+  }else $("stSel").textContent=`已选择 ${sel.size} 个项目`;
+}
+
+/* ================= 主渲染 ================= */
+function render(){
+  renderExpr();
+  renderLive();
+  refreshDots($("annoPanel").classList.contains("show"));
+}
+
+/* ================= 设计说明标注圆点 ================= */
+function refreshDots(show){
+  document.querySelectorAll(".anno-dot").forEach(d=>d.remove());
+  if(!show)return;
+  const list=[["1","btnFilterToggle","sec1"],["2","filterBar","sec2"],["3","addFilterBtn","sec3"],
+    ["4","chips","sec4"],["5","fbClear","sec5"],["8","btnViewMenu","sec8"]];
+  if(view==="details")list.push(["7",null,"sec7"]);
+  list.push(["9","recursiveChk","sec8"]);
+  const appRect=$("app").getBoundingClientRect();
+  list.forEach(([n,id,sec])=>{
+    const el=id?$(id):document.querySelector(".hfilter");
+    if(!el)return;
+    const r=el.getBoundingClientRect();if(r.width===0&&r.height===0)return;
+    const d=document.createElement("div");d.className="anno-dot show";d.textContent=n;
+    d.style.left=(r.right-appRect.left)+"px";d.style.top=(r.top-appRect.top)+"px";
+    d.onclick=()=>{const s=$(sec);
+      document.querySelectorAll(".anno-sec").forEach(x=>x.classList.remove("hl"));
+      s.classList.add("hl");s.scrollIntoView({block:"center",behavior:"smooth"})};
+    $("app").appendChild(d);
+  });
+}
+
+/* ================= 事件接线 ================= */
+$("btnFilterToggle").onclick=()=>setBarVisible(!barVisible);
+$("btnViewMenu").onclick=e=>{e.stopPropagation();openViewMenu($("btnViewMenu"))};
+/* 常规/高级切换（两套配置互不丢失） */
+[...$("modeSwitch").children].forEach(b=>b.onclick=()=>{
+  if(mode!==b.dataset.mode){mode=b.dataset.mode;render()}});
+/* 名称内联组（零弹层） */
+$("ngOp").onclick=e=>{e.stopPropagation();
+  const m=document.createElement("div");m.className="menu";m.style.minWidth="120px";
+  OPS.forEach(o=>m.appendChild(menuItem(o[1],o[0]===nameMain.op,()=>{popFly();nameMain.op=o[0];render()})));
+  showFlyout($("ngOp"),m)};
+$("ngExt").onclick=e=>{e.stopPropagation();
+  nameMain.rxTarget=nameMain.rxTarget==="display"?"raw":"display";render()};
+$("nameInput").oninput=()=>{
+  const v=$("nameInput").value;
+  if(mode==="basic")basicText=v;
+  else if(nameMain.mode==="regex")nameMain.regex=v;
+  else if(LEN_OPS.has(nameMain.op))nameMain.len=v;
+  else nameMain.text=v;
+  render()};
+$("nameInput").onkeydown=e=>{if(e.key==="Enter")e.target.blur()};
+$("ngCase").onclick=e=>{e.stopPropagation();nameMain.rxIgnore=!nameMain.rxIgnore;render()};
+$("ngRx").onclick=e=>{e.stopPropagation();
+  nameMain.mode=nameMain.mode==="regex"?"text":"regex";
+  render();$("nameInput").focus();$("nameInput").select()};
+$("ngX").onclick=()=>{
+  if(mode==="basic"){basicText=""}else{nameMain=emptyNameCond()}
+  $("nameInput").value="";render()};
+$("ngBox").onclick=()=>$("nameInput").focus(); /* 整个输入框盒子可点聚焦，扩大命中区 */
+$("recursiveChk").onclick=e=>{e.stopPropagation();recursive=!recursive;render()};
+/* 递归深度：默认 2 层，可改 1/2/3/5/不限 */
+$("depthCtl").onclick=e=>{e.stopPropagation();
+  const m=document.createElement("div");m.className="menu";m.style.minWidth="120px";
+  [[1,"1 层"],[2,"2 层"],[3,"3 层"],[5,"5 层"],[99,"不限"]].forEach(([d,l])=>
+    m.appendChild(menuItem(l,depth===d,()=>{popFly();depth=d;render()})));
+  showFlyout($("depthCtl"),m)};
+$("fbClear").onclick=clearAll;
+$("annoBtn").onclick=()=>{const p=$("annoPanel");p.classList.toggle("show");refreshDots(p.classList.contains("show"))};
+$("themeBtn").onclick=()=>{const b=document.body;
+  b.dataset.theme=b.dataset.theme==="light"?"dark":"light";
+  $("themeBtn").innerHTML=b.dataset.theme==="light"?"&#xE706;":"&#xE708;";
+  $("fbIcon").innerHTML=iconHTML(DATA[0],16);render()};
+window.addEventListener("resize",()=>{if(view==="list")render();refreshDots($("annoPanel").classList.contains("show"))});
+$("fbIcon").innerHTML=iconHTML(DATA[0],16);
+render();
+</script>
+</body>
+</html>
