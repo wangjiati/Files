@@ -275,8 +275,9 @@ namespace Files.App.ViewModels
 			
 			if (value != WorkingDirectory)
 			{
-				FilesAndFoldersFilter = null;
+				FilterBar.ClearAll();
 				DirectoryFilter = DirectoryFilterSpec.Empty;
+				FilterResultCount = -1;
 				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 				ResetQueryView();
 				InvalidateIncrementalApplyBaseline();
@@ -819,6 +820,10 @@ namespace Files.App.ViewModels
 			StorageTrashBinService.Watcher.ItemAdded += RecycleBinItemCreatedAsync;
 			StorageTrashBinService.Watcher.ItemDeleted += RecycleBinItemDeletedAsync;
 			StorageTrashBinService.Watcher.RefreshRequested += RecycleBinRefreshRequestedAsync;
+
+			FilterBar = new DirectoryFilterBarViewModel();
+			FilterBar.SpecChanged += FilterBar_SpecChanged;
+			FilterBar.ChoiceProvider = GetFilterChoices;
 		}
 
 		private async void LayoutModeChangeRequested(object? sender, LayoutModeEventArgs e)
@@ -1145,19 +1150,34 @@ namespace Files.App.ViewModels
 			return string.Equals(path, Constants.UserEnvironmentPaths.NetworkFolderPath, StringComparison.OrdinalIgnoreCase);
 		}
 
-		private string? _filesAndFoldersFilter;
+		/// <summary>
+		/// Legacy filter box text. The bar owns the filter configuration, so this forwards to its keyword
+		/// box instead of keeping a second copy of the filter text.
+		/// </summary>
 		public string? FilesAndFoldersFilter
 		{
-			get => _filesAndFoldersFilter;
+			get => FilterBar.KeywordText;
 			set
 			{
-				if (SetProperty(ref _filesAndFoldersFilter, value))
-				{
-					directoryFilterSpec = directoryFilterSpec with { NameContains = value };
-					ResetQueryView();
-					ScheduleFilterProjection(250);
-				}
+				if (!string.Equals(FilterBar.KeywordText, value, StringComparison.Ordinal))
+					FilterBar.KeywordText = value;
 			}
+		}
+
+		/// <summary>
+		/// Filter bar state edited by the user; every change is projected into <see cref="DirectoryFilter"/>.
+		/// </summary>
+		public DirectoryFilterBarViewModel FilterBar { get; }
+
+		private int filterResultCount = -1;
+
+		/// <summary>
+		/// Matching item count of the last filter projection, or -1 when no filter is applied.
+		/// </summary>
+		public int FilterResultCount
+		{
+			get => filterResultCount;
+			private set => SetProperty(ref filterResultCount, value);
 		}
 
 		/// <summary>
@@ -1175,19 +1195,15 @@ namespace Files.App.ViewModels
 
 				directoryFilterSpec = spec;
 
-				// A column filter can write the shared Contains box; mirror it without re-entering the setter.
-				if (!string.Equals(_filesAndFoldersFilter, spec.NameContains, StringComparison.Ordinal))
-				{
-					_filesAndFoldersFilter = spec.NameContains;
-					OnPropertyChanged(nameof(FilesAndFoldersFilter));
-				}
-
 				OnPropertyChanged(nameof(DirectoryFilter));
 
 				ResetQueryView();
 				ScheduleFilterProjection(0);
 			}
 		}
+
+		private void FilterBar_SpecChanged(object? sender, EventArgs e)
+			=> DirectoryFilter = FilterBar.BuildSpec();
 
 		/// <summary>
 		/// Gets the selectable values for a column filter flyout from the currently loaded items.
@@ -1435,12 +1451,6 @@ namespace Files.App.ViewModels
 								// Restore the last applied conditions so the UI never claims a failed filter is active.
 								directoryFilterSpec = lastCommittedFilterSpec;
 
-								if (!string.Equals(_filesAndFoldersFilter, directoryFilterSpec.NameContains, StringComparison.Ordinal))
-								{
-									_filesAndFoldersFilter = directoryFilterSpec.NameContains;
-									OnPropertyChanged(nameof(FilesAndFoldersFilter));
-								}
-
 								OnPropertyChanged(nameof(DirectoryFilter));
 								DirectoryFilterFailed?.Invoke(this, message);
 							});
@@ -1465,6 +1475,9 @@ namespace Files.App.ViewModels
 
 							lastCommittedFilterSpec = spec;
 							pendingSearchResults.Clear();
+
+							// -1 hides the counter: only an active projection makes the match count meaningful.
+							FilterResultCount = spec.IsEmpty || isQueryView ? -1 : displayedFilesAndFolders.Count;
 
 							// Batches that still match the last committed presentation are applied incrementally:
 							// only the added, removed and moved items raise single-item notifications, so realized
@@ -4142,6 +4155,8 @@ namespace Files.App.ViewModels
 			StorageTrashBinService.Watcher.ItemAdded -= RecycleBinItemCreatedAsync;
 			StorageTrashBinService.Watcher.ItemDeleted -= RecycleBinItemDeletedAsync;
 			StorageTrashBinService.Watcher.RefreshRequested -= RecycleBinRefreshRequestedAsync;
+			FilterBar.SpecChanged -= FilterBar_SpecChanged;
+			FilterBar.ChoiceProvider = null;
 			UserSettingsService.OnSettingChangedEvent -= UserSettingsService_OnSettingChangedEvent;
 			fileTagsSettingsService.OnSettingImportedEvent -= FileTagsSettingsService_OnSettingUpdated;
 			fileTagsSettingsService.OnTagsUpdated -= FileTagsSettingsService_OnSettingUpdated;

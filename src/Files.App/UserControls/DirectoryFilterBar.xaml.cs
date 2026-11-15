@@ -79,6 +79,17 @@ namespace Files.App.UserControls
 			}
 		}
 
+		/// <summary>
+		/// Focuses the editor of the active mode; the shell calls this when it shows or focuses the bar.
+		/// </summary>
+		public void FocusActiveEditor()
+		{
+			if (viewModel.Mode is FilterMode.Basic)
+				KeywordBox.Focus(FocusState.Programmatic);
+			else
+				NameEditor.FocusFirstInput();
+		}
+
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 			=> ((DirectoryFilterBar)d).UpdateCount();
 
@@ -268,11 +279,7 @@ namespace Files.App.UserControls
 				return;
 
 			args.Handled = true;
-
-			if (viewModel.Mode is FilterMode.Basic)
-				KeywordBox.Focus(FocusState.Programmatic);
-			else
-				NameEditor.FocusFirstInput();
+			FocusActiveEditor();
 		}
 
 		private void OnPropertyChanged(string? propertyName)

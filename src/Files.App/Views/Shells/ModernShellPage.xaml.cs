@@ -60,8 +60,8 @@ namespace Files.App.Views.Shells
 		{
 			// Delay to ensure the UI is ready for focus
 			await Task.Delay(100);
-			if (FilterTextBox?.IsLoaded ?? false)
-				FilterTextBox.Focus(FocusState.Programmatic);
+			if (DirectoryFilterBar is { IsLoaded: true, Visibility: Visibility.Visible })
+				DirectoryFilterBar.FocusActiveEditor();
 		}
 
 		private void ModernShellPage_RefreshWidgetsRequested(object? sender, EventArgs e)
@@ -363,11 +363,11 @@ namespace Files.App.Views.Shells
 			ToolbarViewModel.PathControlDisplayText = shellViewModel.WorkingDirectory;
 		}
 
-		private void FilterTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+		private void DirectoryFilterBar_KeyDown(object sender, KeyRoutedEventArgs e)
 		{
 			if (e.Key is VirtualKey.Escape &&
-				SlimContentPage is BaseGroupableLayoutPage { IsLoaded: true } svb)
-				SlimContentPage.ItemManipulationModel.FocusFileList();
+				SlimContentPage is BaseGroupableLayoutPage { IsLoaded: true } contentPage)
+				contentPage.ItemManipulationModel.FocusFileList();
 		}
 	}
 }

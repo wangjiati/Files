@@ -125,36 +125,14 @@
 			</StackPanel>
 		</Grid>
 
-		<!--  Filter header  -->
-		<Grid
-			x:Name="FilterHeader"
+		<!--  Filter bar  -->
+		<uc:DirectoryFilterBar
+			x:Name="DirectoryFilterBar"
 			Grid.Row="1"
-			Padding="26,8,12,8"
-			BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-			BorderThickness="0,0,0,1"
-			IsTabStop="False"
-			Visibility="{x:Bind ShellViewModel.ShowFilterHeader, Mode=OneWay}">
-			<StackPanel
-				VerticalAlignment="Center"
-				Orientation="Horizontal"
-				Spacing="12">
-				<Image
-					Height="16"
-					VerticalAlignment="Center"
-					Source="{x:Bind ShellViewModel.FolderThumbnailImageSource, Mode=OneWay}" />
-				<TextBlock
-					VerticalAlignment="Center"
-					Style="{StaticResource BodyStrongTextBlockStyle}"
-					Text="{helpers:ResourceString Name=FilteringFor}" />
-				<AutoSuggestBox
-					x:Name="FilterTextBox"
-					Width="180"
-					VerticalAlignment="Center"
-					PlaceholderText="{helpers:ResourceString Name=Filename}"
-					PreviewKeyDown="FilterTextBox_PreviewKeyDown"
-					Text="{x:Bind ShellViewModel.FilesAndFoldersFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-			</StackPanel>
-		</Grid>
+			DataContext="{x:Bind ShellViewModel.FilterBar, Mode=OneWay}"
+			KeyDown="DirectoryFilterBar_KeyDown"
+			ResultCount="{x:Bind ShellViewModel.FilterResultCount, Mode=OneWay}"
+			Visibility="{x:Bind ShellViewModel.ShowFilterHeader, Mode=OneWay}" />
 
 		<!--  Shell Frame  -->
 		<Frame
