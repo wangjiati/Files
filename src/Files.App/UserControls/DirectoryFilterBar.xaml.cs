@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 
@@ -30,6 +31,7 @@ namespace Files.App.UserControls
 		private DirectoryFilterBarViewModel viewModel = new();
 		private bool isSyncingDepth;
 		private bool isSyncingMode;
+		private Func<DirectoryColumnKind, IReadOnlyList<DirectoryFilterChoice>>? choiceProvider;
 
 		public DirectoryFilterBar()
 		{
@@ -63,6 +65,20 @@ namespace Files.App.UserControls
 			set => SetValue(ResultCountProperty, value);
 		}
 
+		/// <summary>
+		/// Supplies selectable values for choice conditions added by this control. The shell wires this to
+		/// its filter choice source; the value is forwarded to whichever view model is currently attached.
+		/// </summary>
+		public Func<DirectoryColumnKind, IReadOnlyList<DirectoryFilterChoice>>? ChoiceProvider
+		{
+			get => choiceProvider;
+			set
+			{
+				choiceProvider = value;
+				viewModel.ChoiceProvider = value;
+			}
+		}
+
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 			=> ((DirectoryFilterBar)d).UpdateCount();
 
@@ -71,6 +87,10 @@ namespace Files.App.UserControls
 			viewModel.PropertyChanged -= ViewModel_PropertyChanged;
 			viewModel = value;
 			viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+			// Do not clear a provider the shell already set on the view model itself.
+			if (choiceProvider is not null)
+				viewModel.ChoiceProvider = choiceProvider;
 
 			OnPropertyChanged(nameof(ViewModel));
 			SyncModeSelector();

@@ -49,8 +49,8 @@ namespace Files.App.ViewModels.UserControls
 		public ObservableCollection<DirectoryFilterViewModel> Conditions { get; } = [];
 
 		/// <summary>
-		/// Name condition edited above the condition chain. It is separate so it is always available
-		/// in advanced mode and never duplicated by the add menu.
+		/// Name condition edited above the condition chain. It is separate from <see cref="Conditions"/> so it
+		/// stays available in advanced mode, while the add menu can still create further name conditions.
 		/// </summary>
 		public DirectoryFilterViewModel NameCondition
 		{
@@ -64,13 +64,26 @@ namespace Files.App.ViewModels.UserControls
 				nameCondition = value;
 				nameCondition.PropertyChanged += OnConditionPropertyChanged;
 				OnPropertyChanged();
+				OnPropertyChanged(nameof(HasActiveFilter));
 				RaiseSpecChanged();
 			}
 		}
 
+		/// <summary>
+		/// Values for choice columns created through <see cref="AddCondition"/>. The shell wires this to its
+		/// filter choice source so column headers and the add menu both get selectable values.
+		/// </summary>
+		public Func<DirectoryColumnKind, IReadOnlyList<DirectoryFilterChoice>>? ChoiceProvider { get; set; }
+
 		public bool IsBasicMode => Mode is FilterMode.Basic;
 
 		public bool IsAdvancedMode => Mode is FilterMode.Advanced;
+
+		/// <summary>
+		/// Whether either configuration currently contributes to the projected spec.
+		/// </summary>
+		public bool HasActiveFilter
+			=> NameCondition.IsActive || Conditions.Any(condition => condition.IsActive);
 
 		/// <summary>
 		/// Recursion depth, clamped to 1..64 where 64 is treated as unlimited by consumers.
@@ -106,10 +119,23 @@ namespace Files.App.ViewModels.UserControls
 
 		public void AddCondition(DirectoryColumnKind column, DirectoryConditionJoin join)
 		{
-			Conditions.Add(new DirectoryFilterViewModel(column, DirectoryFilterSpec.Empty)
+			var condition = new DirectoryFilterViewModel(column, DirectoryFilterSpec.Empty)
 			{
 				Join = join,
-			});
+			};
+
+			if (ChoiceProvider is { } provider
+				&& column is (DirectoryColumnKind.Type or DirectoryColumnKind.Extension or DirectoryColumnKind.Tags))
+			{
+				var choices = provider(column);
+
+				if (column is DirectoryColumnKind.Extension)
+					condition.LoadChoices(extensions: choices);
+				else
+					condition.LoadChoices(choices);
+			}
+
+			Conditions.Add(condition);
 		}
 
 		public bool RemoveCondition(DirectoryFilterViewModel condition)
@@ -171,6 +197,7 @@ namespace Files.App.ViewModels.UserControls
 				}
 			}
 
+			OnPropertyChanged(nameof(HasActiveFilter));
 			RaiseSpecChanged();
 		}
 
@@ -186,7 +213,11 @@ namespace Files.App.ViewModels.UserControls
 				condition.PropertyChanged -= OnConditionPropertyChanged;
 		}
 
-		private void OnConditionPropertyChanged(object? sender, PropertyChangedEventArgs e) => RaiseSpecChanged();
+		private void OnConditionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			OnPropertyChanged(nameof(HasActiveFilter));
+			RaiseSpecChanged();
+		}
 
 		private void RaiseSpecChanged()
 		{

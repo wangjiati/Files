@@ -3,7 +3,6 @@
 	x:Class="Files.App.UserControls.DirectoryFilterFlyout"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:converters="using:Files.App.Converters"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:helpers="using:Files.App.Helpers"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -23,7 +22,6 @@
 				x:Key="DraftBorderBrush"
 				FalseValue="{ThemeResource ControlStrokeColorDefaultBrush}"
 				TrueValue="{StaticResource TransparentBorderBrush}" />
-			<converters:GenericEnumConverter x:Key="ScopeConverter" />
 		</ResourceDictionary>
 	</UserControl.Resources>
 
@@ -62,7 +60,7 @@
 						x:Name="ScopeCombo"
 						Header="{helpers:ResourceString Name=FilterRegexTarget}"
 						HorizontalAlignment="Stretch"
-						SelectedIndex="{x:Bind ViewModel.Scope, Mode=TwoWay, Converter={StaticResource ScopeConverter}}" />
+						SelectedIndex="{x:Bind ViewModel.ScopeIndex, Mode=TwoWay}" />
 					<TextBox
 						x:Name="FilterTextBox"
 						KeyDown="TextInput_KeyDown"

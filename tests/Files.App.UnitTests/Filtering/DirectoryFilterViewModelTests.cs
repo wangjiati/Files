@@ -347,6 +347,27 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void ScopeIndex_IgnoresInvalidValuesAndRoundTrips()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+
+			// A combo box reports -1 when its item source is reset; that must not throw or move the scope.
+			viewModel.ScopeIndex = -1;
+			Assert.AreEqual(DirectoryNameScope.DisplayName, viewModel.Scope);
+			Assert.AreEqual(0, viewModel.ScopeIndex);
+
+			viewModel.ScopeIndex = (int)DirectoryNameScope.RawName;
+			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.Scope);
+			Assert.AreEqual((int)DirectoryNameScope.RawName, viewModel.ScopeIndex);
+
+			viewModel.Scope = DirectoryNameScope.DisplayName;
+			Assert.AreEqual(0, viewModel.ScopeIndex);
+
+			viewModel.ScopeIndex = 99;
+			Assert.AreEqual(DirectoryNameScope.DisplayName, viewModel.Scope);
+		}
+
+		[TestMethod]
 		public void LoadFrom_ChoiceCondition_SelectsAlreadyLoadedChoices()
 		{
 			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Tags, DirectoryFilterSpec.Empty);

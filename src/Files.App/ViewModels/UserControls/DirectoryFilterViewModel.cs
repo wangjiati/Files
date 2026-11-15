@@ -167,6 +167,21 @@ namespace Files.App.ViewModels.UserControls
 			localize(Strings.FilterScopeRawName),
 		];
 
+		/// <summary>
+		/// <see cref="Scope"/> as a combo box index. The transient -1 a reset selection reports is ignored.
+		/// </summary>
+		public int ScopeIndex
+		{
+			get => (int)Scope;
+			set
+			{
+				if (value is < 0 or > (int)DirectoryNameScope.RawName)
+					return;
+
+				Scope = (DirectoryNameScope)value;
+			}
+		}
+
 		public string[] SizeUnitChoices { get; } = ["B", "KB", "MB", "GB"];
 
 		public string[] DatePresetChoices =>
@@ -271,6 +286,8 @@ namespace Files.App.ViewModels.UserControls
 		}
 
 		partial void OnTextChanged(string? value) => NotifyIsActiveChanged();
+
+		partial void OnScopeChanged(DirectoryNameScope value) => OnPropertyChanged(nameof(ScopeIndex));
 
 		partial void OnOperatorIndexChanged(int value)
 		{

@@ -7,7 +7,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Windows.System;
 
@@ -49,12 +51,13 @@ namespace Files.App.UserControls
 				viewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
 				// Item sources change while the previous view model is still the binding target, so a
-				// selection reset cannot write into the incoming condition.
-				OperatorCombo.ItemsSource = value.OperatorChoices;
-				ScopeCombo.ItemsSource = value.ScopeChoices;
-				RegexTargetCombo.ItemsSource = value.RegexTargetChoices;
-				SizeUnitCombo.ItemsSource = value.SizeUnitChoices;
-				DatePresetCombo.ItemsSource = value.DatePresetChoices;
+				// selection reset cannot write into the incoming condition. Identical lists are reused
+				// to avoid the reset in the first place.
+				SetItemSource(OperatorCombo, value.OperatorChoices);
+				SetItemSource(ScopeCombo, value.ScopeChoices);
+				SetItemSource(RegexTargetCombo, value.RegexTargetChoices);
+				SetItemSource(SizeUnitCombo, value.SizeUnitChoices);
+				SetItemSource(DatePresetCombo, value.DatePresetChoices);
 
 				viewModel = value;
 				viewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -310,6 +313,14 @@ namespace Files.App.UserControls
 
 		private void ClearAll_Click(object sender, RoutedEventArgs e)
 			=> ClearAllRequested?.Invoke(this, EventArgs.Empty);
+
+		private static void SetItemSource(ItemsControl control, IReadOnlyList<string> items)
+		{
+			if (control.ItemsSource is IReadOnlyList<string> current && current.SequenceEqual(items))
+				return;
+
+			control.ItemsSource = items;
+		}
 
 		private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
 			=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

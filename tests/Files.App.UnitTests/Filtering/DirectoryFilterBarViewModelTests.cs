@@ -92,6 +92,74 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void BuildSpec_AdvancedMode_IncludesActiveNameCondition()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.NameCondition.Text = "report";
+			viewModel.NameCondition.OperatorIndex = (int)DirectoryTextOperator.StartsWith;
+			viewModel.AddCondition(DirectoryColumnKind.Size, DirectoryConditionJoin.Or);
+			viewModel.Conditions[0].MinSizeText = "1";
+
+			var spec = viewModel.BuildSpec();
+
+			Assert.AreEqual(2, spec.Columns.Count);
+			Assert.AreEqual("report", spec.Columns[0].Text);
+			Assert.AreEqual(DirectoryTextOperator.StartsWith, spec.Columns[0].Operator);
+			Assert.AreEqual(DirectoryConditionJoin.Or, spec.Columns[1].Join);
+		}
+
+		[TestMethod]
+		public void HasActiveFilter_IsTrueForNameConditionOnly()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+
+			Assert.IsFalse(viewModel.HasActiveFilter);
+
+			viewModel.NameCondition.Text = "report";
+			Assert.IsTrue(viewModel.HasActiveFilter);
+		}
+
+		[TestMethod]
+		public void HasActiveFilter_IsTrueForConditionChainOnly()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+
+			viewModel.AddCondition(DirectoryColumnKind.Size, DirectoryConditionJoin.And);
+			Assert.IsFalse(viewModel.HasActiveFilter);
+
+			viewModel.Conditions[0].MinSizeText = "1";
+			Assert.IsTrue(viewModel.HasActiveFilter);
+		}
+
+		[TestMethod]
+		public void AddCondition_LoadsChoicesFromProvider()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				ChoiceProvider = column => column is DirectoryColumnKind.Extension
+					? [new DirectoryFilterChoice(".txt", ".txt")]
+					: [new DirectoryFilterChoice("Text Document", "Text Document")],
+			};
+
+			viewModel.AddCondition(DirectoryColumnKind.Type, DirectoryConditionJoin.And);
+			viewModel.AddCondition(DirectoryColumnKind.Extension, DirectoryConditionJoin.And);
+			viewModel.AddCondition(DirectoryColumnKind.Size, DirectoryConditionJoin.And);
+
+			Assert.AreEqual("Text Document", viewModel.Conditions[0].Choices.Single().Value);
+			Assert.AreEqual(".txt", viewModel.Conditions[1].ExtensionChoices.Single().Value);
+			Assert.AreEqual(0, viewModel.Conditions[2].Choices.Count);
+		}
+
+		[TestMethod]
 		public void ModeSwitch_PreservesBothConfigurations()
 		{
 			var viewModel = new DirectoryFilterBarViewModel
