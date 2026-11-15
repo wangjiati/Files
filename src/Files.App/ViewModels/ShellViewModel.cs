@@ -1170,6 +1170,7 @@ namespace Files.App.ViewModels
 		public DirectoryFilterBarViewModel FilterBar { get; }
 
 		private int filterResultCount = -1;
+		private bool isProjectingFromBar;
 
 		/// <summary>
 		/// Matching item count of the last filter projection, or -1 when no filter is applied.
@@ -1195,6 +1196,11 @@ namespace Files.App.ViewModels
 
 				directoryFilterSpec = spec;
 
+				// A spec written from outside the bar (navigation restore, column filters) must be
+				// reflected in the bar, otherwise the next bar edit would silently replace it.
+				if (!isProjectingFromBar)
+					FilterBar.LoadFrom(spec);
+
 				OnPropertyChanged(nameof(DirectoryFilter));
 
 				ResetQueryView();
@@ -1203,7 +1209,18 @@ namespace Files.App.ViewModels
 		}
 
 		private void FilterBar_SpecChanged(object? sender, EventArgs e)
-			=> DirectoryFilter = FilterBar.BuildSpec();
+		{
+			isProjectingFromBar = true;
+
+			try
+			{
+				DirectoryFilter = FilterBar.BuildSpec();
+			}
+			finally
+			{
+				isProjectingFromBar = false;
+			}
+		}
 
 		/// <summary>
 		/// Gets the selectable values for a column filter flyout from the currently loaded items.

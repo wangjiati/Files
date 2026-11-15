@@ -403,7 +403,17 @@ namespace Files.App.Views
 					if (currentModifiers == KeyModifiers.Ctrl && e.Key is VirtualKey.C && (FrameworkElement)FocusManager.GetFocusedElement(MainWindow.Instance.Content.XamlRoot) is TextBlock)
 						break;
 
-					if (command.Code is not CommandCodes.None && keyReleased)
+					// A visible filter bar consumes Ctrl+Shift+F as "focus the filter editor"; the toolbar
+					// toggle still hides it, and the hidden bar is shown by the command below.
+					if (command.Code is CommandCodes.ToggleFilterHeader
+						&& keyReleased
+						&& ContentPageContext.ShellPage?.ShellViewModel is { ShowFilterHeader: true } shellViewModel)
+					{
+						keyReleased = false;
+						e.Handled = true;
+						shellViewModel.InvokeFocusFilterHeader();
+					}
+					else if (command.Code is not CommandCodes.None && keyReleased)
 					{
 						keyReleased = false;
 						e.Handled = command.IsExecutable;

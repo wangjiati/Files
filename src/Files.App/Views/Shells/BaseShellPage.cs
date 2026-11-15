@@ -88,6 +88,8 @@ namespace Files.App.Views.Shells
 
 				if (_shellViewModel is not null)
 					_shellViewModel.PropertyChanged += ShellViewModel_PropertyChanged;
+
+				ToolbarViewModel.FilterBar = _shellViewModel?.FilterBar;
 			}
 		}
 

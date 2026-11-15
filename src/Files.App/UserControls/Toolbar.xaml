@@ -91,7 +91,7 @@
 			Grid.Column="1"
 			DefaultLabelPosition="Right">
 
-			<!--  Toggle filter header  -->
+			<!--  Toggle filter bar  -->
 			<AppBarToggleButton
 				x:Name="FilterHeader"
 				Width="Auto"
@@ -103,7 +103,18 @@
 				Label="{x:Bind Commands.ToggleFilterHeader.Label}"
 				LabelPosition="Collapsed"
 				ToolTipService.ToolTip="{x:Bind Commands.ToggleFilterHeader.LabelWithHotKey, Mode=OneWay}">
-				<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.Filter}" />
+				<Grid>
+					<controls:ThemedIcon Style="{StaticResource App.ThemedIcons.Filter}" />
+					<!--  Filter is applied even while the bar is collapsed.  -->
+					<Ellipse
+						Width="8"
+						Height="8"
+						Margin="0,2,2,0"
+						HorizontalAlignment="Right"
+						VerticalAlignment="Top"
+						Fill="{ThemeResource SystemFillColorCriticalBrush}"
+						Visibility="{x:Bind ViewModel.FilterBar.HasActiveFilter, Mode=OneWay}" />
+				</Grid>
 			</AppBarToggleButton>
 
 			<!--  SQL query workbench  -->

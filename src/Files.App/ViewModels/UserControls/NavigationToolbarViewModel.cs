@@ -295,6 +295,17 @@ namespace Files.App.ViewModels.UserControls
 			}
 		}
 
+		private DirectoryFilterBarViewModel? _FilterBar;
+
+		/// <summary>
+		/// Filter bar of the owning shell page, used by the toolbar to indicate an active filter.
+		/// </summary>
+		public DirectoryFilterBarViewModel? FilterBar
+		{
+			get => _FilterBar;
+			set => SetProperty(ref _FilterBar, value);
+		}
+
 		private void InstanceViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
 			if (e.PropertyName is nameof(CurrentInstanceViewModel.IsPageTypeSettings))
