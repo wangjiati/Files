@@ -345,6 +345,121 @@ namespace Files.App.UnitTests.Filtering
 			CollectionAssert.AreEqual(new long[] { 2 }, result.ToArray());
 		}
 
+		[TestMethod]
+		[DataRow(DirectoryTextOperator.StartsWithNot, "annual", true)]
+		[DataRow(DirectoryTextOperator.StartsWithNot, "rep", false)]
+		[DataRow(DirectoryTextOperator.EndsWithNot, ".txt", false)]
+		[DataRow(DirectoryTextOperator.NotEquals, "REPORT.TXT", false)]
+		public void NewTextOperators_CompareAgainstDisplayName(DirectoryTextOperator textOperator, string text, bool expected)
+		{
+			var items = new[] { CreateItem(1, "report.txt") };
+			var spec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = textOperator,
+					Text = text,
+				}],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			Assert.AreEqual(expected ? 1 : 0, result.Count);
+		}
+
+		[TestMethod]
+		[DataRow(DirectoryTextOperator.LengthGreaterThan, 5, true)]
+		[DataRow(DirectoryTextOperator.LengthLessThan, 7, true)]
+		[DataRow(DirectoryTextOperator.LengthEquals, 6, true)]
+		[DataRow(DirectoryTextOperator.LengthNotEquals, 6, false)]
+		public void LengthOperators_UseDisplayNameCharacterCount(DirectoryTextOperator textOperator, int length, bool expected)
+		{
+			var items = new[] { CreateItem(1, "report.txt", displayName: "report") };
+			var spec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = textOperator,
+					Length = length,
+				}],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			Assert.AreEqual(expected ? 1 : 0, result.Count);
+		}
+
+		[TestMethod]
+		public void LengthOperator_WithoutLength_MatchesEverything()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "report.txt"),
+				CreateItem(2, "a.txt"),
+			};
+			var spec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.LengthEquals,
+				}],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			Assert.AreEqual(2, result.Count);
+		}
+
+		[TestMethod]
+		[DataRow("*.png", "首页-视觉稿.png", true)]
+		[DataRow("*.png", "logo.png.bak", false)]
+		[DataRow("*.PNG", "x.png", true)]
+		[DataRow("?.md", "a.md", true)]
+		[DataRow("?.md", "ab.md", false)]
+		public void WildcardOperator_MatchesWholeDisplayName(string pattern, string displayName, bool expected)
+		{
+			var items = new[] { CreateItem(1, displayName, displayName: displayName) };
+			var spec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = DirectoryTextOperator.Wildcard,
+					Text = pattern,
+				}],
+			};
+
+			var result = DirectoryFilterEvaluator.Evaluate(items, spec);
+
+			Assert.AreEqual(expected ? 1 : 0, result.Count);
+		}
+
+		[TestMethod]
+		public void FromKeywordText_SplitsOnSpaceAndCommas()
+		{
+			var textSpec = DirectoryFilterSpec.FromKeywordText("报告, 2026 目标");
+
+			Assert.AreEqual(3, textSpec.Columns.Count);
+			CollectionAssert.AreEqual(
+				new[] { "报告", "2026", "目标" },
+				textSpec.Columns.Select(column => column.Text).ToArray());
+			Assert.IsTrue(textSpec.Columns.All(column => column.Column == DirectoryColumnKind.Name));
+			Assert.IsTrue(textSpec.Columns.All(column => column.Operator == DirectoryTextOperator.Contains));
+
+			var wildcardSpec = DirectoryFilterSpec.FromKeywordText("*.png");
+
+			Assert.AreEqual(1, wildcardSpec.Columns.Count);
+			Assert.AreEqual(DirectoryColumnKind.Name, wildcardSpec.Columns[0].Column);
+			Assert.AreEqual(DirectoryTextOperator.Wildcard, wildcardSpec.Columns[0].Operator);
+			Assert.AreEqual("*.png", wildcardSpec.Columns[0].Text);
+
+			foreach (var blank in new string?[] { null, "", "  ,，  " })
+				Assert.IsTrue(DirectoryFilterSpec.FromKeywordText(blank).IsEmpty);
+		}
+
 		private static DirectoryItemFilterSnapshot CreateItem(
 			long id,
 			string rawName,

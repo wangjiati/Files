@@ -2,8 +2,10 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
@@ -20,6 +22,11 @@ namespace Files.App.Utils.Storage
 		/// is abandoned instead of freezing the directory.
 		/// </summary>
 		private static readonly TimeSpan RegexTotalBudget = TimeSpan.FromSeconds(2);
+
+		/// <summary>
+		/// Wildcard patterns repeat per item and per projection, so their translated expressions are shared.
+		/// </summary>
+		private static readonly ConcurrentDictionary<string, Regex> WildcardRegexCache = new(StringComparer.Ordinal);
 
 		public static IReadOnlyList<long> Evaluate(IReadOnlyList<DirectoryItemFilterSnapshot> items, DirectoryFilterSpec spec)
 			=> EvaluateDetailed(items, spec).ItemIds;
@@ -108,19 +115,75 @@ namespace Files.App.Utils.Storage
 
 		private static bool MatchesText(string? value, DirectoryColumnFilter filter)
 		{
+			value ??= string.Empty;
+
+			if (IsLengthOperator(filter.Operator))
+			{
+				if (filter.Length is not { } length)
+					return true;
+
+				// Length counts UTF-16 code units, so astral characters count as two.
+				return filter.Operator switch
+				{
+					DirectoryTextOperator.LengthGreaterThan => value.Length > length,
+					DirectoryTextOperator.LengthLessThan => value.Length < length,
+					DirectoryTextOperator.LengthEquals => value.Length == length,
+					_ => value.Length != length,
+				};
+			}
+
 			if (string.IsNullOrEmpty(filter.Text))
 				return true;
-
-			value ??= string.Empty;
 
 			return filter.Operator switch
 			{
 				DirectoryTextOperator.NotContains => !value.Contains(filter.Text, StringComparison.OrdinalIgnoreCase),
 				DirectoryTextOperator.StartsWith => value.StartsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
+				DirectoryTextOperator.StartsWithNot => !value.StartsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
 				DirectoryTextOperator.EndsWith => value.EndsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
+				DirectoryTextOperator.EndsWithNot => !value.EndsWith(filter.Text, StringComparison.OrdinalIgnoreCase),
 				DirectoryTextOperator.Equals => string.Equals(value, filter.Text, StringComparison.OrdinalIgnoreCase),
+				DirectoryTextOperator.NotEquals => !string.Equals(value, filter.Text, StringComparison.OrdinalIgnoreCase),
+				DirectoryTextOperator.Wildcard => MatchesWildcard(value, filter.Text),
 				_ => value.Contains(filter.Text, StringComparison.OrdinalIgnoreCase),
 			};
+		}
+
+		private static bool IsLengthOperator(DirectoryTextOperator textOperator)
+			=> textOperator is DirectoryTextOperator.LengthGreaterThan
+				or DirectoryTextOperator.LengthLessThan
+				or DirectoryTextOperator.LengthEquals
+				or DirectoryTextOperator.LengthNotEquals;
+
+		private static bool MatchesWildcard(string value, string pattern)
+			=> WildcardRegexCache.GetOrAdd(pattern, CreateWildcardRegex).IsMatch(value);
+
+		private static Regex CreateWildcardRegex(string pattern)
+		{
+			var builder = new StringBuilder(pattern.Length + 8);
+			builder.Append('^');
+
+			foreach (var character in pattern)
+			{
+				switch (character)
+				{
+					case '*':
+						builder.Append(".*");
+						break;
+
+					case '?':
+						builder.Append('.');
+						break;
+
+					default:
+						builder.Append(Regex.Escape(character.ToString()));
+						break;
+				}
+			}
+
+			builder.Append('$');
+
+			return new Regex(builder.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, DirectoryRegexFilter.MatchTimeout);
 		}
 
 		private static bool MatchesChoices(string? value, DirectoryColumnFilter filter, bool normalizeExtension)

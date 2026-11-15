@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Files.App.Utils.Storage
 {
@@ -30,6 +31,14 @@ namespace Files.App.Utils.Storage
 		StartsWith,
 		EndsWith,
 		Equals,
+		StartsWithNot,
+		EndsWithNot,
+		NotEquals,
+		LengthGreaterThan,
+		LengthLessThan,
+		LengthEquals,
+		LengthNotEquals,
+		Wildcard,
 	}
 
 	/// <summary>
@@ -43,9 +52,14 @@ namespace Files.App.Utils.Storage
 		public DirectoryTextOperator Operator { get; init; } = DirectoryTextOperator.Contains;
 
 		/// <summary>
-		/// Text used by <see cref="DirectoryColumnKind.Name"/> conditions.
+		/// Text used by <see cref="DirectoryColumnKind.Name"/> conditions. Wildcard conditions use it as the pattern.
 		/// </summary>
 		public string? Text { get; init; }
+
+		/// <summary>
+		/// Value compared by the length operators.
+		/// </summary>
+		public int? Length { get; init; }
 
 		/// <summary>
 		/// Selected values used by type, extension and tag conditions.
@@ -104,6 +118,10 @@ namespace Files.App.Utils.Storage
 	/// </summary>
 	public sealed record DirectoryFilterSpec
 	{
+		private static readonly Regex KeywordSeparator = new(@"[\s,，]+", RegexOptions.CultureInvariant);
+
+		private static readonly char[] WildcardCharacters = ['*', '?'];
+
 		public static DirectoryFilterSpec Empty { get; } = new();
 
 		/// <summary>
@@ -120,5 +138,34 @@ namespace Files.App.Utils.Storage
 
 		public bool HasColumnFilter(DirectoryColumnKind column)
 			=> Columns.Any(filter => filter.Column == column);
+
+		/// <summary>
+		/// Builds a display name filter from whitespace or comma separated keywords.
+		/// Tokens containing <c>*</c> or <c>?</c> match the whole display name as wildcards; other tokens are contains checks.
+		/// </summary>
+		public static DirectoryFilterSpec FromKeywordText(string? text)
+		{
+			if (string.IsNullOrWhiteSpace(text))
+				return Empty;
+
+			var columns = new List<DirectoryColumnFilter>();
+
+			foreach (var token in KeywordSeparator.Split(text))
+			{
+				if (token.Length == 0)
+					continue;
+
+				columns.Add(new DirectoryColumnFilter
+				{
+					Column = DirectoryColumnKind.Name,
+					Operator = token.IndexOfAny(WildcardCharacters) >= 0
+						? DirectoryTextOperator.Wildcard
+						: DirectoryTextOperator.Contains,
+					Text = token,
+				});
+			}
+
+			return columns.Count is 0 ? Empty : new DirectoryFilterSpec { Columns = columns };
+		}
 	}
 }
