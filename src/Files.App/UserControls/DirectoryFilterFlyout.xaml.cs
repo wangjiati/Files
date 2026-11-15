@@ -1,22 +1,29 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Utils.Storage;
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Windows.System;
 
 namespace Files.App.UserControls
 {
 	/// <summary>
-	/// Column filter editor hosted by a flyout in the details header.
-	/// The flyout is populated explicitly because its content is not loaded until first shown.
+	/// Column filter editor shared by the details header flyout and the inline filter bar.
+	/// Values are written to the view model immediately; the footer only exists for the flyout path.
 	/// </summary>
-	public sealed partial class DirectoryFilterFlyout : UserControl
+	public sealed partial class DirectoryFilterFlyout : UserControl, INotifyPropertyChanged
 	{
-		private bool isInitialized;
+		private bool isInline;
 		private bool isSyncingMode;
+		private bool isSyncingUi;
+		private bool showFooter = true;
+		private DirectoryFilterViewModel viewModel = new(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 
 		public DirectoryFilterFlyout()
 		{
@@ -29,92 +36,181 @@ namespace Files.App.UserControls
 
 		public event EventHandler? ClearAllRequested;
 
-		public DirectoryFilterViewModel ViewModel { get; private set; } = null!;
+		public event PropertyChangedEventHandler? PropertyChanged;
 
-		public void Initialize(DirectoryFilterViewModel viewModel)
+		public DirectoryFilterViewModel ViewModel
 		{
-			isInitialized = false;
-			ViewModel = viewModel;
+			get => viewModel;
+			set
+			{
+				if (ReferenceEquals(viewModel, value))
+					return;
 
-			TitleText.Text = viewModel.Title;
+				viewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
-			TextPanel.Visibility = ToVisibility(viewModel.IsTextColumn);
-			OperatorCombo.ItemsSource = viewModel.OperatorChoices.ToArray();
-			OperatorCombo.SelectedIndex = viewModel.OperatorIndex;
-			FilterTextBox.Text = viewModel.Text ?? string.Empty;
+				// Item sources change while the previous view model is still the binding target, so a
+				// selection reset cannot write into the incoming condition.
+				OperatorCombo.ItemsSource = value.OperatorChoices;
+				ScopeCombo.ItemsSource = value.ScopeChoices;
+				RegexTargetCombo.ItemsSource = value.RegexTargetChoices;
+				SizeUnitCombo.ItemsSource = value.SizeUnitChoices;
+				DatePresetCombo.ItemsSource = value.DatePresetChoices;
 
-			TextModeItem.Text = Strings.FilterModeText.GetLocalizedResource();
-			RegexModeItem.Text = Strings.FilterModeRegex.GetLocalizedResource();
-			SyncMode();
-			RegexTargetCombo.ItemsSource = viewModel.RegexTargetChoices.ToArray();
-			RegexTargetCombo.SelectedIndex = viewModel.RegexTargetIndex;
-			RegexIgnoreCaseCheck.IsChecked = !viewModel.RegexIgnoreCase;
-			RegexPatternBox.Text = viewModel.RegexPattern ?? string.Empty;
-			RegexErrorText.Visibility = Visibility.Collapsed;
+				viewModel = value;
+				viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
-			ChoicePanel.Visibility = ToVisibility(viewModel.IsChoiceColumn);
-			ChoicesList.ItemsSource = viewModel.Choices;
-			IncludeEmptyCheck.IsChecked = viewModel.IncludeEmpty;
+				ApplyViewModel();
 
-			ExtensionPanel.Visibility = ToVisibility(viewModel.ShowsExtensionChoices);
-			ExtensionList.ItemsSource = viewModel.ExtensionChoices;
-
-			SizePanel.Visibility = ToVisibility(viewModel.IsSizeColumn);
-			MinSizeBox.Text = viewModel.MinSizeText ?? string.Empty;
-			SizeUnitCombo.ItemsSource = viewModel.SizeUnitChoices.ToArray();
-			SizeUnitCombo.SelectedIndex = viewModel.SizeUnitIndex;
-			MaxSizeBox.Text = viewModel.MaxSizeText ?? string.Empty;
-
-			DatePanel.Visibility = ToVisibility(viewModel.IsDateColumn);
-			DatePresetCombo.ItemsSource = viewModel.DatePresetChoices.ToArray();
-			DatePresetCombo.SelectedIndex = viewModel.DatePresetIndex;
-			MinDatePicker.Date = viewModel.MinDate;
-			MaxDatePicker.Date = viewModel.MaxDate;
-
-			isInitialized = true;
-		}
-
-		private static Visibility ToVisibility(bool value)
-			=> value ? Visibility.Visible : Visibility.Collapsed;
-
-		private void DatePreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
-		{
-			// Ignore the programmatic selection applied while the flyout is being populated.
-			if (!isInitialized)
-				return;
-
-			ViewModel.DatePresetIndex = DatePresetCombo.SelectedIndex;
-			ViewModel.ApplyDatePreset();
-			MinDatePicker.Date = ViewModel.MinDate;
-			MaxDatePicker.Date = ViewModel.MaxDate;
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(IsExtensionSectionVisible));
+				OnPropertyChanged(nameof(IsChoiceListVisible));
+				OnPropertyChanged(nameof(IsIncludeEmptyVisible));
+				OnPropertyChanged(nameof(LengthValue));
+			}
 		}
 
 		/// <summary>
-		/// Re-applies the tab selection and the visible editor. SelectorBar ignores a programmatic
-		/// selection while its flyout is closed, so a fresh content instance is created for each open.
+		/// Inline editors stretch with their host, while the flyout keeps a fixed width.
 		/// </summary>
-		private void SyncMode()
+		public bool IsInline
 		{
-			var useRegex = ViewModel.UseRegex;
+			get => isInline;
+			set
+			{
+				if (isInline == value)
+					return;
 
-			isSyncingMode = true;
+				isInline = value;
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(EditorWidth));
+				OnPropertyChanged(nameof(IsExtensionSectionVisible));
+				OnPropertyChanged(nameof(IsIncludeEmptyVisible));
+			}
+		}
+
+		public bool ShowFooter
+		{
+			get => showFooter;
+			set
+			{
+				if (showFooter == value)
+					return;
+
+				showFooter = value;
+				OnPropertyChanged();
+			}
+		}
+
+		public double EditorWidth => IsInline ? double.NaN : 300;
+
+		public double LengthValue
+		{
+			get => ViewModel.Length ?? double.NaN;
+			set => ViewModel.Length = double.IsNaN(value) ? null : (int)Math.Round(value, MidpointRounding.AwayFromZero);
+		}
+
+		/// <summary>
+		/// The Type editor hides extension choices inline because extensions are a separate condition there.
+		/// </summary>
+		public bool IsExtensionSectionVisible
+			=> ViewModel.ShowsExtensionChoices
+				&& (!IsInline || ViewModel.Column is DirectoryColumnKind.Extension);
+
+		/// <summary>
+		/// Extensions are edited by their own condition, so only the shared "empty" option belongs to the list panel.
+		/// </summary>
+		public bool IsChoiceListVisible => ViewModel.Column is not DirectoryColumnKind.Extension;
+
+		/// <summary>
+		/// The inline Type condition cannot carry "include empty" because its extension part is hidden.
+		/// </summary>
+		public bool IsIncludeEmptyVisible
+			=> !IsInline || ViewModel.Column is not DirectoryColumnKind.Type;
+
+		public void Initialize(DirectoryFilterViewModel viewModel)
+			=> ViewModel = viewModel;
+
+		public void FocusFirstInput()
+		{
+			if (ViewModel.IsTextColumn)
+			{
+				if (ViewModel.UseRegex)
+					RegexPatternBox.Focus(FocusState.Programmatic);
+				else if (ViewModel.IsLengthOperator)
+					LengthBox.Focus(FocusState.Programmatic);
+				else
+					FilterTextBox.Focus(FocusState.Programmatic);
+			}
+			else if (ViewModel.IsChoiceColumn)
+				ChoicesList.Focus(FocusState.Programmatic);
+			else if (ViewModel.IsSizeColumn)
+				MinSizeBox.Focus(FocusState.Programmatic);
+			else if (ViewModel.IsDateColumn)
+				MinDatePicker.Focus(FocusState.Programmatic);
+		}
+
+		private void ApplyViewModel()
+		{
+			isSyncingUi = true;
+
 			try
 			{
+				ChoicesList.ItemsSource = ViewModel.Choices;
+				ExtensionList.ItemsSource = ViewModel.ExtensionChoices;
+
+				DatePresetCombo.SelectedIndex = Math.Clamp(ViewModel.DatePresetIndex, 0, ViewModel.DatePresetChoices.Length - 1);
+				RegexIgnoreCaseCheck.IsChecked = !ViewModel.RegexIgnoreCase;
+				SyncMode();
+				UpdateRegexError();
+			}
+			finally
+			{
+				isSyncingUi = false;
+			}
+		}
+
+		private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			switch (e.PropertyName)
+			{
+				case nameof(DirectoryFilterViewModel.UseRegex):
+					SyncMode();
+					UpdateRegexError();
+					break;
+
+				case nameof(DirectoryFilterViewModel.RegexPattern):
+					UpdateRegexError();
+					break;
+
+				case nameof(DirectoryFilterViewModel.RegexIgnoreCase):
+					SyncIgnoreCase();
+					break;
+
+				case nameof(DirectoryFilterViewModel.Length):
+					OnPropertyChanged(nameof(LengthValue));
+					break;
+
+				case nameof(DirectoryFilterViewModel.Choices):
+					ChoicesList.ItemsSource = ViewModel.Choices;
+					break;
+
+				case nameof(DirectoryFilterViewModel.ExtensionChoices):
+					ExtensionList.ItemsSource = ViewModel.ExtensionChoices;
+					break;
+			}
+		}
+
+		private void SyncMode()
+		{
+			isSyncingMode = true;
+
+			try
+			{
+				var useRegex = ViewModel.UseRegex;
+
 				MatchModeSelector.SelectedItem = useRegex ? RegexModeItem : TextModeItem;
-
-				if (useRegex)
-				{
-					TextModeItem.IsSelected = false;
-					RegexModeItem.IsSelected = true;
-				}
-				else
-				{
-					RegexModeItem.IsSelected = false;
-					TextModeItem.IsSelected = true;
-				}
-
-				TextMatchPanel.Visibility = ToVisibility(!useRegex);
-				RegexOptionsPanel.Visibility = ToVisibility(useRegex);
+				TextModeItem.IsSelected = !useRegex;
+				RegexModeItem.IsSelected = useRegex;
 			}
 			finally
 			{
@@ -122,17 +218,66 @@ namespace Files.App.UserControls
 			}
 		}
 
+		private void SyncIgnoreCase()
+		{
+			isSyncingUi = true;
+
+			try
+			{
+				RegexIgnoreCaseCheck.IsChecked = !ViewModel.RegexIgnoreCase;
+			}
+			finally
+			{
+				isSyncingUi = false;
+			}
+		}
+
+		private void UpdateRegexError()
+		{
+			if (!ViewModel.UseRegex || string.IsNullOrWhiteSpace(ViewModel.RegexPattern) || ViewModel.ValidateRegex())
+			{
+				RegexErrorText.Text = string.Empty;
+				RegexErrorText.Visibility = Visibility.Collapsed;
+				return;
+			}
+
+			RegexErrorText.Text = ViewModel.RegexError;
+			RegexErrorText.Visibility = Visibility.Visible;
+		}
+
 		private void MatchMode_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
 		{
-			// Ignore the programmatic selection applied while the flyout is being populated.
-			if (!isInitialized || isSyncingMode)
+			if (isSyncingMode)
 				return;
 
-			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem;
-			ViewModel.UseRegex = useRegex;
-			TextMatchPanel.Visibility = ToVisibility(!useRegex);
-			RegexOptionsPanel.Visibility = ToVisibility(useRegex);
-			RegexErrorText.Visibility = Visibility.Collapsed;
+			ViewModel.UseRegex = MatchModeSelector.SelectedItem == RegexModeItem;
+		}
+
+		private void RegexIgnoreCase_Changed(object sender, RoutedEventArgs e)
+		{
+			if (isSyncingUi)
+				return;
+
+			ViewModel.RegexIgnoreCase = RegexIgnoreCaseCheck.IsChecked != true;
+		}
+
+		private void DatePreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (isSyncingUi || DatePresetCombo.SelectedIndex < 0)
+				return;
+
+			var preset = (DirectoryDatePreset)DatePresetCombo.SelectedIndex;
+			ViewModel.DatePresetIndex = DatePresetCombo.SelectedIndex;
+
+			if (preset is DirectoryDatePreset.None)
+			{
+				ViewModel.MinDate = null;
+				ViewModel.MaxDate = null;
+			}
+			else if (preset is not DirectoryDatePreset.Custom)
+			{
+				ViewModel.ApplyDatePreset(preset);
+			}
 		}
 
 		private void Apply_Click(object sender, RoutedEventArgs e)
@@ -149,19 +294,6 @@ namespace Files.App.UserControls
 
 		private void ApplyFilter()
 		{
-			ViewModel.OperatorIndex = Math.Max(OperatorCombo.SelectedIndex, 0);
-			ViewModel.Text = FilterTextBox.Text;
-			ViewModel.IncludeEmpty = IncludeEmptyCheck.IsChecked == true;
-			ViewModel.SizeUnitIndex = Math.Max(SizeUnitCombo.SelectedIndex, 0);
-			ViewModel.MinSizeText = MinSizeBox.Text;
-			ViewModel.MaxSizeText = MaxSizeBox.Text;
-			ViewModel.MinDate = MinDatePicker.Date;
-			ViewModel.MaxDate = MaxDatePicker.Date;
-			ViewModel.UseRegex = MatchModeSelector.SelectedItem == RegexModeItem;
-			ViewModel.RegexTargetIndex = Math.Max(RegexTargetCombo.SelectedIndex, 0);
-			ViewModel.RegexIgnoreCase = RegexIgnoreCaseCheck.IsChecked != true;
-			ViewModel.RegexPattern = RegexPatternBox.Text;
-
 			if (!ViewModel.ValidateRegex())
 			{
 				RegexErrorText.Text = ViewModel.RegexError;
@@ -178,5 +310,8 @@ namespace Files.App.UserControls
 
 		private void ClearAll_Click(object sender, RoutedEventArgs e)
 			=> ClearAllRequested?.Invoke(this, EventArgs.Empty);
+
+		private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+			=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 	}
 }

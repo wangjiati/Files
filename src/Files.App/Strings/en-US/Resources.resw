@@ -1964,6 +1964,114 @@
   <data name="FilterRegexTimeout" xml:space="preserve">
     <value>The regular expression took too long and was cancelled.</value>
   </data>
+  <data name="FilterModeBasic" xml:space="preserve">
+    <value>Basic</value>
+  </data>
+  <data name="FilterModeAdvanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="FilterKeywordsPlaceholder" xml:space="preserve">
+    <value>File name (space or comma separated, supports * and ?)</value>
+  </data>
+  <data name="FilterAddConditionContent" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="FilterJoinAndContent" xml:space="preserve">
+    <value>and</value>
+  </data>
+  <data name="FilterJoinOrContent" xml:space="preserve">
+    <value>or</value>
+  </data>
+  <data name="FilterConditionCountFormat" xml:space="preserve">
+    <value>{0} matching items</value>
+  </data>
+  <data name="FilterRecursiveContent" xml:space="preserve">
+    <value>Search subfolders</value>
+  </data>
+  <data name="FilterRecursiveDepthFormat" xml:space="preserve">
+    <value>{0} levels</value>
+  </data>
+  <data name="FilterRecursiveDepthUnlimited" xml:space="preserve">
+    <value>Unlimited</value>
+  </data>
+  <data name="FilterScopeRawName" xml:space="preserve">
+    <value>Full file name</value>
+  </data>
+  <data name="FilterScopeDisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="FilterNameLength" xml:space="preserve">
+    <value>Name length</value>
+  </data>
+  <data name="FilterOperatorContains" xml:space="preserve">
+    <value>Contains</value>
+  </data>
+  <data name="FilterOperatorNotContains" xml:space="preserve">
+    <value>Does not contain</value>
+  </data>
+  <data name="FilterOperatorStartsWith" xml:space="preserve">
+    <value>Starts with</value>
+  </data>
+  <data name="FilterOperatorEndsWith" xml:space="preserve">
+    <value>Ends with</value>
+  </data>
+  <data name="FilterOperatorEquals" xml:space="preserve">
+    <value>Equals</value>
+  </data>
+  <data name="FilterOperatorStartsWithNot" xml:space="preserve">
+    <value>Does not start with</value>
+  </data>
+  <data name="FilterOperatorEndsWithNot" xml:space="preserve">
+    <value>Does not end with</value>
+  </data>
+  <data name="FilterOperatorNotEquals" xml:space="preserve">
+    <value>Does not equal</value>
+  </data>
+  <data name="FilterOperatorLengthGreaterThan" xml:space="preserve">
+    <value>Longer than</value>
+  </data>
+  <data name="FilterOperatorLengthLessThan" xml:space="preserve">
+    <value>Shorter than</value>
+  </data>
+  <data name="FilterOperatorLengthEquals" xml:space="preserve">
+    <value>Length equals</value>
+  </data>
+  <data name="FilterOperatorLengthNotEquals" xml:space="preserve">
+    <value>Length does not equal</value>
+  </data>
+  <data name="FilterDatePresetLastHour" xml:space="preserve">
+    <value>Last hour</value>
+  </data>
+  <data name="FilterDatePresetLast6Hours" xml:space="preserve">
+    <value>Last 6 hours</value>
+  </data>
+  <data name="FilterDatePresetLast24Hours" xml:space="preserve">
+    <value>Last 24 hours</value>
+  </data>
+  <data name="FilterDatePresetToday" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="FilterDatePresetYesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="FilterDatePresetLast3Days" xml:space="preserve">
+    <value>Last 3 days</value>
+  </data>
+  <data name="FilterDatePresetLast7Days" xml:space="preserve">
+    <value>Last 7 days</value>
+  </data>
+  <data name="FilterDatePresetLast30Days" xml:space="preserve">
+    <value>Last 30 days</value>
+  </data>
+  <data name="FilterDatePresetThisMonth" xml:space="preserve">
+    <value>This month</value>
+  </data>
+  <data name="FilterDatePresetThisYear" xml:space="preserve">
+    <value>This year</value>
+  </data>
+  <data name="FilterDatePresetCustom" xml:space="preserve">
+    <value>Custom range</value>
+  </data>
   <data name="SqlWorkbenchTitle" xml:space="preserve">
     <value>SQL Query</value>
   </data>

@@ -25,6 +25,7 @@ namespace Files.App.ViewModels.UserControls
 	{
 		private readonly HashSet<DirectoryFilterViewModel> trackedConditions = [];
 
+		private DirectoryFilterViewModel nameCondition = new(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 		private int recursiveDepth = 2;
 		private bool suppressSpecChanged;
 
@@ -39,12 +40,33 @@ namespace Files.App.ViewModels.UserControls
 
 		public DirectoryFilterBarViewModel()
 		{
+			nameCondition.PropertyChanged += OnConditionPropertyChanged;
 			Conditions.CollectionChanged += OnConditionsChanged;
 		}
 
 		public event EventHandler? SpecChanged;
 
 		public ObservableCollection<DirectoryFilterViewModel> Conditions { get; } = [];
+
+		/// <summary>
+		/// Name condition edited above the condition chain. It is separate so it is always available
+		/// in advanced mode and never duplicated by the add menu.
+		/// </summary>
+		public DirectoryFilterViewModel NameCondition
+		{
+			get => nameCondition;
+			private set
+			{
+				if (ReferenceEquals(nameCondition, value))
+					return;
+
+				nameCondition.PropertyChanged -= OnConditionPropertyChanged;
+				nameCondition = value;
+				nameCondition.PropertyChanged += OnConditionPropertyChanged;
+				OnPropertyChanged();
+				RaiseSpecChanged();
+			}
+		}
 
 		public bool IsBasicMode => Mode is FilterMode.Basic;
 
@@ -68,10 +90,14 @@ namespace Files.App.ViewModels.UserControls
 			if (Mode is FilterMode.Basic)
 				return DirectoryFilterSpec.FromKeywordText(KeywordText);
 
-			var columns = Conditions
+			var columns = new List<DirectoryColumnFilter>();
+
+			if (NameCondition.IsActive)
+				columns.Add(NameCondition.ToColumnFilter());
+
+			columns.AddRange(Conditions
 				.Where(condition => condition.IsActive)
-				.Select(condition => condition.ToColumnFilter())
-				.ToList();
+				.Select(condition => condition.ToColumnFilter()));
 
 			return columns.Count is 0
 				? DirectoryFilterSpec.Empty
@@ -97,6 +123,7 @@ namespace Files.App.ViewModels.UserControls
 			{
 				KeywordText = null;
 				Conditions.Clear();
+				NameCondition = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 			}
 			finally
 			{

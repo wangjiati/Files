@@ -4,6 +4,7 @@
 using Files.App.Utils.Storage;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 
 namespace Files.App.ViewModels.UserControls
@@ -146,11 +147,24 @@ namespace Files.App.ViewModels.UserControls
 
 		public string[] OperatorChoices =>
 		[
-			localize(Strings.FilterContains),
-			localize(Strings.FilterNotContains),
-			localize(Strings.FilterStartsWith),
-			localize(Strings.FilterEndsWith),
-			localize(Strings.FilterEquals),
+			localize(Strings.FilterOperatorContains),
+			localize(Strings.FilterOperatorNotContains),
+			localize(Strings.FilterOperatorStartsWith),
+			localize(Strings.FilterOperatorEndsWith),
+			localize(Strings.FilterOperatorEquals),
+			localize(Strings.FilterOperatorStartsWithNot),
+			localize(Strings.FilterOperatorEndsWithNot),
+			localize(Strings.FilterOperatorNotEquals),
+			localize(Strings.FilterOperatorLengthGreaterThan),
+			localize(Strings.FilterOperatorLengthLessThan),
+			localize(Strings.FilterOperatorLengthEquals),
+			localize(Strings.FilterOperatorLengthNotEquals),
+		];
+
+		public string[] ScopeChoices =>
+		[
+			localize(Strings.FilterScopeDisplayName),
+			localize(Strings.FilterScopeRawName),
 		];
 
 		public string[] SizeUnitChoices { get; } = ["B", "KB", "MB", "GB"];
@@ -158,10 +172,17 @@ namespace Files.App.ViewModels.UserControls
 		public string[] DatePresetChoices =>
 		[
 			localize(Strings.FilterAllDates),
-			localize(Strings.Today),
-			localize(Strings.FilterLast7Days),
-			localize(Strings.FilterLast30Days),
-			localize(Strings.FilterThisYear),
+			localize(Strings.FilterDatePresetLastHour),
+			localize(Strings.FilterDatePresetLast6Hours),
+			localize(Strings.FilterDatePresetLast24Hours),
+			localize(Strings.FilterDatePresetToday),
+			localize(Strings.FilterDatePresetYesterday),
+			localize(Strings.FilterDatePresetLast3Days),
+			localize(Strings.FilterDatePresetLast7Days),
+			localize(Strings.FilterDatePresetLast30Days),
+			localize(Strings.FilterDatePresetThisMonth),
+			localize(Strings.FilterDatePresetThisYear),
+			localize(Strings.FilterDatePresetCustom),
 		];
 
 		public string[] RegexTargetChoices =>
@@ -175,6 +196,16 @@ namespace Files.App.ViewModels.UserControls
 		/// Validation message for the current regex; null when it can be applied.
 		/// </summary>
 		public string? RegexError { get; private set; }
+
+		/// <summary>
+		/// Whether the selected operator compares the name length instead of its text.
+		/// </summary>
+		public bool IsLengthOperator
+			=> (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard) is
+				DirectoryTextOperator.LengthGreaterThan or
+				DirectoryTextOperator.LengthLessThan or
+				DirectoryTextOperator.LengthEquals or
+				DirectoryTextOperator.LengthNotEquals;
 
 		/// <summary>
 		/// Whether this editor currently contributes a meaningful condition to the filter chain.
@@ -194,9 +225,82 @@ namespace Files.App.ViewModels.UserControls
 				_ => false,
 			};
 
-		public ObservableCollection<DirectoryFilterValueOption> Choices { get; private set; } = [];
+		private ObservableCollection<DirectoryFilterValueOption> choices = [];
+		private ObservableCollection<DirectoryFilterValueOption> extensionChoices = [];
 
-		public ObservableCollection<DirectoryFilterValueOption> ExtensionChoices { get; private set; } = [];
+		public ObservableCollection<DirectoryFilterValueOption> Choices
+		{
+			get => choices;
+			private set
+			{
+				if (ReferenceEquals(choices, value))
+					return;
+
+				foreach (var option in choices)
+					option.PropertyChanged -= OnChoiceOptionChanged;
+
+				choices = value;
+
+				foreach (var option in value)
+					option.PropertyChanged += OnChoiceOptionChanged;
+
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(IsActive));
+			}
+		}
+
+		public ObservableCollection<DirectoryFilterValueOption> ExtensionChoices
+		{
+			get => extensionChoices;
+			private set
+			{
+				if (ReferenceEquals(extensionChoices, value))
+					return;
+
+				foreach (var option in extensionChoices)
+					option.PropertyChanged -= OnChoiceOptionChanged;
+
+				extensionChoices = value;
+
+				foreach (var option in value)
+					option.PropertyChanged += OnChoiceOptionChanged;
+
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(IsActive));
+			}
+		}
+
+		partial void OnTextChanged(string? value) => NotifyIsActiveChanged();
+
+		partial void OnOperatorIndexChanged(int value)
+		{
+			OnPropertyChanged(nameof(IsLengthOperator));
+			NotifyIsActiveChanged();
+		}
+
+		partial void OnLengthChanged(int? value) => NotifyIsActiveChanged();
+
+		partial void OnUseRegexChanged(bool value) => NotifyIsActiveChanged();
+
+		partial void OnRegexPatternChanged(string? value) => NotifyIsActiveChanged();
+
+		partial void OnIncludeEmptyChanged(bool value) => NotifyIsActiveChanged();
+
+		partial void OnMinSizeTextChanged(string? value) => NotifyIsActiveChanged();
+
+		partial void OnMaxSizeTextChanged(string? value) => NotifyIsActiveChanged();
+
+		partial void OnMinDateChanged(DateTimeOffset? value) => NotifyIsActiveChanged();
+
+		partial void OnMaxDateChanged(DateTimeOffset? value) => NotifyIsActiveChanged();
+
+		private void NotifyIsActiveChanged() => OnPropertyChanged(nameof(IsActive));
+
+		private void OnChoiceOptionChanged(object? sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName is nameof(DirectoryFilterValueOption.IsSelected))
+				NotifyIsActiveChanged();
+		}
 
 		public static bool IsColumnActive(DirectoryFilterSpec spec, DirectoryColumnKind column)
 			=> column switch
@@ -279,7 +383,7 @@ namespace Files.App.ViewModels.UserControls
 							return spec with { NameContains = null, Columns = columns, Regex = null };
 
 						// Keep a single source of truth: a plain Contains lives in the shared name box.
-						if (condition.Operator is DirectoryTextOperator.Contains)
+						if (condition.Operator is DirectoryTextOperator.Contains && condition.Scope is DirectoryNameScope.DisplayName)
 							return spec with { NameContains = condition.Text, Columns = columns, Regex = null };
 
 						columns.Add(condition);
@@ -499,16 +603,19 @@ namespace Files.App.ViewModels.UserControls
 
 		private DirectoryColumnFilter? BuildNameCondition()
 		{
-			var value = Text?.Trim();
+			var length = IsLengthOperator ? Length : null;
+			var value = IsLengthOperator ? null : Text?.Trim();
 
-			if (string.IsNullOrEmpty(value))
+			if (string.IsNullOrEmpty(value) && length is null)
 				return null;
 
 			return new DirectoryColumnFilter
 			{
 				Column = DirectoryColumnKind.Name,
-				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, 4),
+				Operator = (DirectoryTextOperator)Math.Clamp(OperatorIndex, 0, (int)DirectoryTextOperator.Wildcard),
 				Text = value,
+				Scope = Scope,
+				Length = length,
 			};
 		}
 
