@@ -1,9 +1,9 @@
 # 全视图筛选 — 打包件 UI 验收报告
 
 日期：2026-11-15
-分支：`filter-bar-implementation`（commit `801a85552`）
+分支：`filter-bar-implementation`（commit `4388f87b4`）
 打包件：`artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip`
-SHA-256：`0C23DD7E081952479C95E6260EA106FC977B5D5CD16FEE85D06036623BA7C30F`
+SHA-256：`7A2562917E8D7DF674D53A8F982BEC6F42B30EBE713CEE8EEB2CA688EF69FE67`
 构建：`.github/scripts/Build-Internal.ps1 -PortableOnly -ReplaceExistingRelease`（单元测试 548/548 通过）
 
 ## 测试环境
@@ -49,3 +49,9 @@ powershell -File tools/ui-pipeline/run-pipeline.ps1 `
 - 打包件与测试夹具均为临时目录，不随仓库提交；测试结果目录同样不提交。
 - Win11 原始 VM 为 VMware 加密且密码未知，验收使用重建的未加密配置（`Win11-Rebuilt.vmx`，新 IP `.130`，新快照 `initial`）。
 - 本次验收覆盖筛选栏的功能与本地化；未覆盖：地址栏往返（Join/Length/Scope/条件级 Regex，已知 P2）、选择类取反（P2）、递归进度 UI。
+## 界面结构验收（对照高保真原型）
+
+- 高级模式的条件为**单行内联控件组**：`[名称][Aa][.*][.ext][运算符▾][输入框][添加]`，与原型一致；不再使用竖排表单块。
+- 筛选栏为两行：第一行模式切换 + 名称条件 + 添加；第二行搜索子文件夹、深度、计数、清除所有筛选，窄窗口不再裁切。
+- 类型/扩展名/标签使用紧凑「选择…」浮层；大小/日期条件同样单行内联。
+- 允许的 WinUI 控件差异：`.*`/`.ext` 以 ToggleButton 呈现、作用域用紧凑下拉替代 `.ext` 图标开关、添加按钮文案为“添加”。
