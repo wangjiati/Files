@@ -172,8 +172,14 @@ namespace Files.App.UnitTests.Filtering
 
 			viewModel.ApplyDatePreset();
 
-			Assert.AreEqual(new DateTimeOffset(2026, 3, 9, 0, 0, 0, now.Offset), viewModel.MinDate);
-			Assert.AreEqual(new DateTimeOffset(2026, 3, 16, 0, 0, 0, now.Offset).AddTicks(-1), viewModel.MaxDate);
+			Assert.AreEqual(now.AddHours(-6), viewModel.MinDate);
+			Assert.AreEqual(now, viewModel.MaxDate);
+
+			viewModel.DatePresetIndex = 7;
+			viewModel.ApplyDatePreset();
+
+			Assert.AreEqual(now.AddDays(-7), viewModel.MinDate);
+			Assert.AreEqual(now, viewModel.MaxDate);
 		}
 
 		[TestMethod]
