@@ -56,74 +56,102 @@
 		Padding="26,8,12,8"
 		BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
 		BorderThickness="0,0,0,1">
-		<StackPanel Spacing="8">
+		<Grid ColumnSpacing="8">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
+
+			<SelectorBar
+				Grid.Column="0"
+				x:Name="ModeSelector"
+				VerticalAlignment="Center"
+				SelectionChanged="ModeSelector_SelectionChanged">
+				<SelectorBarItem x:Name="BasicModeItem" Text="{helpers:ResourceString Name=FilterModeBasic}" />
+				<SelectorBarItem x:Name="AdvancedModeItem" Text="{helpers:ResourceString Name=FilterModeAdvanced}" />
+			</SelectorBar>
+
+			<ScrollViewer
+				Grid.Column="1"
+				HorizontalScrollBarVisibility="Auto"
+				HorizontalScrollMode="Enabled"
+				VerticalScrollBarVisibility="Disabled"
+				VerticalScrollMode="Disabled">
+				<StackPanel
+					Orientation="Horizontal"
+					Spacing="6"
+					VerticalAlignment="Center">
+					<TextBox
+						x:Name="KeywordBox"
+						Width="220"
+						PlaceholderText="{helpers:ResourceString Name=FilterKeywordsPlaceholder}"
+						Text="{x:Bind ViewModel.KeywordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+						VerticalAlignment="Center"
+						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+
+					<local:DirectoryFilterEditor
+						x:Name="NameEditor"
+						VerticalAlignment="Center"
+						ViewModel="{x:Bind ViewModel.NameCondition, Mode=OneWay}"
+						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
+
+					<ItemsControl
+						ItemTemplate="{StaticResource ConditionTemplate}"
+						ItemsSource="{x:Bind ViewModel.Conditions, Mode=OneWay}"
+						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
+						<ItemsControl.ItemsPanel>
+							<ItemsPanelTemplate>
+								<StackPanel Orientation="Horizontal" Spacing="6" />
+							</ItemsPanelTemplate>
+						</ItemsControl.ItemsPanel>
+					</ItemsControl>
+
+					<Button
+						Content="{helpers:ResourceString Name=FilterAddConditionContent}"
+						VerticalAlignment="Top"
+						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
+						<Button.Flyout>
+							<MenuFlyout>
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="Name"
+									Text="{helpers:ResourceString Name=Name}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="Type"
+									Text="{helpers:ResourceString Name=Type}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="Extension"
+									Text="{helpers:ResourceString Name=FilterExtensionSection}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="Tags"
+									Text="{helpers:ResourceString Name=Tag}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="Size"
+									Text="{helpers:ResourceString Name=Size}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="ModifiedDate"
+									Text="{helpers:ResourceString Name=DateModifiedLowerCase}" />
+								<MenuFlyoutItem
+									Click="AddCondition_Click"
+									Tag="CreatedDate"
+									Text="{helpers:ResourceString Name=DateCreated}" />
+							</MenuFlyout>
+						</Button.Flyout>
+					</Button>
+				</StackPanel>
+			</ScrollViewer>
+
 			<StackPanel
+				Grid.Column="2"
 				Orientation="Horizontal"
 				Spacing="8"
 				VerticalAlignment="Center">
-				<SelectorBar x:Name="ModeSelector" SelectionChanged="ModeSelector_SelectionChanged">
-					<SelectorBarItem x:Name="BasicModeItem" Text="{helpers:ResourceString Name=FilterModeBasic}" />
-					<SelectorBarItem x:Name="AdvancedModeItem" Text="{helpers:ResourceString Name=FilterModeAdvanced}" />
-				</SelectorBar>
-
-				<TextBox
-					x:Name="KeywordBox"
-					Width="220"
-					PlaceholderText="{helpers:ResourceString Name=FilterKeywordsPlaceholder}"
-					Text="{x:Bind ViewModel.KeywordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-					VerticalAlignment="Center"
-					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
-
-				<local:DirectoryFilterEditor
-					x:Name="NameEditor"
-					VerticalAlignment="Center"
-					ViewModel="{x:Bind ViewModel.NameCondition, Mode=OneWay}"
-					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
-
-				<Button
-					Content="{helpers:ResourceString Name=FilterAddConditionContent}"
-					VerticalAlignment="Top"
-					Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
-					<Button.Flyout>
-						<MenuFlyout>
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="Name"
-								Text="{helpers:ResourceString Name=Name}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="Type"
-								Text="{helpers:ResourceString Name=Type}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="Extension"
-								Text="{helpers:ResourceString Name=FilterExtensionSection}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="Tags"
-								Text="{helpers:ResourceString Name=Tag}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="Size"
-								Text="{helpers:ResourceString Name=Size}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="ModifiedDate"
-								Text="{helpers:ResourceString Name=DateModifiedLowerCase}" />
-							<MenuFlyoutItem
-								Click="AddCondition_Click"
-								Tag="CreatedDate"
-								Text="{helpers:ResourceString Name=DateCreated}" />
-						</MenuFlyout>
-					</Button.Flyout>
-				</Button>
-			</StackPanel>
-
-			<StackPanel
-				Orientation="Horizontal"
-				Spacing="8"
-				VerticalAlignment="Center">
-
 				<CheckBox
 					Content="{helpers:ResourceString Name=FilterRecursiveContent}"
 					IsChecked="{x:Bind ViewModel.RecursiveEnabled, Mode=TwoWay}"
@@ -132,9 +160,9 @@
 				<ComboBox
 					x:Name="DepthCombo"
 					MinWidth="110"
+					IsEnabled="{x:Bind ViewModel.RecursiveEnabled, Mode=OneWay}"
 					SelectionChanged="DepthCombo_SelectionChanged"
-					VerticalAlignment="Center"
-					Visibility="{x:Bind ViewModel.RecursiveEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+					VerticalAlignment="Center" />
 
 				<TextBlock
 					x:Name="CountText"
@@ -147,17 +175,6 @@
 					Content="{helpers:ResourceString Name=FilterClearAll}"
 					VerticalAlignment="Center" />
 			</StackPanel>
-
-			<ItemsControl
-				ItemTemplate="{StaticResource ConditionTemplate}"
-				ItemsSource="{x:Bind ViewModel.Conditions, Mode=OneWay}"
-				Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
-				<ItemsControl.ItemsPanel>
-					<ItemsPanelTemplate>
-						<StackPanel Orientation="Horizontal" Spacing="6" />
-					</ItemsPanelTemplate>
-				</ItemsControl.ItemsPanel>
-			</ItemsControl>
-		</StackPanel>
+		</Grid>
 	</Border>
 </UserControl>

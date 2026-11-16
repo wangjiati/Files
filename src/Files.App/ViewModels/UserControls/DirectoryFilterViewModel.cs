@@ -189,21 +189,52 @@ namespace Files.App.ViewModels.UserControls
 
 		public bool IsDateColumn => column is DirectoryColumnKind.ModifiedDate or DirectoryColumnKind.CreatedDate;
 
-		public string[] OperatorChoices =>
+		public string[] OperatorChoices => OperatorDisplayOrder.Select(GetOperatorLabel).ToArray();
+
+		/// <summary>
+		/// Operators in display order; related operators stay together (contains pair, starts pair, ...).
+		/// </summary>
+		private static readonly DirectoryTextOperator[] OperatorDisplayOrder =
 		[
-			localize(Strings.FilterOperatorContains),
-			localize(Strings.FilterOperatorNotContains),
-			localize(Strings.FilterOperatorStartsWith),
-			localize(Strings.FilterOperatorEndsWith),
-			localize(Strings.FilterOperatorEquals),
-			localize(Strings.FilterOperatorStartsWithNot),
-			localize(Strings.FilterOperatorEndsWithNot),
-			localize(Strings.FilterOperatorNotEquals),
-			localize(Strings.FilterOperatorLengthGreaterThan),
-			localize(Strings.FilterOperatorLengthLessThan),
-			localize(Strings.FilterOperatorLengthEquals),
-			localize(Strings.FilterOperatorLengthNotEquals),
+			DirectoryTextOperator.Contains,
+			DirectoryTextOperator.NotContains,
+			DirectoryTextOperator.StartsWith,
+			DirectoryTextOperator.StartsWithNot,
+			DirectoryTextOperator.EndsWith,
+			DirectoryTextOperator.EndsWithNot,
+			DirectoryTextOperator.Equals,
+			DirectoryTextOperator.NotEquals,
+			DirectoryTextOperator.LengthGreaterThan,
+			DirectoryTextOperator.LengthLessThan,
+			DirectoryTextOperator.LengthEquals,
+			DirectoryTextOperator.LengthNotEquals,
 		];
+
+		/// <summary>
+		/// <see cref="OperatorIndex"/> as a combo box index in <see cref="OperatorDisplayOrder"/>.
+		/// </summary>
+		public int OperatorDisplayIndex
+		{
+			get => Math.Max(0, Array.IndexOf(OperatorDisplayOrder, (DirectoryTextOperator)OperatorIndex));
+			set => OperatorIndex = (int)OperatorDisplayOrder[Math.Clamp(value, 0, OperatorDisplayOrder.Length - 1)];
+		}
+
+		private string GetOperatorLabel(DirectoryTextOperator value)
+			=> value switch
+			{
+				DirectoryTextOperator.NotContains => localize(Strings.FilterOperatorNotContains),
+				DirectoryTextOperator.StartsWith => localize(Strings.FilterOperatorStartsWith),
+				DirectoryTextOperator.StartsWithNot => localize(Strings.FilterOperatorStartsWithNot),
+				DirectoryTextOperator.EndsWith => localize(Strings.FilterOperatorEndsWith),
+				DirectoryTextOperator.EndsWithNot => localize(Strings.FilterOperatorEndsWithNot),
+				DirectoryTextOperator.Equals => localize(Strings.FilterOperatorEquals),
+				DirectoryTextOperator.NotEquals => localize(Strings.FilterOperatorNotEquals),
+				DirectoryTextOperator.LengthGreaterThan => localize(Strings.FilterOperatorLengthGreaterThan),
+				DirectoryTextOperator.LengthLessThan => localize(Strings.FilterOperatorLengthLessThan),
+				DirectoryTextOperator.LengthEquals => localize(Strings.FilterOperatorLengthEquals),
+				DirectoryTextOperator.LengthNotEquals => localize(Strings.FilterOperatorLengthNotEquals),
+				_ => localize(Strings.FilterOperatorContains),
+			};
 
 		public string[] ScopeChoices =>
 		[
@@ -400,18 +431,10 @@ namespace Files.App.ViewModels.UserControls
 
 		public void ApplyDatePreset()
 		{
-			var now = clock();
-			var today = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
-			var endOfToday = today.AddDays(1).AddTicks(-1);
+			if (DatePresetIndex is < 0 or > (int)DirectoryDatePreset.Custom)
+				return;
 
-			(MinDate, MaxDate) = DatePresetIndex switch
-			{
-				1 => (today, endOfToday),
-				2 => (today.AddDays(-6), endOfToday),
-				3 => (today.AddDays(-29), endOfToday),
-				4 => (new DateTimeOffset(now.Year, 1, 1, 0, 0, 0, now.Offset), endOfToday),
-				_ => ((DateTimeOffset?)null, (DateTimeOffset?)null),
-			};
+			ApplyDatePreset((DirectoryDatePreset)DatePresetIndex);
 		}
 
 		/// <summary>

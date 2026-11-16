@@ -37,7 +37,7 @@ namespace Files.App.UserControls
 
 			TextPanel.Visibility = ToVisibility(viewModel.IsTextColumn);
 			OperatorCombo.ItemsSource = viewModel.OperatorChoices.ToArray();
-			OperatorCombo.SelectedIndex = viewModel.OperatorIndex;
+			OperatorCombo.SelectedIndex = viewModel.OperatorDisplayIndex;
 			FilterTextBox.Text = viewModel.Text ?? string.Empty;
 
 			TextModeItem.Text = Strings.FilterModeText.GetLocalizedResource();
@@ -83,7 +83,7 @@ namespace Files.App.UserControls
 			var caseSensitive = CaseCheck.IsChecked == true;
 			var includeExtension = ExtensionCheck.IsChecked == true;
 
-			ViewModel.OperatorIndex = Math.Max(OperatorCombo.SelectedIndex, 0);
+			ViewModel.OperatorDisplayIndex = Math.Max(OperatorCombo.SelectedIndex, 0);
 			ViewModel.Text = FilterTextBox.Text;
 			ViewModel.CaseSensitive = caseSensitive;
 			ViewModel.RegexIgnoreCase = !caseSensitive;
