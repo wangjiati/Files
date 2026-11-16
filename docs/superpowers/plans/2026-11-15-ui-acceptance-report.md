@@ -1,9 +1,9 @@
 # 全视图筛选 — 打包件 UI 验收报告
 
 日期：2026-11-15
-分支：`main`（commit `5971162ea`）
+分支：`main`（commit `97887ffa7`）
 打包件：`artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip`
-SHA-256：`C56A90A77514AB8062459072475AE3FF2527C86898E1AB345DC2D89D980F13C1`
+SHA-256：`EFB92826764631F1F19A9CD04381E5C8CC121BC36AB00C2FD0328E41B6A00156`
 构建：`.github/scripts/Build-Internal.ps1 -PortableOnly -ReplaceExistingRelease`（单元测试 548/548 通过）
 
 ## 测试环境
@@ -54,4 +54,5 @@ powershell -File run-pipeline.ps1 `
 - 高级模式的条件为**单行内联控件组**：`[名称][Aa][.*][.ext][运算符▾][输入框][添加]`，与原型一致；不再使用竖排表单块。
 - 筛选栏为两行：第一行模式切换 + 名称条件 + 添加；第二行搜索子文件夹、深度、计数、清除所有筛选，窄窗口不再裁切。
 - 类型/扩展名/标签使用紧凑「选择…」浮层；大小/日期条件同样单行内联。
+- 列头弹窗保持**旧版竖排表单**（列名、文本/正则页签、运算符、范围/日期控件、底部清除/应用）；单行紧凑编辑器只用于顶部筛选栏。
 - 允许的 WinUI 控件差异：`.*`/`.ext` 以 ToggleButton 呈现、作用域用紧凑下拉替代 `.ext` 图标开关、添加按钮文案为“添加”。
