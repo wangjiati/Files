@@ -1065,6 +1065,8 @@ namespace Files.App.Views.Layouts
 					var choices = shellViewModel.GetFilterChoices(column);
 					if (column is DirectoryColumnKind.Extension)
 						viewModel.LoadChoices(extensions: choices);
+					else if (column is DirectoryColumnKind.Type)
+						viewModel.LoadChoices(choices, shellViewModel.GetFilterChoices(DirectoryColumnKind.Extension));
 					else
 						viewModel.LoadChoices(choices);
 				}
