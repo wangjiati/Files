@@ -5645,4 +5645,22 @@
   <data name="FilterDatePresetThisYear" xml:space="preserve"><value>今年</value></data>
   <data name="FilterDatePresetCustom" xml:space="preserve"><value>自定义范围</value></data>
   <data name="FilterChooseValues" xml:space="preserve"><value>选择…</value></data>
+  <data name="FilterIncludeExtension" xml:space="preserve">
+    <value>包含扩展名</value>
+  </data>
+  <data name="FilterSelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="FilterClearSelection" xml:space="preserve">
+    <value>清空</value>
+  </data>
+  <data name="FilterValues" xml:space="preserve">
+    <value>选择值</value>
+  </data>
+  <data name="FilterOperator" xml:space="preserve">
+    <value>运算符</value>
+  </data>
+  <data name="FilterDatePreset" xml:space="preserve">
+    <value>日期预设</value>
+  </data>
 </root>

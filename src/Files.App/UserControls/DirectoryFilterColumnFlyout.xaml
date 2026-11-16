@@ -10,9 +10,8 @@
 	mc:Ignorable="d">
 
 	<StackPanel
-		Width="430"
-		Padding="12"
-		Spacing="10"><!--  Same editor and query language as the top bar  -->
+		Padding="16"
+		Spacing="12"><!--  Same editor and query language as the top bar  -->
 		<local:DirectoryFilterColumnEditor x:Name="ColumnEditor" />
 
 		<StackPanel

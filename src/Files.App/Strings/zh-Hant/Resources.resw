@@ -5018,4 +5018,22 @@
   <data name="FilterDatePresetThisYear" xml:space="preserve"><value>今年</value></data>
   <data name="FilterDatePresetCustom" xml:space="preserve"><value>自訂範圍</value></data>
   <data name="FilterChooseValues" xml:space="preserve"><value>選擇…</value></data>
+  <data name="FilterIncludeExtension" xml:space="preserve">
+    <value>包含副檔名</value>
+  </data>
+  <data name="FilterSelectAll" xml:space="preserve">
+    <value>全選</value>
+  </data>
+  <data name="FilterClearSelection" xml:space="preserve">
+    <value>清除</value>
+  </data>
+  <data name="FilterValues" xml:space="preserve">
+    <value>選擇值</value>
+  </data>
+  <data name="FilterOperator" xml:space="preserve">
+    <value>運算子</value>
+  </data>
+  <data name="FilterDatePreset" xml:space="preserve">
+    <value>日期預設</value>
+  </data>
 </root>

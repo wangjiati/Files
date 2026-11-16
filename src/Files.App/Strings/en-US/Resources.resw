@@ -5830,4 +5830,22 @@
     <value>Go to a folder alias in the Omnibar</value>
   </data>
   <data name="FilterChooseValues" xml:space="preserve"><value>Choose…</value></data>
+  <data name="FilterIncludeExtension" xml:space="preserve">
+    <value>Include extension</value>
+  </data>
+  <data name="FilterSelectAll" xml:space="preserve">
+    <value>Select all</value>
+  </data>
+  <data name="FilterClearSelection" xml:space="preserve">
+    <value>Clear selection</value>
+  </data>
+  <data name="FilterValues" xml:space="preserve">
+    <value>Values</value>
+  </data>
+  <data name="FilterOperator" xml:space="preserve">
+    <value>Operator</value>
+  </data>
+  <data name="FilterDatePreset" xml:space="preserve">
+    <value>Date preset</value>
+  </data>
 </root>

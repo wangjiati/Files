@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Utils.Storage;
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -11,7 +12,7 @@ namespace Files.App.UserControls
 {
 	/// <summary>
 	/// Vertical column filter form hosted by the column filter popup. The top bar keeps its
-	/// compact inline editor; this form mirrors the original flyout layout.
+	/// compact inline editor; this form is shared by text, choice and date columns.
 	/// </summary>
 	public sealed partial class DirectoryFilterColumnEditor : UserControl
 	{
@@ -42,11 +43,14 @@ namespace Files.App.UserControls
 			TextModeItem.Text = Strings.FilterModeText.GetLocalizedResource();
 			RegexModeItem.Text = Strings.FilterModeRegex.GetLocalizedResource();
 			SyncMode();
-			RegexTargetCombo.ItemsSource = viewModel.RegexTargetChoices.ToArray();
-			RegexTargetCombo.SelectedIndex = viewModel.RegexTargetIndex;
-			RegexIgnoreCaseCheck.IsChecked = !viewModel.RegexIgnoreCase;
 			RegexPatternBox.Text = viewModel.RegexPattern ?? string.Empty;
 			RegexErrorText.Visibility = Visibility.Collapsed;
+
+			// Both options apply to text and regex alike.
+			CaseCheck.IsChecked = viewModel.UseRegex ? !viewModel.RegexIgnoreCase : viewModel.CaseSensitive;
+			ExtensionCheck.IsChecked = viewModel.UseRegex
+				? viewModel.RegexTargetIndex == 0
+				: viewModel.UseRawName;
 
 			ChoicePanel.Visibility = ToVisibility(viewModel.IsChoiceColumn);
 			ChoicesList.ItemsSource = viewModel.Choices;
@@ -54,6 +58,7 @@ namespace Files.App.UserControls
 
 			ExtensionPanel.Visibility = ToVisibility(viewModel.ShowsExtensionChoices);
 			ExtensionList.ItemsSource = viewModel.ExtensionChoices;
+			IncludeEmptyExtensionCheck.IsChecked = viewModel.IncludeEmpty;
 
 			SizePanel.Visibility = ToVisibility(viewModel.IsSizeColumn);
 			MinSizeBox.Text = viewModel.MinSizeText ?? string.Empty;
@@ -75,17 +80,22 @@ namespace Files.App.UserControls
 		/// </summary>
 		public bool Commit()
 		{
+			var caseSensitive = CaseCheck.IsChecked == true;
+			var includeExtension = ExtensionCheck.IsChecked == true;
+
 			ViewModel.OperatorIndex = Math.Max(OperatorCombo.SelectedIndex, 0);
 			ViewModel.Text = FilterTextBox.Text;
-			ViewModel.IncludeEmpty = IncludeEmptyCheck.IsChecked == true;
+			ViewModel.CaseSensitive = caseSensitive;
+			ViewModel.RegexIgnoreCase = !caseSensitive;
+			ViewModel.UseRawName = includeExtension;
+			ViewModel.RegexTargetIndex = includeExtension ? 0 : 1;
+			ViewModel.IncludeEmpty = IncludeEmptyCheck.IsChecked == true || IncludeEmptyExtensionCheck.IsChecked == true;
 			ViewModel.SizeUnitIndex = Math.Max(SizeUnitCombo.SelectedIndex, 0);
 			ViewModel.MinSizeText = MinSizeBox.Text;
 			ViewModel.MaxSizeText = MaxSizeBox.Text;
 			ViewModel.MinDate = MinDatePicker.Date;
 			ViewModel.MaxDate = MaxDatePicker.Date;
 			ViewModel.UseRegex = MatchModeSelector.SelectedItem == RegexModeItem;
-			ViewModel.RegexTargetIndex = Math.Max(RegexTargetCombo.SelectedIndex, 0);
-			ViewModel.RegexIgnoreCase = RegexIgnoreCaseCheck.IsChecked != true;
 			ViewModel.RegexPattern = RegexPatternBox.Text;
 
 			if (!ViewModel.ValidateRegex())
@@ -101,6 +111,24 @@ namespace Files.App.UserControls
 
 		private static Visibility ToVisibility(bool value)
 			=> value ? Visibility.Visible : Visibility.Collapsed;
+
+		private void SelectAll_Click(object sender, RoutedEventArgs e)
+		{
+			foreach (var option in ViewModel.Choices)
+				option.IsSelected = true;
+
+			foreach (var option in ViewModel.ExtensionChoices)
+				option.IsSelected = true;
+		}
+
+		private void ClearSelection_Click(object sender, RoutedEventArgs e)
+		{
+			foreach (var option in ViewModel.Choices)
+				option.IsSelected = false;
+
+			foreach (var option in ViewModel.ExtensionChoices)
+				option.IsSelected = false;
+		}
 
 		private void DatePreset_SelectionChanged(object sender, SelectionChangedEventArgs e)
 		{
