@@ -12,12 +12,7 @@
 	<StackPanel
 		Width="430"
 		Padding="12"
-		Spacing="10">
-		<TextBlock
-			x:Name="TitleText"
-			FontWeight="SemiBold" />
-
-		<!--  Same editor and query language as the top bar  -->
+		Spacing="10"><!--  Same editor and query language as the top bar  -->
 		<local:DirectoryFilterColumnEditor x:Name="ColumnEditor" />
 
 		<StackPanel
