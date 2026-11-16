@@ -30,7 +30,6 @@ namespace Files.App.UserControls
 		public void Initialize(DirectoryFilterViewModel viewModel)
 		{
 			ViewModel = viewModel;
-			TitleText.Text = viewModel.Title;
 			ColumnEditor.Initialize(viewModel);
 		}
 
