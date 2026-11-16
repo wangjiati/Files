@@ -94,7 +94,7 @@
 						x:Name="OperatorCombo"
 						Width="112"
 						Height="30"
-						SelectedIndex="{x:Bind ViewModel.OperatorIndex, Mode=TwoWay}" />
+						SelectedIndex="{x:Bind ViewModel.OperatorDisplayIndex, Mode=TwoWay}" />
 					<TextBox
 						x:Name="FilterTextBox"
 						Width="150"
