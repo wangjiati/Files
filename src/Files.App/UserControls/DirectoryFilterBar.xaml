@@ -35,7 +35,8 @@
 						Click="JoinButton_Click"
 						Content="{helpers:ResourceString Name=FilterJoinAndContent}"
 						Loaded="JoinButton_Loaded"
-						VerticalAlignment="Top" />
+						VerticalAlignment="Top"
+						Visibility="{x:Bind ShowsJoin, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
 					<local:DirectoryFilterEditor
 						Loaded="ConditionEditor_Loaded"
 						VerticalAlignment="Top"
@@ -55,7 +56,8 @@
 	<Border
 		Padding="26,8,12,8"
 		BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-		BorderThickness="0,0,0,1">
+		BorderThickness="0,0,0,1"
+		KeyDown="FilterBar_KeyDown">
 		<Grid ColumnSpacing="8">
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="Auto" />
@@ -94,7 +96,7 @@
 						x:Name="NameEditor"
 						VerticalAlignment="Center"
 						ViewModel="{x:Bind ViewModel.NameCondition, Mode=OneWay}"
-						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}" />
+						Visibility="{x:Bind ViewModel.ShowNameCondition, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
 
 					<ItemsControl
 						ItemTemplate="{StaticResource ConditionTemplate}"
@@ -108,8 +110,9 @@
 					</ItemsControl>
 
 					<Button
+						x:Name="AddConditionButton"
 						Content="{helpers:ResourceString Name=FilterAddConditionContent}"
-						VerticalAlignment="Top"
+						VerticalAlignment="Center"
 						Visibility="{x:Bind ViewModel.IsBasicMode, Mode=OneWay, Converter={StaticResource NegatedBoolToVisibility}}">
 						<Button.Flyout>
 							<MenuFlyout>

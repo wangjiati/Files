@@ -74,6 +74,12 @@ namespace Files.App.ViewModels.UserControls
 		[ObservableProperty]
 		private DirectoryConditionJoin join;
 
+		/// <summary>
+		/// False for the first active condition: there is nothing before it to join.
+		/// </summary>
+		[ObservableProperty]
+		private bool showsJoin = true;
+
 		[ObservableProperty]
 		private DirectoryNameScope scope;
 

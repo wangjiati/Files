@@ -1105,8 +1105,20 @@ namespace Files.App.Views.Layouts
 			var bar = shellViewModel.FilterBar;
 			bar.RemoveColumnConditions(filter.Column);
 			bar.Mode = FilterMode.Advanced;
-			var condition = bar.AddCondition(filter.Column, DirectoryConditionJoin.And);
-			condition.LoadFrom(filter);
+
+			if (filter.Column is DirectoryColumnKind.Name)
+			{
+				// The inline name editor is the first control; loading it avoids an empty editor followed
+				// by a duplicate name condition from the header popup.
+				bar.ClearNameCondition();
+				bar.NameCondition.LoadFrom(filter);
+			}
+			else
+			{
+				var condition = bar.AddCondition(filter.Column, DirectoryConditionJoin.And);
+				condition.LoadFrom(filter);
+			}
+
 			columnFilterFlyout.Hide();
 		}
 
@@ -1117,7 +1129,12 @@ namespace Files.App.Views.Layouts
 				|| columnFilterContent?.ViewModel is not { } viewModel)
 				return;
 
-			shellViewModel.FilterBar.RemoveColumnConditions(viewModel.Column);
+			var bar = shellViewModel.FilterBar;
+			bar.RemoveColumnConditions(viewModel.Column);
+
+			if (viewModel.Column is DirectoryColumnKind.Name)
+				bar.ClearNameCondition();
+
 			columnFilterFlyout.Hide();
 		}
 

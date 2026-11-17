@@ -4,7 +4,9 @@
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using System;
+using Windows.System;
 
 namespace Files.App.UserControls
 {
@@ -35,6 +37,17 @@ namespace Files.App.UserControls
 
 		private void Apply_Click(object sender, RoutedEventArgs e)
 		{
+			if (ColumnEditor.Commit())
+				ApplyRequested?.Invoke(this, EventArgs.Empty);
+		}
+
+		private void Content_KeyDown(object sender, KeyRoutedEventArgs e)
+		{
+			// The editor's text boxes handle Enter themselves; this catches focus elsewhere in the form.
+			if (e.Handled || e.Key is not VirtualKey.Enter || e.OriginalSource is not TextBox)
+				return;
+
+			e.Handled = true;
 			if (ColumnEditor.Commit())
 				ApplyRequested?.Invoke(this, EventArgs.Empty);
 		}

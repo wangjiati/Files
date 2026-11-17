@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using Windows.System;
 
 namespace Files.App.UserControls
 {
@@ -87,8 +88,20 @@ namespace Files.App.UserControls
 		{
 			if (viewModel.Mode is FilterMode.Basic)
 				KeywordBox.Focus(FocusState.Programmatic);
-			else
+			else if (viewModel.ShowNameCondition)
 				NameEditor.FocusFirstInput();
+			else
+				AddConditionButton.Focus(FocusState.Programmatic);
+		}
+
+		private void FilterBar_KeyDown(object sender, KeyRoutedEventArgs e)
+		{
+			// Enter confirms a text filter edit; the shell re-runs the projection immediately.
+			if (e.Handled || e.Key is not VirtualKey.Enter || e.OriginalSource is not TextBox)
+				return;
+
+			e.Handled = true;
+			viewModel.ApplyNow();
 		}
 
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

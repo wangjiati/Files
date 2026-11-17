@@ -46,6 +46,18 @@ namespace Files.App.ViewModels.UserControls
 
 		public event EventHandler? SpecChanged;
 
+		/// <summary>
+		/// Raised when Enter confirms a filter edit; the shell re-runs the projection even when the
+		/// debounced text change already produced the same spec.
+		/// </summary>
+		public event EventHandler? CommitRequested;
+
+		/// <summary>
+		/// Confirms the current editor state, for example when Enter is pressed in a filter text box.
+		/// </summary>
+		public void ApplyNow()
+			=> CommitRequested?.Invoke(this, EventArgs.Empty);
+
 		public ObservableCollection<DirectoryFilterViewModel> Conditions { get; } = [];
 
 		/// <summary>
@@ -65,6 +77,8 @@ namespace Files.App.ViewModels.UserControls
 				nameCondition.PropertyChanged += OnConditionPropertyChanged;
 				OnPropertyChanged();
 				OnPropertyChanged(nameof(HasActiveFilter));
+				OnPropertyChanged(nameof(ShowNameCondition));
+				UpdateConditionJoins();
 				RaiseSpecChanged();
 			}
 		}
@@ -78,6 +92,13 @@ namespace Files.App.ViewModels.UserControls
 		public bool IsBasicMode => Mode is FilterMode.Basic;
 
 		public bool IsAdvancedMode => Mode is FilterMode.Advanced;
+
+		/// <summary>
+		/// The inline name editor stays out of the way once the condition list provides the filter UI.
+		/// It remains visible when it holds the active name filter or when the advanced row is empty.
+		/// </summary>
+		public bool ShowNameCondition
+			=> IsAdvancedMode && (NameCondition.IsActive || Conditions.Count == 0);
 
 		/// <summary>
 		/// Whether the active configuration currently contributes to the projected spec. Basic mode only
@@ -150,6 +171,12 @@ namespace Files.App.ViewModels.UserControls
 			foreach (var condition in Conditions.Where(item => item.Column == column).ToList())
 				Conditions.Remove(condition);
 		}
+
+		/// <summary>
+		/// Resets the inline name condition; used by the name column header's clear action.
+		/// </summary>
+		public void ClearNameCondition()
+			=> NameCondition = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
 
 		public bool RemoveCondition(DirectoryFilterViewModel condition)
 			=> Conditions.Remove(condition);
@@ -392,6 +419,7 @@ namespace Files.App.ViewModels.UserControls
 		{
 			OnPropertyChanged(nameof(IsBasicMode));
 			OnPropertyChanged(nameof(IsAdvancedMode));
+			OnPropertyChanged(nameof(ShowNameCondition));
 			OnPropertyChanged(nameof(HasActiveFilter));
 			RaiseSpecChanged();
 		}
@@ -432,6 +460,8 @@ namespace Files.App.ViewModels.UserControls
 			}
 
 			OnPropertyChanged(nameof(HasActiveFilter));
+			OnPropertyChanged(nameof(ShowNameCondition));
+			UpdateConditionJoins();
 			RaiseSpecChanged();
 		}
 
@@ -449,8 +479,29 @@ namespace Files.App.ViewModels.UserControls
 
 		private void OnConditionPropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{
+			// Join visibility is UI state, not spec content; do not re-project for it.
+			if (e.PropertyName is nameof(DirectoryFilterViewModel.ShowsJoin))
+				return;
+
 			OnPropertyChanged(nameof(HasActiveFilter));
+			OnPropertyChanged(nameof(ShowNameCondition));
+			UpdateConditionJoins();
 			RaiseSpecChanged();
+		}
+
+		/// <summary>
+		/// Hides the connector of the first active condition; the name editor counts as the first
+		/// only while it holds an active condition.
+		/// </summary>
+		private void UpdateConditionJoins()
+		{
+			var hasPrecedingCondition = NameCondition.IsActive;
+
+			foreach (var condition in Conditions)
+			{
+				condition.ShowsJoin = hasPrecedingCondition;
+				hasPrecedingCondition |= condition.IsActive;
+			}
 		}
 
 		private void RaiseSpecChanged()

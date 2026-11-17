@@ -828,6 +828,7 @@ namespace Files.App.ViewModels
 
 			FilterBar = new DirectoryFilterBarViewModel();
 			FilterBar.SpecChanged += FilterBar_SpecChanged;
+			FilterBar.CommitRequested += FilterBar_CommitRequested;
 			FilterBar.PropertyChanged += FilterBar_PropertyChanged;
 			FilterBar.ChoiceProvider = GetFilterChoices;
 		}
@@ -1293,6 +1294,13 @@ namespace Files.App.ViewModels
 			{
 				isProjectingFromBar = false;
 			}
+		}
+
+		private void FilterBar_CommitRequested(object? sender, EventArgs e)
+		{
+			// Enter confirms the edit even when the debounced text change already produced this spec.
+			InvalidateIncrementalApplyBaseline();
+			ScheduleFilterProjection(0);
 		}
 
 		/// <summary>
@@ -4472,6 +4480,7 @@ namespace Files.App.ViewModels
 			StorageTrashBinService.Watcher.ItemDeleted -= RecycleBinItemDeletedAsync;
 			StorageTrashBinService.Watcher.RefreshRequested -= RecycleBinRefreshRequestedAsync;
 			FilterBar.SpecChanged -= FilterBar_SpecChanged;
+			FilterBar.CommitRequested -= FilterBar_CommitRequested;
 			FilterBar.PropertyChanged -= FilterBar_PropertyChanged;
 			FilterBar.ChoiceProvider = null;
 			InvalidateRecursiveItemsCache();

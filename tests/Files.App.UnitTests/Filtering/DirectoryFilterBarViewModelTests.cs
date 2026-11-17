@@ -480,5 +480,79 @@ namespace Files.App.UnitTests.Filtering
 			AssertRaised(() => viewModel.RecursiveDepth = 3);
 			AssertRaised(viewModel.ClearAll);
 		}
+
+		[TestMethod]
+		public void ShowNameCondition_AdvancedMode_HidesBlankEditorOnceConditionsExist()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+
+			Assert.IsTrue(viewModel.ShowNameCondition);
+
+			viewModel.AddCondition(DirectoryColumnKind.Type, DirectoryConditionJoin.And);
+			Assert.IsFalse(viewModel.ShowNameCondition);
+
+			viewModel.NameCondition.Text = "report";
+			Assert.IsTrue(viewModel.ShowNameCondition);
+		}
+
+		[TestMethod]
+		public void ShowNameCondition_BasicMode_IsHidden()
+		{
+			var viewModel = new DirectoryFilterBarViewModel();
+			viewModel.AddCondition(DirectoryColumnKind.Type, DirectoryConditionJoin.And);
+
+			Assert.IsFalse(viewModel.ShowNameCondition);
+		}
+
+		[TestMethod]
+		public void ClearNameCondition_ResetsInlineNameEditor()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.NameCondition.Text = "report";
+
+			viewModel.ClearNameCondition();
+
+			Assert.IsFalse(viewModel.NameCondition.IsActive);
+			Assert.IsTrue(viewModel.ShowNameCondition);
+		}
+
+		[TestMethod]
+		public void UpdateConditionJoins_HidesConnectorBeforeFirstActiveCondition()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+			viewModel.AddCondition(DirectoryColumnKind.Name, DirectoryConditionJoin.And);
+			viewModel.Conditions[0].Text = "report";
+			viewModel.AddCondition(DirectoryColumnKind.Type, DirectoryConditionJoin.And);
+
+			Assert.IsFalse(viewModel.Conditions[0].ShowsJoin);
+			Assert.IsTrue(viewModel.Conditions[1].ShowsJoin);
+
+			viewModel.NameCondition.Text = "draft";
+			Assert.IsTrue(viewModel.Conditions[0].ShowsJoin);
+
+			viewModel.ClearNameCondition();
+			Assert.IsFalse(viewModel.Conditions[0].ShowsJoin);
+		}
+
+		[TestMethod]
+		public void ApplyNow_RaisesCommitRequested()
+		{
+			var viewModel = new DirectoryFilterBarViewModel();
+			var raised = 0;
+			viewModel.CommitRequested += (_, _) => raised++;
+
+			viewModel.ApplyNow();
+
+			Assert.AreEqual(1, raised);
+		}
 	}
 }
