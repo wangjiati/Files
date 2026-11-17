@@ -167,6 +167,10 @@ namespace Files.App.ViewModels.UserControls
 			this.clock = clock ?? (() => DateTimeOffset.Now);
 			this.localize = localize ?? (resourceKey => resourceKey.GetLocalizedResource());
 
+			// Name conditions include the extension by default; other columns ignore the scope.
+			if (column is DirectoryColumnKind.Name)
+				Scope = DirectoryNameScope.RawName;
+
 			Seed(currentSpec);
 		}
 
@@ -648,6 +652,7 @@ namespace Files.App.ViewModels.UserControls
 						Text = nameFilter.Text;
 						OperatorIndex = (int)nameFilter.Operator;
 						CaseSensitive = nameFilter.CaseSensitive;
+						Scope = nameFilter.Scope;
 					}
 					else if (!string.IsNullOrEmpty(spec.NameContains))
 					{

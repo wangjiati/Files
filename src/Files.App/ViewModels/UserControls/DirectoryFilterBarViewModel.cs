@@ -280,12 +280,9 @@ namespace Files.App.ViewModels.UserControls
 			return true;
 		}
 
-		// Wildcards are parsed against the raw name so they keep matching hidden extensions, while plain
-		// keywords are parsed against the display name.
+		// Keyword tokens match the raw name so the keyword box also matches the extension.
 		private static bool IsKeywordScope(DirectoryColumnFilter column)
-			=> column.Operator is DirectoryTextOperator.Wildcard
-				? column.Scope is DirectoryNameScope.RawName
-				: column.Scope is DirectoryNameScope.DisplayName;
+			=> column.Scope is DirectoryNameScope.RawName;
 
 		// The keyword parser splits on whitespace and commas and treats '*' and '?' as wildcards, so only
 		// tokens that survive that parse as the same condition can be restored into the keyword box.

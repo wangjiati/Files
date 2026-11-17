@@ -182,7 +182,7 @@ namespace Files.App.Utils.Storage
 		/// <summary>
 		/// Builds a name filter from whitespace or comma separated keywords.
 		/// Tokens containing <c>*</c> or <c>?</c> match the whole raw file name as wildcards; other tokens are
-		/// contains checks against the display name.
+		/// contains checks against the raw file name, so keyword searches also match the extension.
 		/// </summary>
 		public static DirectoryFilterSpec FromKeywordText(string? text)
 		{
@@ -204,11 +204,9 @@ namespace Files.App.Utils.Storage
 					Operator = isWildcard
 						? DirectoryTextOperator.Wildcard
 						: DirectoryTextOperator.Contains,
-					// Wildcards compare the real file name so "*.png" and "*.lnk" also match when the
-					// extension is hidden from the display name.
-					Scope = isWildcard
-						? DirectoryNameScope.RawName
-						: DirectoryNameScope.DisplayName,
+					// Keywords compare the real file name so searches also match the extension when it
+					// is hidden from the display name.
+					Scope = DirectoryNameScope.RawName,
 					Text = token,
 				});
 			}

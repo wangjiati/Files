@@ -24,7 +24,20 @@ namespace Files.App.UnitTests.Filtering
 
 			Assert.AreEqual(2, spec.Columns.Count);
 			Assert.IsTrue(spec.Columns.All(column => column.Column is DirectoryColumnKind.Name));
+			Assert.IsTrue(spec.Columns.All(column => column.Scope is DirectoryNameScope.RawName));
 			CollectionAssert.AreEqual(new[] { "报告", "2026" }, spec.Columns.Select(column => column.Text).ToArray());
+		}
+
+		[TestMethod]
+		public void NameCondition_DefaultsToFullFileNameScope()
+		{
+			var viewModel = new DirectoryFilterBarViewModel
+			{
+				Mode = FilterMode.Advanced,
+			};
+
+			Assert.IsTrue(viewModel.NameCondition.UseRawName);
+			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.NameCondition.ToColumnFilter().Scope);
 		}
 
 		[TestMethod]

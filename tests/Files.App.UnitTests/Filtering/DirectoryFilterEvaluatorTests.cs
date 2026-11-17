@@ -466,7 +466,7 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
-		public void FromKeywordText_WildcardCondition_UsesRawNameScope()
+		public void FromKeywordText_UsesRawNameScope()
 		{
 			var spec = DirectoryFilterSpec.FromKeywordText("*.txt report");
 
@@ -474,7 +474,22 @@ namespace Files.App.UnitTests.Filtering
 			var contains = spec.Columns.Single(column => column.Operator is DirectoryTextOperator.Contains);
 
 			Assert.AreEqual(DirectoryNameScope.RawName, wildcard.Scope);
-			Assert.AreEqual(DirectoryNameScope.DisplayName, contains.Scope);
+			Assert.AreEqual(DirectoryNameScope.RawName, contains.Scope);
+		}
+
+		[TestMethod]
+		public void KeywordText_MatchesExtensionHiddenFromDisplayName()
+		{
+			var items = new[]
+			{
+				CreateItem(1, "report.txt", displayName: "report"),
+				CreateItem(2, "notes.txt", displayName: "notes"),
+				CreateItem(3, "report.md", displayName: "report"),
+			};
+
+			CollectionAssert.AreEqual(
+				new long[] { 1, 2 },
+				DirectoryFilterEvaluator.Evaluate(items, DirectoryFilterSpec.FromKeywordText("txt")).ToArray());
 		}
 
 		[TestMethod]

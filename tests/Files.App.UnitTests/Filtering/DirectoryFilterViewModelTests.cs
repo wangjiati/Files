@@ -234,8 +234,8 @@ namespace Files.App.UnitTests.Filtering
 
 			// A combo box reports -1 when its item source is reset; that must not throw or move the scope.
 			viewModel.ScopeIndex = -1;
-			Assert.AreEqual(DirectoryNameScope.DisplayName, viewModel.Scope);
-			Assert.AreEqual(0, viewModel.ScopeIndex);
+			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.Scope);
+			Assert.AreEqual((int)DirectoryNameScope.RawName, viewModel.ScopeIndex);
 
 			viewModel.ScopeIndex = (int)DirectoryNameScope.RawName;
 			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.Scope);
@@ -246,6 +246,29 @@ namespace Files.App.UnitTests.Filtering
 
 			viewModel.ScopeIndex = 99;
 			Assert.AreEqual(DirectoryNameScope.DisplayName, viewModel.Scope);
+		}
+
+		[TestMethod]
+		public void Constructor_DefaultsNameConditionToFullFileName()
+		{
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, DirectoryFilterSpec.Empty);
+
+			Assert.IsTrue(viewModel.UseRawName);
+			Assert.AreEqual(DirectoryNameScope.RawName, viewModel.ToColumnFilter().Scope);
+		}
+
+		[TestMethod]
+		public void Constructor_SeedsNameScopeFromSpec()
+		{
+			var spec = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter { Column = DirectoryColumnKind.Name, Text = "report" }],
+			};
+
+			var viewModel = new DirectoryFilterViewModel(DirectoryColumnKind.Name, spec);
+
+			Assert.IsFalse(viewModel.UseRawName);
+			Assert.AreEqual("report", viewModel.Text);
 		}
 
 		[TestMethod]
