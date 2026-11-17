@@ -98,7 +98,7 @@ namespace Files.App.UserControls
 		private void FilterBar_KeyDown(object sender, KeyRoutedEventArgs e)
 		{
 			// Enter confirms a text filter edit; the shell re-runs the projection immediately.
-			if (e.Handled || e.Key is not VirtualKey.Enter || e.OriginalSource is not TextBox)
+			if (e.Handled || e.Key is not VirtualKey.Enter || !IsFilterTextInput(e.OriginalSource as DependencyObject))
 				return;
 
 			e.Handled = true;
