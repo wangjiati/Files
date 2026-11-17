@@ -1,9 +1,9 @@
 # 全视图筛选 — 打包件 UI 验收报告
 
 日期：2026-11-15
-分支：`main`（commit `809f06ca5`）
+分支：`main`（commit `a7efa9594`）
 打包件：`artifacts/internal/4.3.3.3/portable/Files.Internal_4.3.3.3_x64-portable.zip`
-SHA-256：`0ED0370B5A3B8CBAF57DF8B1801C7390D93E06C1F636686B536F7A9900EBA25C`
+SHA-256：`D705B725F8267A6B0EB28EA0E6A8D7A6B13416AD5FB48748649A4491D32A1D35`
 构建：`.github/scripts/Build-Internal.ps1 -PortableOnly -ReplaceExistingRelease`（单元测试 548/548 通过）
 
 ## 测试环境
