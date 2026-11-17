@@ -52,7 +52,7 @@ namespace Files.App.UnitTests.Filtering
 		[TestMethod]
 		public void OrIsEvaluatedAfterAnd()
 		{
-			Assert.IsTrue(LinqFilterExpression.TryParse("Name.Contains(\"a\") || Name.Contains(\"b\") && Size > 1MB", out var predicate, out _));
+			Assert.IsTrue(LinqFilterExpression.TryParse("Name.StartsWith(\"a\") || Name.StartsWith(\"b\") && Size > 1MB", out var predicate, out _));
 
 			Assert.IsTrue(predicate!(Snapshot("alpha.txt", 0)));
 			Assert.IsFalse(predicate!(Snapshot("beta.txt", 0)));
