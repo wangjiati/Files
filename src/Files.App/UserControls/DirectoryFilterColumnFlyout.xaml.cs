@@ -41,10 +41,13 @@ namespace Files.App.UserControls
 				ApplyRequested?.Invoke(this, EventArgs.Empty);
 		}
 
-		private void Content_KeyDown(object sender, KeyRoutedEventArgs e)
+		private void Content_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
 		{
-			// The editor's text boxes handle Enter themselves; this catches focus elsewhere in the form.
-			if (e.Handled || e.Key is not VirtualKey.Enter || e.OriginalSource is not TextBox)
+			// Catch Enter before the TextBox consumes it.
+			if (e.Handled || e.Key is not VirtualKey.Enter)
+				return;
+
+			if (e.OriginalSource is not TextBox && FocusManager.GetFocusedElement(XamlRoot) is not TextBox)
 				return;
 
 			e.Handled = true;

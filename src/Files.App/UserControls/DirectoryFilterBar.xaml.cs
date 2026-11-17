@@ -104,6 +104,19 @@ namespace Files.App.UserControls
 			viewModel.ApplyNow();
 		}
 
+		private void FilterBar_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+		{
+			// The TextBox can consume Enter before the bubbling handler sees it.
+			if (e.Handled || e.Key is not VirtualKey.Enter)
+				return;
+
+			if (e.OriginalSource is not TextBox && FocusManager.GetFocusedElement(XamlRoot) is not TextBox)
+				return;
+
+			e.Handled = true;
+			viewModel.ApplyNow();
+		}
+
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 			=> ((DirectoryFilterBar)d).UpdateCount();
 

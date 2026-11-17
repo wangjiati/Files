@@ -11,7 +11,7 @@
 
 	<StackPanel
 		Padding="16"
-		KeyDown="Content_KeyDown"
+		PreviewKeyDown="Content_PreviewKeyDown"
 		Spacing="12"><!--  Same editor and query language as the top bar  -->
 		<local:DirectoryFilterColumnEditor x:Name="ColumnEditor" />
 

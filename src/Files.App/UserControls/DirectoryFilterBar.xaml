@@ -57,7 +57,8 @@
 		Padding="26,8,12,8"
 		BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
 		BorderThickness="0,0,0,1"
-		KeyDown="FilterBar_KeyDown">
+		KeyDown="FilterBar_KeyDown"
+		PreviewKeyDown="FilterBar_PreviewKeyDown">
 		<Grid ColumnSpacing="8">
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="Auto" />
