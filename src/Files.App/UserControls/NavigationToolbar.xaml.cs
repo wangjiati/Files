@@ -287,6 +287,13 @@ namespace Files.App.UserControls
 						? x.Name
 						: args.Text;
 
+					if (shellPage?.ShellViewModel is { } shellViewModel && shellViewModel.TryApplyLinqFilter(searchQuery))
+					{
+						viewModel.SaveSearchQueryToList(searchQuery);
+						ContentPageContext.ShellPage?.PaneHolder?.FocusActivePane();
+						return;
+					}
+
 					shellPage?.SubmitSearch(searchQuery); // use the resolved shellPage for consistency
 					viewModel.SaveSearchQueryToList(searchQuery);
 				}

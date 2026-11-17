@@ -287,6 +287,8 @@ namespace Files.App.ViewModels
 				FilterBar.ClearAll();
 				DirectoryFilter = DirectoryFilterSpec.Empty;
 				FilterResultCount = -1;
+				linqFilter = null;
+				LinqFilterText = null;
 				lastCommittedFilterSpec = DirectoryFilterSpec.Empty;
 				InvalidateRecursiveItemsCache();
 				ResetQueryView();
@@ -1163,6 +1165,50 @@ namespace Files.App.ViewModels
 
 		private int filterResultCount = -1;
 		private bool isProjectingFromBar;
+		private Func<DirectoryItemFilterSnapshot, bool>? linqFilter;
+		private string? linqFilterText;
+
+		/// <summary>
+		/// LINQ-style expression entered in the address bar and applied on top of the bar conditions.
+		/// </summary>
+		public string? LinqFilterText
+		{
+			get => linqFilterText;
+			private set => SetProperty(ref linqFilterText, value);
+		}
+
+		/// <summary>
+		/// Applies a LINQ-style expression as a filter. Returns false when the text is not a valid
+		/// expression, so the caller can fall back to a normal search.
+		/// </summary>
+		public bool TryApplyLinqFilter(string? text)
+		{
+			if (string.IsNullOrWhiteSpace(text))
+			{
+				ClearLinqFilter();
+				return false;
+			}
+
+			if (!LinqFilterExpression.TryParse(text, out var predicate, out _) || predicate is null)
+				return false;
+
+			linqFilter = predicate;
+			LinqFilterText = text;
+			InvalidateIncrementalApplyBaseline();
+			ScheduleFilterProjection(0);
+			return true;
+		}
+
+		public void ClearLinqFilter()
+		{
+			if (linqFilter is null && LinqFilterText is null)
+				return;
+
+			linqFilter = null;
+			LinqFilterText = null;
+			InvalidateIncrementalApplyBaseline();
+			ScheduleFilterProjection(0);
+		}
 
 		/// <summary>
 		/// Matching item count of the last filter projection, or -1 when no filter is applied.
@@ -1385,7 +1431,7 @@ namespace Files.App.ViewModels
 				.Unwrap();
 		}
 
-		private static (List<ListedItem>? Items, DirectoryRegexError Error) FilterItems(List<ListedItem> items, DirectoryFilterSpec spec, CancellationToken token)
+		private (List<ListedItem>? Items, DirectoryRegexError Error) FilterItems(List<ListedItem> items, DirectoryFilterSpec spec, CancellationToken token)
 		{
 			var snapshots = new List<DirectoryItemFilterSnapshot>(items.Count);
 			for (var index = 0; index < items.Count; index++)
@@ -1398,9 +1444,15 @@ namespace Files.App.ViewModels
 				return (null, evaluation.Error);
 
 			var results = new List<ListedItem>(evaluation.ItemIds.Count);
+			var linq = linqFilter;
 
 			foreach (var id in evaluation.ItemIds)
+			{
+				if (linq is not null && !linq(snapshots[(int)id]))
+					continue;
+
 				results.Add(items[(int)id]);
+			}
 
 			return (results, DirectoryRegexError.None);
 		}
@@ -1726,7 +1778,7 @@ namespace Files.App.ViewModels
 							pendingSearchResults.Clear();
 
 							// -1 hides the counter: only an active projection makes the match count meaningful.
-							FilterResultCount = spec.IsEmpty || isQueryView ? -1 : displayedFilesAndFolders.Count;
+							FilterResultCount = (spec.IsEmpty && linqFilter is null) || isQueryView ? -1 : displayedFilesAndFolders.Count;
 
 							// Batches that still match the last committed presentation are applied incrementally:
 							// only the added, removed and moved items raise single-item notifications, so realized
@@ -4297,16 +4349,20 @@ namespace Files.App.ViewModels
 					var hasRegex = spec.Regex is { } regexOptions
 						&& DirectoryRegexFilter.TryCreate(regexOptions, out regexFilter, out _);
 					var appendedCount = 0;
+					var linq = linqFilter;
 					while (appendedCount < MaxSearchResultsAppendedPerTick && pendingSearchResults.TryDequeue(out var item))
 					{
-						if (!spec.IsEmpty)
+						if (!spec.IsEmpty || linq is not null)
 						{
 							var snapshot = CreateFilterSnapshot(item, 0);
 
-							if (!DirectoryFilterEvaluator.Matches(snapshot, spec))
+							if (!spec.IsEmpty && !DirectoryFilterEvaluator.Matches(snapshot, spec))
 								continue;
 
 							if (hasRegex && !regexFilter!.IsMatch(snapshot))
+								continue;
+
+							if (linq is not null && !linq(snapshot))
 								continue;
 						}
 
