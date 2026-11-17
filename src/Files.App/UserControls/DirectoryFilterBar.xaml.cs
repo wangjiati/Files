@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Helpers;
 using Files.App.Utils.Storage;
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
@@ -110,11 +111,25 @@ namespace Files.App.UserControls
 			if (e.Handled || e.Key is not VirtualKey.Enter)
 				return;
 
-			if (e.OriginalSource is not TextBox && FocusManager.GetFocusedElement(XamlRoot) is not TextBox)
+			var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject ?? e.OriginalSource as DependencyObject;
+			if (!IsFilterTextInput(focused))
 				return;
 
 			e.Handled = true;
 			viewModel.ApplyNow();
+		}
+
+		private static bool IsFilterTextInput(DependencyObject? element)
+		{
+			if (element is null)
+				return false;
+
+			// A ComboBox (for example the recursion depth) also contains a text input internally;
+			// Enter there must keep the normal selection behavior.
+			if (DependencyObjectHelpers.FindParent<ComboBox>(element) is not null)
+				return false;
+
+			return element is TextBox || DependencyObjectHelpers.FindParent<TextBox>(element) is not null;
 		}
 
 		private static void OnResultCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

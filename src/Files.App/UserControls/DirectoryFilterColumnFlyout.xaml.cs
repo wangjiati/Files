@@ -1,6 +1,7 @@
 // Copyright (c) Files Community
 // Licensed under the MIT License.
 
+using Files.App.Helpers;
 using Files.App.ViewModels.UserControls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -47,12 +48,24 @@ namespace Files.App.UserControls
 			if (e.Handled || e.Key is not VirtualKey.Enter)
 				return;
 
-			if (e.OriginalSource is not TextBox && FocusManager.GetFocusedElement(XamlRoot) is not TextBox)
+			var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject ?? e.OriginalSource as DependencyObject;
+			if (!IsFilterTextInput(focused))
 				return;
 
 			e.Handled = true;
 			if (ColumnEditor.Commit())
 				ApplyRequested?.Invoke(this, EventArgs.Empty);
+		}
+
+		private static bool IsFilterTextInput(DependencyObject? element)
+		{
+			if (element is null)
+				return false;
+
+			if (DependencyObjectHelpers.FindParent<ComboBox>(element) is not null)
+				return false;
+
+			return element is TextBox || DependencyObjectHelpers.FindParent<TextBox>(element) is not null;
 		}
 
 		private void Clear_Click(object sender, RoutedEventArgs e)
