@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Files 内部分支 · 功能差异说明</title>
-  <meta name="description" content="Files 内部分支相对上游 files-community/Files 的完整功能差异：便携分发、按目录时间格式、列头筛选与地址表达式、只读 SQL 工作台、导出文件列表、批量重命名、链接可视化。">
+  <meta name="description" content="Files 内部分支相对上游 files-community/Files 的完整功能差异：便携分发、按目录时间格式、顶部常规/高级筛选栏、列头筛选与 LINQ 地址表达式、只读 SQL 工作台、导出文件列表、批量重命名、链接可视化。">
   <meta name="theme-color" content="#f9b81f">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Files 内部分支 · 功能差异说明">
@@ -67,15 +67,15 @@
         </h1>
         <p class="hero__lead">
           这个分支保留了 Files 原有的多标签、双栏、预览、标签与压缩包能力，重点补上重度文件管理用户长期缺少的几件事：
-          可随身携带的分发形态、按目录生效的时间格式、真正可组合的列头筛选、只读 SQL 查询、可导出的目录清单，
+          可随身携带的分发形态、按目录生效的时间格式、顶部、列头与地址栏共用一套模型的组合筛选、只读 SQL 查询、可导出的目录清单，
           以及一个能处理上千个对象的批量重命名器。
         </p>
 
         <ul class="badges">
           <li class="badge badge--accent">Windows 10 2004+ / x64</li>
-          <li class="badge">版本 <strong>4.3.1</strong></li>
+          <li class="badge">版本 <strong>4.3.3.4</strong></li>
           <li class="badge">便携版 + MSIX</li>
-          <li class="badge">上游基线 <strong>d8eb92f66</strong></li>
+          <li class="badge">上游基线 <strong>0f452528</strong></li>
         </ul>
 
         <div class="hero__actions">
@@ -89,7 +89,7 @@
         </div>
 
         <ul class="hero__meta">
-          <li>文档整理于 2026-11-07</li>
+          <li>文档整理于 2026-11-18</li>
           <li>依据仓库 README、设计文档与源码常量</li>
           <li>数值以当前版本为准，升级后请以 <a href="https://github.com/wangjiati/Files/releases">Releases</a> 为准</li>
         </ul>
@@ -124,9 +124,9 @@
 
         <article class="card">
           <span class="card__label">查找</span>
-          <h3>列头筛选 + 可复制地址</h3>
-          <p>名称、类型、扩展名、标签、大小、修改与创建时间都能筛；支持多选、范围和安全正则。</p>
-          <p>筛选、分组、排序和布局可以写进地址栏，复制整串就能还原当时的视图。</p>
+          <h3>统一筛选栏 + LINQ 地址</h3>
+          <p>常规多关键字/通配符、高级条件链、列头弹窗和地址栏四类入口共用同一套条件模型；12 类文本运算符、AND/OR、递归深度和正则都在这里。</p>
+          <p>筛选、分组、排序和布局可以写成 LINQ 表达式放进地址栏，复制整串就能还原当时的视图。</p>
         </article>
 
         <article class="card">
@@ -139,8 +139,8 @@
       <ul class="pill-row" aria-label="功能章节快捷入口">
         <li><a href="#distribution">分发与运行形态</a></li>
         <li><a href="#time-format">时间格式</a></li>
-        <li><a href="#filter">列头筛选</a></li>
-        <li><a href="#address">地址表达式</a></li>
+        <li><a href="#filter">统一筛选</a></li>
+        <li><a href="#address">LINQ 地址</a></li>
         <li><a href="#sql">SQL 工作台</a></li>
         <li><a href="#export">导出文件列表</a></li>
         <li><a href="#rename">批量重命名</a></li>
@@ -162,7 +162,7 @@
 
       <div class="table-wrap">
         <table>
-          <caption>对照基准：上游提交 <code>d8eb92f66</code>；本分支版本 4.3.1。</caption>
+          <caption>对照基准：上游提交 <code>0f452528</code>；本分支版本 4.3.3.4。</caption>
           <thead>
             <tr>
               <th scope="col">领域</th>
@@ -204,12 +204,12 @@
             <tr>
               <th scope="row">目录筛选</th>
               <td>顶部名称包含过滤</td>
-              <td class="is-new">列头筛选：名称、类型、扩展名、标签、大小、修改/创建时间；多选、范围、正则</td>
+              <td class="is-new">统一筛选栏（常规/高级）+ 列头筛选 + 地址 LINQ；12 类运算符、AND/OR、递归深度、正则</td>
             </tr>
             <tr>
               <th scope="row">地址栏</th>
               <td>只表示路径</td>
-              <td class="is-new">路径后可携带临时的筛选、分组、排序与布局参数，可直接复制分享</td>
+              <td class="is-new">路径后可携带 LINQ 筛选表达式与分组、排序、布局参数；复制即可还原同一视图</td>
             </tr>
             <tr>
               <th scope="row">SQL 查询</th>
@@ -451,40 +451,70 @@
     <section class="section" id="filter">
       <div class="section-head">
         <p class="eyebrow">05 · 筛选</p>
-        <h2>列头筛选：多条件组合，而不是一个名称框</h2>
+        <h2>一套条件模型，四个入口：常规、高级、列头、地址</h2>
         <p>
-          上游顶部的名称包含过滤仍然保留，但现在它只是统一筛选模型里的一个条件。
-          在详细信息视图的列头打开筛选浮出层，可以按列叠加条件，也可以对文件名、显示名或完整路径跑正则。
+          上游顶部的名称包含过滤仍然保留，但现在它只是统一筛选模型里的一个入口。
+          顶部筛选栏分为常规和高级：常规面向快速通配符，高级展开 12 类运算符、AND/OR 条件链和递归深度；
+          详细信息视图的列头弹窗、以及地址栏里的 LINQ 表达式，最终都投影到同一份 <code>DirectoryFilterSpec</code>。
         </p>
+      </div>
+
+      <div class="callout">
+        <strong>4.3.3.4 更新：</strong>
+        顶部筛选栏拆成常规/高级，补齐 12 类文本运算符、AND/OR 条件链和递归深度；
+        列头弹窗与地址栏改为同一套 LINQ 表达式模型，名称列头筛选会直接回填顶部内联编辑器。
+        下面的截图来自该版本。
       </div>
 
       <div class="grid grid--2">
         <article class="card">
-          <span class="card__label">入口</span>
-          <h3>从列头开始</h3>
+          <span class="card__label">常规</span>
+          <h3>多关键字与通配符</h3>
           <ul>
-            <li>详细信息视图的列头新增独立筛选入口，点击列头仍然排序。</li>
-            <li>已生效的列有明确标识，可一键「清除所有筛选」。</li>
-            <li>顶部名称框与列头筛选共用同一份状态，不会出现两套互相覆盖的条件。</li>
-            <li>筛选只作用于当前已加载的目录项，不递归扫描磁盘。</li>
+            <li>空格或逗号分隔多个关键字，全部满足（AND）；<code>*</code>/<code>?</code> 按完整文件名通配。</li>
+            <li>输入即时生效，<kbd>Enter</kbd> 立即确认并重新投影；右侧显示匹配数量和「清除所有筛选」。</li>
+            <li>勾选「搜索子文件夹」后才递归，默认只筛当前目录；深度可选 1/2/3/5/不限。</li>
+            <li>常规与高级是两套配置，来回切换不丢各自输入。</li>
           </ul>
         </article>
 
         <article class="card">
-          <span class="card__label">组合</span>
-          <h3>不同列 AND，同列多选 OR</h3>
+          <span class="card__label">高级</span>
+          <h3>内联条件链</h3>
           <ul>
-            <li>名称：包含、不包含、开头是、结尾是、等于。</li>
-            <li>类型、扩展名、标签：多选，并可选择是否包含没有值的项目。</li>
-            <li>大小：最小值和最大值，未知大小不会被当成 0。</li>
-            <li>修改/创建时间：自定义范围，以及最近 7 天、最近 30 天、今年等相对区间。</li>
+            <li>一行内联编辑器：<code>[名称][Aa][.*][.ext][运算符][输入框]</code>，后接条件列表和「添加」。</li>
+            <li>文本列 12 类运算符：包含、不包含、开头是、开头不是、结尾是、结尾不是、等于、不等于，以及名称长度的大于、小于、等于、不等于。</li>
+            <li>条件之间用「并且/或者」连接，AND 优先结合；首个生效条件不显示连接符。</li>
+            <li>类型、扩展名、标签、大小、修改/创建日期通过「添加」菜单加入，条件即时生效，无「应用」按钮。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="card__label">列头</span>
+          <h3>与顶部栏同源</h3>
+          <ul>
+            <li>详细信息视图的列头筛选按钮打开弹窗，文本/正则共用一行编辑器；切换页签不改变弹窗高度。</li>
+            <li>名称列头筛选直接写入顶部内联名称编辑器，不再产生「空编辑器 + 重复条件」。</li>
+            <li>已生效的列可在弹窗中「清除」，也可「清除所有筛选」。</li>
+            <li>类型/扩展名多选、大小范围、日期预设与正则都走同一套条件模型。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <span class="card__label">递归</span>
+          <h3>显式开启，按层收起</h3>
+          <ul>
+            <li>递归是匹配范围而不是默认行为；未筛选时勾选不会平铺子目录。</li>
+            <li>生效时详细视图自动出现「位置」列，显示相对路径。</li>
+            <li>列视图按栏浏览，不参与递归。</li>
+            <li>子目录枚举带超时和取消，不阻塞输入。</li>
           </ul>
         </article>
       </div>
 
       <div class="table-wrap" style="margin-top:16px">
         <table>
-          <caption>首版支持的列与条件类型；所有条件都在内存快照上求值。</caption>
+          <caption>列、运算符与作用域；所有条件都在内存快照上求值，列头/顶部栏/地址共用同一模型。</caption>
           <thead>
             <tr>
               <th scope="col">列</th>
@@ -495,8 +525,8 @@
           <tbody>
             <tr>
               <th scope="row">名称</th>
-              <td>包含 / 不包含 / 开头是 / 结尾是 / 等于</td>
-              <td>顶部名称框对应「包含」，保留 250&nbsp;ms 输入防抖</td>
+              <td>包含、不包含、开头是、开头不是、结尾是、结尾不是、等于、不等于；长度 &gt; / &lt; / = / ≠；通配符</td>
+              <td>作用域可选显示名称或完整文件名；区分大小写可选；顶部名称框对应「包含」</td>
             </tr>
             <tr>
               <th scope="row">类型</th>
@@ -511,56 +541,50 @@
             <tr>
               <th scope="row">标签</th>
               <td>多选、包含空值</td>
-              <td>按标签 ID 匹配，不依赖显示名称</td>
+              <td>按标签 UID 匹配，不依赖显示名称</td>
             </tr>
             <tr>
               <th scope="row">大小</th>
-              <td>最小值 / 最大值</td>
-              <td>文件夹与未知大小保持空值语义</td>
+              <td>最小值 / 最大值（含端点）</td>
+              <td>文件夹与未知大小保持空值语义，不会被当成 0</td>
             </tr>
             <tr>
               <th scope="row">修改 / 创建时间</th>
-              <td>范围、相对日期</td>
+              <td>自定义范围、最近 1/6/24 小时、今天、昨天、最近 3/7/30 天、本月、今年</td>
               <td>比较原始 <code>DateTimeOffset</code>，与显示格式无关</td>
+            </tr>
+            <tr>
+              <th scope="row">正则</th>
+              <td>完整文件名、显示名称、完整路径；区分大小写可选</td>
+              <td>表达式上限 512 字符，单次匹配超时 250&nbsp;ms，灾难性回溯会取消本次匹配</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="grid grid--2" style="margin-top:16px">
-        <article class="card">
-          <span class="card__label">正则</span>
-          <h3>三种匹配目标</h3>
-          <ul>
-            <li><strong>完整文件名</strong>：包含扩展名的物理文件名。</li>
-            <li><strong>显示名称</strong>：当前界面上看到的名称，受「隐藏扩展名」设置影响。</li>
-            <li><strong>完整路径</strong>：用于按目录结构过滤。</li>
-            <li>可选区分大小写；表达式长度上限 512 字符，单次匹配超时 250&nbsp;ms。</li>
-          </ul>
-        </article>
-
-        <article class="card">
-          <span class="card__label">稳定性</span>
-          <h3>坏正则不会拖垮界面</h3>
-          <ul>
-            <li>非法表达式、空表达式、超长表达式都会在浮出层里给出对应提示。</li>
-            <li>灾难性回溯触发超时后取消本次匹配，不产生「半份结果」。</li>
-            <li>快速输入后切换目录，旧目录的计算结果不会覆盖新目录。</li>
-            <li>空结果提示「没有匹配项目」，不会让人误以为目录是空的。</li>
-          </ul>
-        </article>
-      </div>
-
       <div class="callout">
         <strong>作用域：</strong>
-        筛选不递归、不重新枚举磁盘；切换目录会清除临时筛选条件，避免留下看不见的过滤。
-        需要跨目录筛选时，用 SQL 工作台或「导出文件列表」的递归选项，而不是让列头筛选去扫描整块磁盘。
+        筛选只作用于当前已加载的目录项；需要递归时显式勾选「搜索子文件夹」，并选择深度。
+        筛选是临时视图状态，不写目录偏好；切换目录会清空，除非地址栏显式携带参数。
+        需要跨目录分析时，用 SQL 工作台或「导出文件列表」的递归选项。
       </div>
 
       <div class="shots">
         <figure class="shot">
-          <img src="assets/fork/date-column-filter.png" alt="Files 详细信息视图的日期列筛选浮出层，包含范围、相对日期和正则选项" loading="lazy" width="1200" height="800">
-          <figcaption>列头筛选：日期范围、相对区间与正则共用同一套条件模型。</figcaption>
+          <img src="assets/fork/filter-bar-basic.png" alt="Files 顶部筛选栏的常规模式，输入 *.zip 后命中两个 zip，地址栏同时显示 LINQ 筛选后缀" loading="lazy" width="1440" height="900">
+          <figcaption>常规模式：多关键字/通配符即时筛选，匹配数量与清除入口在同一行，地址后缀同步显示 <code>RawName.Wildcard("*.zip")</code>。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/fork/filter-bar-advanced.png" alt="Files 顶部筛选栏的高级模式，内联名称条件后接条件链和添加按钮" loading="lazy" width="1440" height="900">
+          <figcaption>高级模式：名称条件内联，后接可添加的类型条件；条件之间用「并且/或者」组合，首个生效条件不显示连接符。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/fork/column-filter-popup.png" alt="Files 名称列筛选弹窗，文本/正则页签、运算符与输入框在同一行" loading="lazy" width="1440" height="900">
+          <figcaption>列头弹窗：文本/正则共用一行，运算符与输入框并排；切换页签时弹窗高度不变。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/fork/recursion-filter.png" alt="Files 勾选搜索子文件夹后命中四个 zip，并显示位置列与深度选择" loading="lazy" width="1440" height="900">
+          <figcaption>递归筛选：只有显式勾选后才纳入子目录，详细视图出现「位置」列，深度在右侧选择。</figcaption>
         </figure>
       </div>
     </section>
@@ -568,10 +592,11 @@
     <section class="section" id="address">
       <div class="section-head">
         <p class="eyebrow">06 · 地址表达式</p>
-        <h2>把「当时的视图」写进地址栏</h2>
+        <h2>地址栏里的筛选，就是一条 LINQ 风格表达式</h2>
         <p>
-          路径后面加一个空格和 <code>?</code>，就能携带本次查看的临时筛选、分组、排序和布局。
-          复制整串发给同事，或者存进笔记，粘回地址栏即可还原同一视图。
+          路径后加一个空格和 <code>?</code>，<code>filter=</code> 后面直接写
+          <code>Name.Contains("report") &amp;&amp; Size &gt;= 1MB</code>。
+          顶部筛选栏和列头产生的条件也会编码成同一种表达式；复制整串发给同事，粘回地址栏即可还原同一视图。
         </p>
       </div>
 
@@ -582,8 +607,8 @@
           <ul>
             <li>参数只影响本次查看，不写回目录偏好、不写数据库、不进入设置。</li>
             <li>前进/后退回到该条目时恢复完整地址状态；关闭标签或重启即丢弃。</li>
-            <li>打开裸路径仍然清空筛选，不会偷偷沿用上一次的条件。</li>
-            <li>参数在地址栏里可见，面包屑右侧会显示筛选摘要。</li>
+            <li>打开裸路径仍然清空筛选；点击当前目录的面包屑也会清除筛选。</li>
+            <li>参数在地址栏里可见；面包屑右侧会显示筛选/布局后缀。</li>
           </ul>
         </article>
 
@@ -601,8 +626,8 @@
           <span class="card__label">限制</span>
           <h3>有上限，也会报错</h3>
           <ul>
-            <li>整串上限 4096 字符，筛选子句上限 64 条，正则上限 512 字符。</li>
-            <li>语法错误会弹窗提示并停止导航，不会静默丢掉筛选。</li>
+            <li>整串上限 4096 字符，筛选项上限 64 条，正则上限 512 字符。</li>
+            <li>语法错误会弹窗提示并停止导航，不会静默丢掉筛选；旧的 <code>name contains "x";size &gt;= 1MB</code> 子句语法不再解析。</li>
             <li>未知参数键或当前布局不支持的分组会被忽略，不影响路径导航。</li>
             <li>本地路径与带空格和问号的 FTP 路径按不同规则解析。</li>
           </ul>
@@ -610,17 +635,17 @@
       </div>
 
       <div class="code-block">
-        <pre><code>address  := path [ SP "?" params ]
-params   := param *( "&amp;" param )
-param    := "filter=" filter | "group=" group | "sort=" sort | "layout=" layout
-
-filter   := clause *( ";" clause )
-clause   := column SP op SP value | "empty=" columns | "regex" [ "[" target "," flag "]" ] "=" "/" pattern "/"
-column   := name | type | ext | tag | size | modified | created
-op       := contains | notcontains | startswith | endswith | equals | in | &gt;= | &lt;= | =
-group    := option [ "," asc|desc [ "," day|month|year ] ]
-sort     := option "," asc|desc
-layout   := details | list | cards | columns | grid</code></pre>
+        <pre><code>address    := path SP "?" params
+params     := "filter=" expr *( "&amp;" ( "group=" group | "sort=" sort | "layout=" layout ) )
+expr       := term *( ( "&amp;&amp;" | "||" ) term )
+term       := "!" term | "(" expr ")" | comparison
+comparison := Name text | RawName text | Name ".Length" length-op
+            | Type "==" value | Extension "==" value | Tags ".Contains(" value ")"
+            | Size size-op size | ModifiedDate date-op date | CreatedDate date-op date
+            | "Regex.IsMatch(" target "," pattern [ "," flag ] ")"
+group      := option [ "," asc|desc [ "," day|month|year ] ]
+sort       := option "," asc|desc
+layout     := details | list | cards | columns | grid</code></pre>
         <button class="code-block__copy" type="button">复制</button>
       </div>
 
@@ -629,38 +654,62 @@ layout   := details | list | cards | columns | grid</code></pre>
           <span class="card__label">示例</span>
           <h3>只留大于 10&nbsp;MB 的图片，按修改时间倒序</h3>
           <div class="code-block">
-            <pre><code>D:\Photos ?filter=name contains "IMG";size &gt;= "10MB"&amp;sort=modified,desc&amp;layout=grid</code></pre>
+            <pre><code>D:\Photos ?filter=Name.Contains("IMG") &amp;&amp; Size &gt;= 10MB&amp;sort=modified,desc&amp;layout=grid</code></pre>
             <button class="code-block__copy" type="button">复制</button>
           </div>
         </article>
 
         <article class="card">
           <span class="card__label">示例</span>
-          <h3>用正则匹配完整路径，忽略大小写</h3>
+          <h3>文档类型或 PDF，且 2026 年后修改</h3>
           <div class="code-block">
-            <pre><code>D:\Downloads ?filter=regex[fullpath,i]=/\.(zip|7z)$/&amp;group=modified,desc,month</code></pre>
+            <pre><code>D:\Docs ?filter=(Type == "文本文档" || Extension == ".pdf") &amp;&amp; ModifiedDate &gt;= "2026-01-01"</code></pre>
+            <button class="code-block__copy" type="button">复制</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="card__label">示例</span>
+          <h3>用正则匹配完整路径，区分大小写</h3>
+          <div class="code-block">
+            <pre><code>D:\Downloads ?filter=Regex.IsMatch(FullPath, "\.(zip|7z)$", "c")</code></pre>
+            <button class="code-block__copy" type="button">复制</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="card__label">示例</span>
+          <h3>标签包含稳定 UID，再按大小过滤</h3>
+          <div class="code-block">
+            <pre><code>D:\Work ?filter=Tags.Contains("uid-1") &amp;&amp; Size &gt;= 1MB</code></pre>
             <button class="code-block__copy" type="button">复制</button>
           </div>
         </article>
       </div>
 
       <details>
-        <summary>参数取值与规范化规则</summary>
+        <summary>表达式与规范化规则</summary>
         <div class="details__body">
           <ul>
-            <li>参数键固定按 <code>filter → group → sort → layout</code> 输出；筛选子句按 <code>name → type → ext → tag → size → modified → created → empty → regex</code> 排列。</li>
-            <li><code>size</code> 接受字节数或 <code>10MB</code>、<code>1.5GB</code> 这类带单位写法，内部统一换算成字节。</li>
-            <li><code>size</code>、<code>modified</code>、<code>created</code> 只接受 <code>&gt;=</code>、<code>&lt;=</code>、<code>=</code>，因为模型本身只有含端点的最小/最大值。</li>
-            <li>日期使用 ISO 8601，例如 <code>2026-01-01</code> 或 <code>2026-01-01T10:30:00Z</code>。</li>
-            <li><code>empty=</code> 只允许 <code>type</code>、<code>ext</code>、<code>tag</code>；用在其他列上视为语法错误。</li>
+            <li>参数键固定按 <code>filter → group → sort → layout</code> 输出；筛选项顺序与顶部条件链一致。</li>
+            <li><code>&amp;&amp;</code> 绑定高于 <code>||</code>；括号用于整段表达式或同一列的取值组，混合分组不会进入地址。</li>
+            <li><code>Size</code> 接受字节数或 <code>10MB</code>、<code>1.5GB</code> 这类带单位写法；<code>ModifiedDate</code>/<code>CreatedDate</code> 使用带引号的 ISO 8601。</li>
+            <li><code>Type == ""</code>/<code>Extension == ""</code> 表示包含空值；<code>Tags.Count == 0</code> 表示无标签；<code>Name.Length</code> 支持长度比较。</li>
+            <li>字符串用双引号包裹，内部双引号写成 <code>""</code>；引号内的 <code>&amp;</code>、<code>;</code> 和空格都是普通字符。</li>
+            <li>参数之间用单个 <code>&amp;</code> 分隔；表达式内部的 <code>&amp;&amp;</code> 不会被当作参数分隔符。</li>
             <li>标签参数使用稳定 UID，不使用可变的显示名称。</li>
-            <li>值里的双引号用 <code>""</code> 转义；分隔符放进引号内即视为普通字符。</li>
           </ul>
         </div>
       </details>
-    </section>
 
-    <section class="section" id="sql">
+      <div class="shots">
+        <figure class="shot">
+          <img src="assets/fork/address-linq.png" alt="Files 地址栏中显示 LINQ 筛选表达式 Name.Contains(report) 与 Size 大于等于 1B" loading="lazy" width="1440" height="900">
+          <figcaption>地址栏直接书写 <code>Name.Contains("report") &amp;&amp; Size &gt;= 1B</code>；筛选、分组、排序与布局可以使用同一条地址复制和还原。</figcaption>
+        </figure>
+      </div>
+    </section>
+<section class="section" id="sql">
       <div class="section-head">
         <p class="eyebrow">07 · SQL</p>
         <h2>对当前目录做只读查询，而不是生成筛选条件</h2>
@@ -1109,7 +1158,7 @@ F2      进入下一行的手动编辑
             <li>保留干净的上游跟踪分支，产品主分支独立，功能走短生命周期分支。</li>
             <li>同步上游采用可审查的合并，不反复重写共享历史。</li>
             <li>每次发布记录对应的上游提交，便于回溯「这块行为是谁改的」。</li>
-            <li>当前页面对应的上游基线是 <code>d8eb92f66</code>。</li>
+            <li>当前页面对应的上游基线是 <code>0f452528</code>。</li>
           </ul>
         </article>
       </div>
@@ -1151,10 +1200,10 @@ F2      进入下一行的手动编辑
           <span class="card__label">筛选</span>
           <h3>作用域与入口</h3>
           <ul>
-            <li>只筛当前已加载的目录，不递归扫描磁盘。</li>
-            <li>切换目录会清空临时筛选条件。</li>
-            <li>列头筛选入口在详细信息视图；其他布局仍可用顶部名称框。</li>
-            <li>不支持路径筛选、回收站扩展条件、Git/同步状态和任意嵌套 NOT 条件树。</li>
+            <li>默认只筛当前已加载的目录；勾选「搜索子文件夹」后才按所选深度递归。</li>
+            <li>切换目录会清空临时筛选条件；地址栏显式携带参数的导航除外。</li>
+            <li>列头弹窗只在详细信息视图；顶部筛选栏在所有文件视图可用，分栏视图逐栏筛选尚未支持。</li>
+            <li>列头条件链支持 12 类文本运算符与 AND/OR；任意嵌套 NOT/括号组合请改用地址 LINQ 或正则。</li>
           </ul>
         </article>
 
@@ -1293,10 +1342,11 @@ F2      进入下一行的手动编辑
       </details>
 
       <details>
-        <summary>为什么筛选只作用于当前目录？</summary>
+        <summary>为什么筛选默认只作用于当前目录？</summary>
         <div class="details__body">
-          <p>列头筛选的目标是即时、可取消、可解释。递归扫描整块磁盘会让输入变慢，也会让「为什么这一行出现」变得难以回答。
-          需要跨目录分析时，用 SQL 工作台，或使用导出时的递归选项。</p>
+          <p>筛选的目标是即时、可取消、可解释，所以默认只筛当前目录；需要子目录时勾选「搜索子文件夹」并选择深度，
+          详细视图会出现「位置」列。递归只读取当前目录下的子目录，不会扫描整块磁盘。
+          需要跨目录分析时，用 SQL 工作台或导出时的递归选项。</p>
         </div>
       </details>
 
@@ -1367,8 +1417,8 @@ F2      进入下一行的手动编辑
           <ul>
             <li><a href="#distribution">分发与运行形态</a></li>
             <li><a href="#time-format">时间格式</a></li>
-            <li><a href="#filter">列头筛选</a></li>
-            <li><a href="#address">地址表达式</a></li>
+            <li><a href="#filter">统一筛选</a></li>
+            <li><a href="#address">LINQ 地址</a></li>
             <li><a href="#sql">SQL 工作台</a></li>
             <li><a href="#export">导出文件列表</a></li>
             <li><a href="#rename">批量重命名</a></li>
