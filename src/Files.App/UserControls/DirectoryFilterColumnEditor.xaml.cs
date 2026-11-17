@@ -167,7 +167,7 @@ namespace Files.App.UserControls
 				}
 
 				TextMatchPanel.Visibility = ToVisibility(!useRegex);
-				RegexOptionsPanel.Visibility = ToVisibility(useRegex);
+				RegexPatternBox.Visibility = ToVisibility(useRegex);
 			}
 			finally
 			{
@@ -184,7 +184,7 @@ namespace Files.App.UserControls
 			var useRegex = MatchModeSelector.SelectedItem == RegexModeItem;
 			ViewModel.UseRegex = useRegex;
 			TextMatchPanel.Visibility = ToVisibility(!useRegex);
-			RegexOptionsPanel.Visibility = ToVisibility(useRegex);
+			RegexPatternBox.Visibility = ToVisibility(useRegex);
 			RegexErrorText.Visibility = Visibility.Collapsed;
 		}
 

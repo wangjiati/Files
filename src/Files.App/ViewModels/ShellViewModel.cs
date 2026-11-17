@@ -1211,6 +1211,16 @@ namespace Files.App.ViewModels
 		}
 
 		/// <summary>
+		/// Clears every filter of the current folder: the bar conditions and the address-bar LINQ filter.
+		/// </summary>
+		public void ClearCurrentFilter()
+		{
+			ClearLinqFilter();
+			FilterBar.ClearAll();
+			DirectoryFilter = DirectoryFilterSpec.Empty;
+		}
+
+		/// <summary>
 		/// Matching item count of the last filter projection, or -1 when no filter is applied.
 		/// </summary>
 		public int FilterResultCount

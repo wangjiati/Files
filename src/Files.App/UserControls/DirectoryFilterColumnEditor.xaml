@@ -36,32 +36,43 @@
 				<SelectorBarItem x:Name="RegexModeItem" />
 			</SelectorBar>
 
-			<StackPanel
-				x:Name="TextMatchPanel"
-				Spacing="4">
-				<TextBlock Style="{StaticResource FieldLabelStyle}" Text="{helpers:ResourceString Name=FilterOperator}" />
-				<ComboBox x:Name="OperatorCombo" HorizontalAlignment="Stretch" />
-				<TextBox
-					x:Name="FilterTextBox"
-					KeyDown="TextInput_KeyDown"
-					PlaceholderText="{helpers:ResourceString Name=Filter}" />
-			</StackPanel>
+			<!--  Both modes keep one 32px row so switching to regex never resizes the popup.  -->
+			<Grid>
+				<Grid
+					x:Name="TextMatchPanel"
+					ColumnSpacing="8"
+					Visibility="Collapsed">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
 
-			<StackPanel
-				x:Name="RegexOptionsPanel"
-				Spacing="4"
-				Visibility="Collapsed">
-				<TextBlock Style="{StaticResource FieldLabelStyle}" Text="{helpers:ResourceString Name=FilterRegexPattern}" />
+					<ComboBox
+						x:Name="OperatorCombo"
+						Width="112"
+						Height="32"
+						VerticalAlignment="Center" />
+					<TextBox
+						x:Name="FilterTextBox"
+						Grid.Column="1"
+						Height="32"
+						KeyDown="TextInput_KeyDown"
+						PlaceholderText="{helpers:ResourceString Name=Filter}" />
+				</Grid>
+
 				<TextBox
 					x:Name="RegexPatternBox"
+					Height="32"
 					KeyDown="TextInput_KeyDown"
-					PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}" />
-				<TextBlock
-					x:Name="RegexErrorText"
-					Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-					TextWrapping="Wrap"
+					PlaceholderText="{helpers:ResourceString Name=FilterRegexPattern}"
 					Visibility="Collapsed" />
-			</StackPanel>
+			</Grid>
+
+			<TextBlock
+				x:Name="RegexErrorText"
+				Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+				TextWrapping="Wrap"
+				Visibility="Collapsed" />
 
 			<!--  Shared by both modes: comparison and scope  -->
 			<StackPanel Orientation="Horizontal" Spacing="16">

@@ -341,9 +341,16 @@ namespace Files.App.UserControls
 			if (args.Index < 0 || args.Index >= viewModel.PathComponents.Count)
 				return;
 
-			// Navigation to the current folder should not happen
-			if (args.Index == viewModel.PathComponents.Count - 1 ||
-				viewModel.PathComponents[args.Index].Path is not { } path)
+			// Clicking the current folder does not navigate; it clears the transient filter instead.
+			if (args.Index == viewModel.PathComponents.Count - 1)
+			{
+				if (viewModel.PathComponents[args.Index].Path is not null)
+					ContentPageContext.ShellPage?.ShellViewModel?.ClearCurrentFilter();
+
+				return;
+			}
+
+			if (viewModel.PathComponents[args.Index].Path is not { } path)
 				return;
 
 			// If user clicked the item with middle mouse button, open it in new tab

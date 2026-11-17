@@ -51,31 +51,24 @@ param     := "filter=" filter | "group=" group | "sort=" sort | "layout=" layout
 
 ### 4.1 筛选
 
+筛选是一个 LINQ 风格的布尔表达式，例如：
+
 ```text
-filter    := clause *( ";" clause )
-clause    := column SP op SP value
-           | "empty=" emptyColumn *( "," emptyColumn )
-           | "regex" [ "[" regexTarget *( "," regexFlag ) "]" ] "=" "/" pattern "/"
-column    := "name" | "type" | "ext" | "tag" | "size" | "modified" | "created"
-op        := "contains" | "notcontains" | "startswith" | "endswith" | "equals"
-           | "in" | ">=" | "<=" | "="
-value     := quoted | list
-list      := quoted *( "," quoted )
-quoted    := '"' *( char / '""' ) '"'
-emptyColumn := "type" | "ext" | "tag"
-regexTarget := "rawname" | "displayname" | "fullpath"
-regexFlag := "i" | "c"
+filter=Name.Contains("report") && Size >= 1MB
+filter=(Extension == ".txt" || Extension == "") && ModifiedDate >= "2026-01-01T00:00:00.0000000+00:00"
+filter=Regex.IsMatch(FullPath, "^a;b$", "c")
 ```
 
-- `name` 的 `contains` 对应现有 `NameContains`（名称框），其余运算符对应 `DirectoryColumnFilter`。
-- `type`/`ext`/`tag` 使用 `in` 加列表；`empty` 表示 `IncludeEmpty`。
-- `empty=` 只允许 `type`/`ext`/`tag`：求值器只在这三列读取 `IncludeEmpty`。其他列出现 `empty=` 视为语法错误，不静默忽略。
-- `size` 值为字节数或带单位（`10MB`、`1.5GB`），内部归一化为字节。
-- `size`/`modified`/`created` 只接受 `>=`、`<=`、`=`：模型只有含端点的 `MinSize`/`MaxSize`、`MinDate`/`MaxDate`，不引入严格大于/小于的近似语义。文本运算符只用于 `name`，`in` 只用于 `type`/`ext`/`tag`。
-- `modified`/`created` 使用 ISO 8601（`2026-01-01` 或 `2026-01-01T10:30:00Z`）。
-- `regex` 支持可选目标与标志：`regex[fullpath,i]=/pattern/`。`i` 表示忽略大小写，`c` 表示区分大小写；省略标志时默认 `i`（与界面默认一致），但规范形式总是写出有效标志，保证复制再粘贴不改变语义。
-- `tag` 值使用标签 UID（稳定、无歧义）；`type` 值使用当前 `ListedItem.ItemType` 字符串（与筛选模型一致），因此跨界面语言不保证一致。标签名只用于未激活摘要和 Tooltip。
-- 值里的 `"` 用 `""` 转义；分隔符放在引号内即为普通字符。
+- 文本列：`Name.Contains`、`Name.StartsWith`、`Name.EndsWith`、`Name ==`、`Name !=`，前缀 `!` 表示取反；`Name.Length > 5`、`< 5`、`== 5`、`!= 5` 表示名称长度。`RawName` 与 `Name` 对应同一条件模型的原始名/显示名作用域。
+- 取值列：`Type == "文档"`、`Extension == ".txt"`、`Tags.Contains("uid-1")`；值列表写成 `Type == "A" || Type == "B"`，同一列的取值组可用括号包裹。
+- 空值：`Type == ""`、`Extension == ""` 表示该列包含空值；`Tags.Count == 0` 表示无标签。
+- 范围列：`Size`、`ModifiedDate`、`CreatedDate` 只接受 `==`、`>=`、`<=`，对应模型里的含端点上下界；大小支持 `B`/`KB`/`MB`/`GB`/`TB` 和具体字节数，日期使用带引号的 ISO 8601。
+- 名称通配符条件写作 `Name.Wildcard("*.png")`；取反只在文本条件上生效。
+- 全局正则写作 `Regex.IsMatch(<RawName|DisplayName|FullPath>, "<pattern>"[, "<i|c>"])`；省略标志时默认忽略大小写。
+- `&&` 与 `||` 按 C# 优先级解析（`&&` 高于 `||`）；括号只用于整段表达式或同一列的取值组，混合分组不进入地址。
+- 字符串用双引号包裹，内部的双引号写成 `""`；引号内的 `&`、`;` 和空格都是普通字符。地址参数之间仍用单个 `&` 分隔，表达式内部的 `&&` 不会被当作参数分隔符。
+- 旧的 `name contains "x";size >= 1MB` 子句形式不再解析；复制旧地址会得到语法错误。
+
 
 ### 4.2 分组、排序、布局
 
@@ -94,9 +87,9 @@ unit      := "day" | "month" | "year"
 ### 4.3 规范形式
 
 - key 顺序固定：`filter` → `group` → `sort` → `layout`。
-- 筛选子句顺序固定：`name` → `type` → `ext` → `tag` → `size` → `modified` → `created` → `empty` → `regex`。
+- 筛选项顺序与筛选栏条件顺序一致；取值列表内部用 `||`，范围上下界用 `&&`。
 - 值尽量短：数字不带前导零，日期用最短可往返形式，布尔用存在性表达。
-- 整串上限 4096 字符；筛选子句上限 64 条；正则长度上限沿用现有约束。
+- 整串上限 4096 字符；筛选项上限 64 条；正则长度上限沿用现有约束。
 
 ## 5. 交互设计
 

@@ -84,7 +84,7 @@
 					VerticalAlignment="Center">
 					<TextBox
 						x:Name="KeywordBox"
-						Width="220"
+						Width="440"
 						PlaceholderText="{helpers:ResourceString Name=FilterKeywordsPlaceholder}"
 						Text="{x:Bind ViewModel.KeywordText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
 						VerticalAlignment="Center"

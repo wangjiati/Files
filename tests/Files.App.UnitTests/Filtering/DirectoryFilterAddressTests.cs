@@ -22,6 +22,25 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
+		public void Format_UsesLinqExpression()
+		{
+			var filter = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter { Column = DirectoryColumnKind.Name, Text = "report" },
+					new DirectoryColumnFilter { Column = DirectoryColumnKind.Size, MinSize = 1024 * 1024 },
+				],
+			};
+
+			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
+
+			StringAssert.Contains(text, "filter=Name.Contains(\"report\")");
+			StringAssert.Contains(text, "&& Size >= 1MB");
+			Assert.IsFalse(text.Contains("contains \"report\"", StringComparison.Ordinal));
+		}
+
+		[TestMethod]
 		public void RoundTrip_AllFilterFields()
 		{
 			var filter = new DirectoryFilterSpec
@@ -39,15 +58,31 @@ namespace Files.App.UnitTests.Filtering
 			};
 
 			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
-			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), error.ToString());
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), text + " :: " + error);
 			Assert.AreEqual(@"C:\Work", parsed.Path);
-			Assert.AreEqual("log", parsed.Filter.NameContains);
-			Assert.AreEqual(6, parsed.Filter.Columns.Count);
-			Assert.AreEqual(DirectoryColumnKind.Type, parsed.Filter.Columns[0].Column);
-			CollectionAssert.AreEqual(new[] { "Text Document" }, parsed.Filter.Columns[0].Values.ToArray());
-			Assert.AreEqual(10L * 1024 * 1024, parsed.Filter.Columns[3].MinSize);
-			Assert.AreEqual(100L * 1024 * 1024, parsed.Filter.Columns[3].MaxSize);
-			Assert.AreEqual(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), parsed.Filter.Columns[4].MinDate);
+			Assert.IsNull(parsed.Filter.NameContains);
+			Assert.AreEqual(7, parsed.Filter.Columns.Count);
+
+			Assert.AreEqual(DirectoryColumnKind.Name, parsed.Filter.Columns[0].Column);
+			Assert.AreEqual(DirectoryTextOperator.Contains, parsed.Filter.Columns[0].Operator);
+			Assert.AreEqual("log", parsed.Filter.Columns[0].Text);
+
+			Assert.AreEqual(DirectoryColumnKind.Type, parsed.Filter.Columns[1].Column);
+			CollectionAssert.AreEqual(new[] { "Text Document" }, parsed.Filter.Columns[1].Values.ToArray());
+
+			Assert.AreEqual(DirectoryColumnKind.Extension, parsed.Filter.Columns[2].Column);
+			CollectionAssert.AreEqual(new[] { ".txt" }, parsed.Filter.Columns[2].Values.ToArray());
+			Assert.IsTrue(parsed.Filter.Columns[2].IncludeEmpty);
+
+			Assert.AreEqual(DirectoryColumnKind.Tags, parsed.Filter.Columns[3].Column);
+			CollectionAssert.AreEqual(new[] { "uid-1" }, parsed.Filter.Columns[3].Values.ToArray());
+
+			Assert.AreEqual(DirectoryColumnKind.Size, parsed.Filter.Columns[4].Column);
+			Assert.AreEqual(10L * 1024 * 1024, parsed.Filter.Columns[4].MinSize);
+			Assert.AreEqual(100L * 1024 * 1024, parsed.Filter.Columns[4].MaxSize);
+
+			Assert.AreEqual(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), parsed.Filter.Columns[5].MinDate);
+			Assert.AreEqual(new DateTimeOffset(2026, 3, 1, 0, 0, 0, TimeSpan.Zero), parsed.Filter.Columns[6].MaxDate);
 		}
 
 		[TestMethod]
@@ -59,8 +94,9 @@ namespace Files.App.UnitTests.Filtering
 			};
 
 			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
-			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), error.ToString());
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), text + " :: " + error);
 			Assert.AreEqual("a;b&c,\"日志\"", parsed.Filter.Columns[0].Text);
+			Assert.AreEqual(DirectoryTextOperator.Equals, parsed.Filter.Columns[0].Operator);
 		}
 
 		[TestMethod]
@@ -72,8 +108,47 @@ namespace Files.App.UnitTests.Filtering
 			};
 
 			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
+			StringAssert.Contains(text, "Regex.IsMatch(FullPath, \"^a;b$\", \"c\")");
 			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out _));
 			Assert.AreEqual(filter.Regex, parsed.Filter.Regex);
+		}
+
+		[TestMethod]
+		public void RoundTrip_NegatedTextAndWildcard()
+		{
+			var filter = new DirectoryFilterSpec
+			{
+				Columns =
+				[
+					new DirectoryColumnFilter { Column = DirectoryColumnKind.Name, Operator = DirectoryTextOperator.NotContains, Text = "tmp" },
+					new DirectoryColumnFilter { Column = DirectoryColumnKind.Name, Operator = DirectoryTextOperator.Wildcard, Scope = DirectoryNameScope.RawName, Text = "*.zip" },
+				],
+			};
+
+			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
+			StringAssert.Contains(text, "!Name.Contains(\"tmp\")");
+			StringAssert.Contains(text, "RawName.Wildcard(\"*.zip\")");
+
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), error.ToString());
+			Assert.AreEqual(DirectoryTextOperator.NotContains, parsed.Filter.Columns[0].Operator);
+			Assert.AreEqual(DirectoryTextOperator.Wildcard, parsed.Filter.Columns[1].Operator);
+			Assert.AreEqual(DirectoryNameScope.RawName, parsed.Filter.Columns[1].Scope);
+		}
+
+		[TestMethod]
+		public void RoundTrip_ChoiceValuesWithOr()
+		{
+			var filter = new DirectoryFilterSpec
+			{
+				Columns = [new DirectoryColumnFilter { Column = DirectoryColumnKind.Type, Values = ["File", "Folder"] }],
+			};
+
+			var text = DirectoryAddressCodec.Format(@"C:\Work", filter, DirectoryViewOverrides.Empty);
+			StringAssert.Contains(text, "(Type == \"File\" || Type == \"Folder\")");
+
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(text, out var parsed, out var error), error.ToString());
+			Assert.AreEqual(1, parsed.Filter.Columns.Count);
+			CollectionAssert.AreEqual(new[] { "File", "Folder" }, parsed.Filter.Columns[0].Values.ToArray());
 		}
 
 		[TestMethod]
@@ -103,10 +178,12 @@ namespace Files.App.UnitTests.Filtering
 		}
 
 		[TestMethod]
-		public void TryParse_EmptyOnSize_ReturnsError()
+		public void TryParse_EmptyChoiceValue_SetsIncludeEmpty()
 		{
-			Assert.IsFalse(DirectoryAddressCodec.TryParse(@"C:\Work ?filter=empty=size", out _, out var error));
-			Assert.AreEqual(DirectoryAddressError.UnsupportedEmptyColumn, error);
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(@"C:\Work ?filter=Extension == """"", out var address, out var error), error.ToString());
+			var column = address.Filter.Columns.Single();
+			Assert.AreEqual(DirectoryColumnKind.Extension, column.Column);
+			Assert.IsTrue(column.IncludeEmpty);
 		}
 
 		[TestMethod]
@@ -120,8 +197,8 @@ namespace Files.App.UnitTests.Filtering
 		[TestMethod]
 		public void TryParse_UnknownKey_IsIgnored()
 		{
-			Assert.IsTrue(DirectoryAddressCodec.TryParse(@"C:\Work ?future=1&filter=name contains ""a""", out var address, out _));
-			Assert.AreEqual("a", address.Filter.NameContains);
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(@"C:\Work ?future=1&filter=Name.Contains(""a"")", out var address, out _));
+			Assert.AreEqual("a", address.Filter.Columns.Single().Text);
 		}
 
 		[TestMethod]
@@ -161,14 +238,38 @@ namespace Files.App.UnitTests.Filtering
 		[TestMethod]
 		public void TryParse_EmptyNameValue_ReturnsError()
 		{
-			Assert.IsFalse(DirectoryAddressCodec.TryParse(@"C:\Work ?filter=name contains """"", out _, out var error));
+			Assert.IsFalse(DirectoryAddressCodec.TryParse(@"C:\Work ?filter=Name.Contains("""")", out _, out var error));
 			Assert.AreEqual(DirectoryAddressError.MissingValue, error);
+		}
+
+		[TestMethod]
+		public void TryParse_AmpersandsStayInsideTheFilter()
+		{
+			Assert.IsTrue(DirectoryAddressCodec.TryParse(
+				@"C:\Work ?filter=Name.Contains(""a"") && Size >= 1MB&group=size",
+				out var address,
+				out var error), error.ToString());
+
+			Assert.AreEqual(2, address.Filter.Columns.Count);
+			Assert.AreEqual(DirectoryColumnKind.Name, address.Filter.Columns[0].Column);
+			Assert.AreEqual(DirectoryColumnKind.Size, address.Filter.Columns[1].Column);
+			Assert.AreEqual(GroupOption.Size, address.View.GroupOption);
+		}
+
+		[TestMethod]
+		public void TryParse_UnsupportedGroup_ReturnsError()
+		{
+			Assert.IsFalse(DirectoryAddressCodec.TryParse(
+				@"C:\Work ?filter=(Name.Contains(""a"") && Size >= 1MB) || Type == ""x""",
+				out _,
+				out var error));
+			Assert.AreEqual(DirectoryAddressError.InvalidValue, error);
 		}
 
 		[TestMethod]
 		public void GetPathPart_StripsParameters()
 		{
-			Assert.AreEqual(@"C:\Work", DirectoryAddressCodec.GetPathPart(@"C:\Work ?filter=name contains ""a"""));
+			Assert.AreEqual(@"C:\Work", DirectoryAddressCodec.GetPathPart(@"C:\Work ?filter=Name.Contains(""a"")"));
 			Assert.AreEqual(@"C:\Work", DirectoryAddressCodec.GetPathPart(@"C:\Work"));
 		}
 	}

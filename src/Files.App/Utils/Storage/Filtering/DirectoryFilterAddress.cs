@@ -4,8 +4,6 @@
 using Files.App.Data.Enums;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace Files.App.Utils.Storage
@@ -31,16 +29,13 @@ namespace Files.App.Utils.Storage
 
 	/// <summary>
 	/// Encodes and decodes the view address shown in the omnibar:
-	/// <c>path " ?" ("filter=" filter ("&amp;" view)*)</c>. All values are
-	/// percent-free quoted text so paths and filters survive copy/paste.
+	/// <c>path " ?" ("filter=" filter ("&amp;" view)*)</c>. The filter is a LINQ-style
+	/// expression, for example <c>Name.Contains("report") &amp;&amp; Size &gt;= 1MB</c>.
 	/// </summary>
 	public static class DirectoryAddressCodec
 	{
 		public const string ParameterPrefix = " ?";
 		public const int MaxLength = 4096;
-
-		private const int MaxClauses = 64;
-		private const int MaxRegexLength = 512;
 
 		public static bool TryParse(string? text, out DirectoryAddress address, out DirectoryAddressError error)
 		{
@@ -91,7 +86,7 @@ namespace Files.App.Utils.Storage
 						if (value.Trim().Length == 0)
 							break;
 
-						if (!TryParseFilter(value, out filter, out error))
+						if (!DirectoryAddressFilterCodec.TryParse(value, out filter, out error))
 							return false;
 						break;
 
@@ -135,7 +130,7 @@ namespace Files.App.Utils.Storage
 		{
 			var segments = new List<string>(4);
 
-			var filterSuffix = FormatFilter(filter);
+			var filterSuffix = DirectoryAddressFilterCodec.Format(filter);
 			if (filterSuffix.Length > 0)
 				segments.Add("filter=" + filterSuffix);
 
@@ -182,487 +177,6 @@ namespace Files.App.Utils.Storage
 				: text;
 		}
 
-		private static bool TryParseFilter(string value, out DirectoryFilterSpec filter, out DirectoryAddressError error)
-		{
-			filter = DirectoryFilterSpec.Empty;
-			error = DirectoryAddressError.None;
-
-			if (!TrySplitOutsideQuotes(value, ';', out var clauses))
-			{
-				error = DirectoryAddressError.InvalidQuotes;
-				return false;
-			}
-
-			if (clauses.Count > MaxClauses)
-			{
-				error = DirectoryAddressError.TooLong;
-				return false;
-			}
-
-			string? nameContains = null;
-			DirectoryRegexOptions? regex = null;
-			var columns = new List<DirectoryColumnFilter>();
-			var emptyColumns = new HashSet<DirectoryColumnKind>();
-			long? sizeMin = null;
-			long? sizeMax = null;
-			DateTimeOffset? modifiedMin = null;
-			DateTimeOffset? modifiedMax = null;
-			DateTimeOffset? createdMin = null;
-			DateTimeOffset? createdMax = null;
-
-			foreach (var rawClause in clauses)
-			{
-				var clause = rawClause.Trim();
-				if (clause.Length == 0)
-				{
-					error = DirectoryAddressError.MissingValue;
-					return false;
-				}
-
-				if (clause.StartsWith("empty=", StringComparison.OrdinalIgnoreCase))
-				{
-					if (!TryParseEmpty(clause["empty=".Length..], emptyColumns, out error))
-						return false;
-
-					continue;
-				}
-
-				if (clause.StartsWith("regex", StringComparison.OrdinalIgnoreCase))
-				{
-					if (!TryParseRegex(clause, out regex, out error))
-						return false;
-
-					continue;
-				}
-
-				var (columnToken, operatorToken, valueToken) = SplitClause(clause);
-				if (columnToken is null || operatorToken is null || valueToken is null)
-				{
-					error = DirectoryAddressError.MissingValue;
-					return false;
-				}
-
-				switch (columnToken.ToLowerInvariant())
-				{
-					case "name":
-						if (!TryParseTextOperator(operatorToken, out var textOperator))
-						{
-							error = DirectoryAddressError.InvalidOperator;
-							return false;
-						}
-
-						if (!TryUnquote(valueToken, out var text))
-						{
-							error = DirectoryAddressError.InvalidQuotes;
-							return false;
-						}
-
-						if (text.Length == 0)
-						{
-							error = DirectoryAddressError.MissingValue;
-							return false;
-						}
-
-						if (textOperator is DirectoryTextOperator.Contains)
-							nameContains = text;
-						else
-						{
-							columns.RemoveAll(column => column.Column is DirectoryColumnKind.Name);
-							columns.Add(new DirectoryColumnFilter
-							{
-								Column = DirectoryColumnKind.Name,
-								Operator = textOperator,
-								Text = text,
-							});
-						}
-						break;
-
-					case "type":
-					case "ext":
-					case "tag":
-						if (!operatorToken.Equals("in", StringComparison.OrdinalIgnoreCase))
-						{
-							error = DirectoryAddressError.InvalidOperator;
-							return false;
-						}
-
-						if (!TryParseValueList(valueToken, out var values))
-						{
-							error = DirectoryAddressError.InvalidQuotes;
-							return false;
-						}
-
-						var columnKind = columnToken.ToLowerInvariant() switch
-						{
-							"type" => DirectoryColumnKind.Type,
-							"ext" => DirectoryColumnKind.Extension,
-							_ => DirectoryColumnKind.Tags,
-						};
-						columns.RemoveAll(column => column.Column == columnKind);
-						columns.Add(new DirectoryColumnFilter
-						{
-							Column = columnKind,
-							Values = values,
-						});
-						break;
-
-					case "size":
-						if (!TryApplyRange(operatorToken, valueToken, TryParseSize, ref sizeMin, ref sizeMax, out error))
-							return false;
-						break;
-
-					case "modified":
-						if (!TryApplyRange(operatorToken, valueToken, TryParseDate, ref modifiedMin, ref modifiedMax, out error))
-							return false;
-						break;
-
-					case "created":
-						if (!TryApplyRange(operatorToken, valueToken, TryParseDate, ref createdMin, ref createdMax, out error))
-							return false;
-						break;
-
-					default:
-						error = DirectoryAddressError.InvalidValue;
-						return false;
-				}
-			}
-
-			if (sizeMin is not null || sizeMax is not null)
-				columns.Add(new DirectoryColumnFilter { Column = DirectoryColumnKind.Size, MinSize = sizeMin, MaxSize = sizeMax });
-
-			if (modifiedMin is not null || modifiedMax is not null)
-				columns.Add(new DirectoryColumnFilter { Column = DirectoryColumnKind.ModifiedDate, MinDate = modifiedMin, MaxDate = modifiedMax });
-
-			if (createdMin is not null || createdMax is not null)
-				columns.Add(new DirectoryColumnFilter { Column = DirectoryColumnKind.CreatedDate, MinDate = createdMin, MaxDate = createdMax });
-
-			for (var index = 0; index < columns.Count; index++)
-			{
-				if (emptyColumns.Contains(columns[index].Column))
-					columns[index] = columns[index] with { IncludeEmpty = true };
-			}
-
-			foreach (var emptyColumn in emptyColumns)
-			{
-				if (!columns.Any(column => column.Column == emptyColumn))
-					columns.Add(new DirectoryColumnFilter { Column = emptyColumn, IncludeEmpty = true });
-			}
-
-			columns.Sort((left, right) => ColumnRank(left.Column).CompareTo(ColumnRank(right.Column)));
-			filter = new DirectoryFilterSpec
-			{
-				NameContains = nameContains,
-				Columns = columns,
-				Regex = regex,
-			};
-
-			return true;
-		}
-
-		private static string FormatFilter(DirectoryFilterSpec filter)
-		{
-			var clauses = new List<string>();
-
-			if (!string.IsNullOrEmpty(filter.NameContains))
-				clauses.Add("name contains " + Quote(filter.NameContains));
-
-			foreach (var column in filter.Columns.OrderBy(column => ColumnRank(column.Column)))
-			{
-				switch (column.Column)
-				{
-					case DirectoryColumnKind.Name:
-						if (string.IsNullOrEmpty(column.Text))
-							continue;
-
-						clauses.Add("name " + TextOperatorToken(column.Operator) + " " + Quote(column.Text));
-						break;
-
-					case DirectoryColumnKind.Type:
-					case DirectoryColumnKind.Extension:
-					case DirectoryColumnKind.Tags:
-						if (column.Values.Count > 0)
-							clauses.Add(ColumnToken(column.Column) + " in " + string.Join(",", column.Values.Select(Quote)));
-
-						if (column.IncludeEmpty)
-							clauses.Add("empty=" + ColumnToken(column.Column));
-						break;
-
-					case DirectoryColumnKind.Size:
-						AppendRange(clauses, "size", column.MinSize, column.MaxSize, FormatSize);
-						break;
-
-					case DirectoryColumnKind.ModifiedDate:
-						AppendRange(clauses, "modified", column.MinDate, column.MaxDate, FormatDate);
-						break;
-
-					case DirectoryColumnKind.CreatedDate:
-						AppendRange(clauses, "created", column.MinDate, column.MaxDate, FormatDate);
-						break;
-				}
-			}
-
-			if (filter.Regex is { } regex)
-			{
-				var target = RegexTargetToken(regex.Target);
-				var flag = regex.IgnoreCase ? "i" : "c";
-				clauses.Add("regex[" + target + "," + flag + "]=" + Quote("/" + regex.Pattern + "/"));
-			}
-
-			return string.Join(";", clauses);
-		}
-
-		private static void AppendRange<T>(List<string> clauses, string key, T? min, T? max, Func<T, string> format)
-			where T : struct
-		{
-			if (min is { } minValue && max is { } maxValue &&
-				EqualityComparer<T>.Default.Equals(minValue, maxValue))
-			{
-				clauses.Add(key + " = " + format(minValue));
-				return;
-			}
-
-			if (min is { } minOnly)
-				clauses.Add(key + " >= " + format(minOnly));
-
-			if (max is { } maxOnly)
-				clauses.Add(key + " <= " + format(maxOnly));
-		}
-
-		private static bool TryApplyRange<T>(
-			string operatorToken,
-			string rawValue,
-			TryParseValue<T> parse,
-			ref T? min,
-			ref T? max,
-			out DirectoryAddressError error)
-			where T : struct
-		{
-			error = DirectoryAddressError.None;
-
-			if (!parse(rawValue, out var value))
-			{
-				error = DirectoryAddressError.InvalidValue;
-				return false;
-			}
-
-			switch (operatorToken)
-			{
-				case ">=":
-					min = value;
-					return true;
-
-				case "<=":
-					max = value;
-					return true;
-
-				case "=":
-					min = value;
-					max = value;
-					return true;
-
-				default:
-					error = DirectoryAddressError.InvalidOperator;
-					return false;
-			}
-		}
-
-		private delegate bool TryParseValue<T>(string raw, out T value);
-
-		private static bool TryParseEmpty(string value, HashSet<DirectoryColumnKind> columns, out DirectoryAddressError error)
-		{
-			error = DirectoryAddressError.None;
-
-			var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-			if (parts.Length == 0)
-			{
-				error = DirectoryAddressError.MissingValue;
-				return false;
-			}
-
-			foreach (var part in parts)
-			{
-				switch (part.ToLowerInvariant())
-				{
-					case "type":
-						columns.Add(DirectoryColumnKind.Type);
-						break;
-
-					case "ext":
-						columns.Add(DirectoryColumnKind.Extension);
-						break;
-
-					case "tag":
-						columns.Add(DirectoryColumnKind.Tags);
-						break;
-
-					default:
-						error = DirectoryAddressError.UnsupportedEmptyColumn;
-						return false;
-				}
-			}
-
-			return true;
-		}
-
-		private static bool TryParseRegex(string clause, out DirectoryRegexOptions? regex, out DirectoryAddressError error)
-		{
-			regex = null;
-			error = DirectoryAddressError.None;
-
-			var rest = clause["regex".Length..].TrimStart();
-			var target = DirectoryRegexTarget.RawName;
-			var ignoreCase = true;
-
-			if (rest.StartsWith('['))
-			{
-				var closeIndex = rest.IndexOf(']');
-				if (closeIndex < 0)
-				{
-					error = DirectoryAddressError.InvalidValue;
-					return false;
-				}
-
-				var flags = rest[1..closeIndex].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-				foreach (var flag in flags)
-				{
-					switch (flag.ToLowerInvariant())
-					{
-						case "rawname":
-							target = DirectoryRegexTarget.RawName;
-							break;
-
-						case "displayname":
-							target = DirectoryRegexTarget.DisplayName;
-							break;
-
-						case "fullpath":
-							target = DirectoryRegexTarget.FullPath;
-							break;
-
-						case "i":
-							ignoreCase = true;
-							break;
-
-						case "c":
-							ignoreCase = false;
-							break;
-
-						default:
-							error = DirectoryAddressError.InvalidValue;
-							return false;
-					}
-				}
-
-				rest = rest[(closeIndex + 1)..];
-			}
-
-			rest = rest.TrimStart();
-			if (!rest.StartsWith('='))
-			{
-				error = DirectoryAddressError.InvalidValue;
-				return false;
-			}
-
-			var rawPattern = rest[1..].TrimStart();
-			if (rawPattern.StartsWith('"'))
-			{
-				if (!TryUnquote(rawPattern, out var unquoted))
-				{
-					error = DirectoryAddressError.InvalidQuotes;
-					return false;
-				}
-
-				rawPattern = unquoted;
-			}
-
-			if (rawPattern.Length < 2 || !rawPattern.StartsWith('/') || !rawPattern.EndsWith('/'))
-			{
-				error = DirectoryAddressError.InvalidValue;
-				return false;
-			}
-
-			var pattern = rawPattern[1..^1];
-			if (pattern.Length > MaxRegexLength)
-			{
-				error = DirectoryAddressError.InvalidValue;
-				return false;
-			}
-
-			regex = new DirectoryRegexOptions(pattern, target, ignoreCase);
-			return true;
-		}
-
-		private static (string? Column, string? Operator, string? Value) SplitClause(string clause)
-		{
-			var firstSpace = clause.IndexOf(' ');
-			if (firstSpace <= 0)
-				return (null, null, null);
-
-			var column = clause[..firstSpace];
-			var rest = clause[(firstSpace + 1)..].TrimStart();
-			var secondSpace = rest.IndexOf(' ');
-			if (secondSpace <= 0)
-				return (null, null, null);
-
-			var operatorToken = rest[..secondSpace];
-			var value = rest[(secondSpace + 1)..].Trim();
-			return value.Length == 0
-				? (null, null, null)
-				: (column, operatorToken, value);
-		}
-
-		private static bool TryParseValueList(string raw, out IReadOnlyList<string> values)
-		{
-			values = [];
-			if (!TrySplitOutsideQuotes(raw, ',', out var parts))
-				return false;
-
-			var result = new List<string>(parts.Count);
-			foreach (var part in parts)
-			{
-				if (!TryUnquote(part, out var value) || value.Length == 0)
-					return false;
-
-				result.Add(value);
-			}
-
-			values = result;
-			return result.Count > 0;
-		}
-
-		private static bool TryUnquote(string raw, out string value)
-		{
-			value = raw.Trim();
-			if (value.Length == 0 || value[0] != '"')
-				return true;
-
-			if (value.Length < 2 || value[^1] != '"')
-				return false;
-
-			var inner = value[1..^1];
-			var builder = new StringBuilder(inner.Length);
-			for (var index = 0; index < inner.Length; index++)
-			{
-				if (inner[index] != '"')
-				{
-					builder.Append(inner[index]);
-					continue;
-				}
-
-				if (index + 1 < inner.Length && inner[index + 1] == '"')
-				{
-					builder.Append('"');
-					index++;
-					continue;
-				}
-
-				return false;
-			}
-
-			value = builder.ToString();
-			return true;
-		}
-
 		private static bool TrySplitOutsideQuotes(string text, char separator, out List<string> parts)
 		{
 			parts = [];
@@ -688,6 +202,14 @@ namespace Files.App.Utils.Storage
 
 				if (character == separator && !inQuotes)
 				{
+					// A LINQ filter joins terms with '&&'; only a single '&' separates address parameters.
+					if (separator == '&' && index + 1 < text.Length && text[index + 1] == '&')
+					{
+						builder.Append("&&");
+						index++;
+						continue;
+					}
+
 					parts.Add(builder.ToString());
 					builder.Clear();
 					continue;
@@ -728,156 +250,6 @@ namespace Files.App.Utils.Storage
 
 			return false;
 		}
-
-		private static bool TryParseTextOperator(string token, out DirectoryTextOperator value)
-		{
-			switch (token.ToLowerInvariant())
-			{
-				case "contains":
-					value = DirectoryTextOperator.Contains;
-					return true;
-
-				case "notcontains":
-					value = DirectoryTextOperator.NotContains;
-					return true;
-
-				case "startswith":
-					value = DirectoryTextOperator.StartsWith;
-					return true;
-
-				case "endswith":
-					value = DirectoryTextOperator.EndsWith;
-					return true;
-
-				case "equals":
-					value = DirectoryTextOperator.Equals;
-					return true;
-
-				default:
-					value = DirectoryTextOperator.Contains;
-					return false;
-			}
-		}
-
-		private static string TextOperatorToken(DirectoryTextOperator value)
-			=> value switch
-			{
-				DirectoryTextOperator.NotContains => "notcontains",
-				DirectoryTextOperator.StartsWith => "startswith",
-				DirectoryTextOperator.EndsWith => "endswith",
-				DirectoryTextOperator.Equals => "equals",
-				_ => "contains",
-			};
-
-		private static int ColumnRank(DirectoryColumnKind column)
-			=> column switch
-			{
-				DirectoryColumnKind.Name => 0,
-				DirectoryColumnKind.Type => 1,
-				DirectoryColumnKind.Extension => 2,
-				DirectoryColumnKind.Tags => 3,
-				DirectoryColumnKind.Size => 4,
-				DirectoryColumnKind.ModifiedDate => 5,
-				DirectoryColumnKind.CreatedDate => 6,
-				_ => 7,
-			};
-
-		private static string ColumnToken(DirectoryColumnKind column)
-			=> column switch
-			{
-				DirectoryColumnKind.Type => "type",
-				DirectoryColumnKind.Extension => "ext",
-				DirectoryColumnKind.Tags => "tag",
-				DirectoryColumnKind.Size => "size",
-				DirectoryColumnKind.ModifiedDate => "modified",
-				DirectoryColumnKind.CreatedDate => "created",
-				_ => "name",
-			};
-
-		private static string Quote(string value)
-			=> "\"" + value.Replace("\"", "\"\"") + "\"";
-
-		private static bool TryParseSize(string raw, out long bytes)
-		{
-			bytes = 0;
-			var value = raw.Trim().Trim('"');
-			var unitStart = value.Length;
-			while (unitStart > 0 && char.IsLetter(value[unitStart - 1]))
-				unitStart--;
-
-			var numberPart = value[..unitStart];
-			var unit = value[unitStart..].ToUpperInvariant();
-			if (!double.TryParse(numberPart, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) || number < 0)
-				return false;
-
-			var multiplier = unit switch
-			{
-				"" or "B" => 1d,
-				"KB" => 1024d,
-				"MB" => 1024d * 1024,
-				"GB" => 1024d * 1024 * 1024,
-				"TB" => 1024d * 1024 * 1024 * 1024,
-				_ => 0d,
-			};
-
-			if (multiplier == 0)
-				return false;
-
-			var result = number * multiplier;
-			if (result > long.MaxValue)
-				return false;
-
-			bytes = (long)Math.Round(result, MidpointRounding.AwayFromZero);
-			return true;
-		}
-
-		private static string FormatSize(long bytes)
-		{
-			var formatted = FormatSizeCore(bytes);
-			return TryParseSize(formatted, out var roundTrip) && roundTrip == bytes
-				? formatted
-				: bytes.ToString(CultureInfo.InvariantCulture) + "B";
-		}
-
-		private static string FormatSizeCore(long bytes)
-		{
-			const long kilo = 1024;
-			const long mega = kilo * 1024;
-			const long giga = mega * 1024;
-			const long tera = giga * 1024;
-
-			if (bytes >= tera)
-				return FormatSizeUnit(bytes, tera, "TB");
-
-			if (bytes >= giga)
-				return FormatSizeUnit(bytes, giga, "GB");
-
-			if (bytes >= mega)
-				return FormatSizeUnit(bytes, mega, "MB");
-
-			if (bytes >= kilo)
-				return FormatSizeUnit(bytes, kilo, "KB");
-
-			return bytes.ToString(CultureInfo.InvariantCulture) + "B";
-		}
-
-		private static string FormatSizeUnit(long bytes, long unit, string suffix)
-		{
-			if (bytes % unit == 0)
-				return (bytes / unit).ToString(CultureInfo.InvariantCulture) + suffix;
-
-			return ((double)bytes / unit).ToString("0.#", CultureInfo.InvariantCulture) + suffix;
-		}
-
-		private static bool TryParseDate(string raw, out DateTimeOffset value)
-			=> DateTimeOffset.TryParse(
-				raw.Trim().Trim('"'),
-				CultureInfo.InvariantCulture,
-				DateTimeStyles.None,
-				out value);
-
-		private static string FormatDate(DateTimeOffset value)
-			=> value.ToString("O", CultureInfo.InvariantCulture);
 
 		private static bool TryParseGroup(
 			string value,
@@ -1177,13 +549,5 @@ namespace Files.App.Utils.Storage
 					return false;
 			}
 		}
-
-		private static string RegexTargetToken(DirectoryRegexTarget target)
-			=> target switch
-			{
-				DirectoryRegexTarget.DisplayName => "displayname",
-				DirectoryRegexTarget.FullPath => "fullpath",
-				_ => "rawname",
-			};
 	}
 }
